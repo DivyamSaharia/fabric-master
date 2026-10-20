@@ -8,6 +8,7 @@ import { YarnEdit, YarnList } from './screens/yarns.jsx';
 import { UnitDetail, UnitEdit, UnitList } from './screens/units.jsx';
 import { Ranking } from './screens/ranking.jsx';
 import { Settings } from './screens/settings.jsx';
+import { Changes } from './screens/changes.jsx';
 
 function resolve({ path, query }) {
   const [a, b, c] = path;
@@ -30,6 +31,8 @@ function resolve({ path, query }) {
       return { tab: 'ranking', el: <Ranking /> };
     case 'settings':
       return { tab: 'fabrics', modal: true, el: <Settings /> };
+    case 'changes':
+      return { tab: 'fabrics', modal: true, el: <Changes key={query.ref || 'all'} query={query} /> };
     default:
       return { tab: 'fabrics', el: <FabricList query={query} /> };
   }
@@ -72,7 +75,7 @@ export function App() {
   const r = resolve(route);
   return (
     <div class={`shell ${wide ? 'wide' : ''}`}>
-      {wide ? <Sidebar active={r.tab} settingsOpen={route.path[0] === 'settings'} /> : null}
+      {wide ? <Sidebar active={r.tab} settingsOpen={route.path[0] === 'settings' || route.path[0] === 'changes'} /> : null}
       <div class={`app ${r.modal ? 'no-tabs' : ''}`}>{r.el}</div>
       {r.modal || wide ? null : <TabBar active={r.tab} />}
       {st.toast ? <div class={`toast ${st.toast.kind === 'error' ? 'error' : ''}`} role="status">{st.toast.message}</div> : null}

@@ -20,7 +20,7 @@ Fabric Master is an iPhone-style web app. Your data lives in one Google Sheet in
 5. Back in the editor, choose the `setup` function and press **Run**. Google asks you to authorise the script: it reads and writes this Sheet and creates two Drive folders, **Fabric Master Photos** and **Fabric Master Exports**. When it finishes, the Sheet shows the API key (also in the Sheet's menu **Fabric Master → Set up / show API key**).
 6. Press **Deploy → New deployment**, pick **Web app**, set **Execute as: Me** and **Who has access: Anyone**, then **Deploy**. Copy the **Web app URL**.
 
-"Anyone" means the URL can be reached without a Google sign-in, which is what lets the iPhone app work full-screen. Every request still needs the API key, so keep the URL and key private. To change the key, delete `API_KEY` under **Project Settings → Script properties** and run `setup` again.
+"Anyone" means the URL can be reached without a Google sign-in, which is what lets the iPhone app work full-screen. Every request still needs an API key, so keep the URL and keys private. The key `setup` shows is the owner's key. To change it, delete `API_KEY` under **Project Settings → Script properties** and run `setup` again; other people's keys are not affected.
 
 ## 2. Host the app
 
@@ -63,6 +63,25 @@ Add units, yarns and fabrics in the app, or paste rows straight into the Sheet's
 | FabricYarns | fabric_id, side, yarn_id, ends, parts, pattern | side: warp or weft. Warp rows carry ends; weft rows carry parts (pick share). |
 | Assignments | fabric_id, unit_id | Puts a fabric in a unit's database. |
 | Photos | (filled by the app) | Photos are added from the fabric screen. |
+
+## 5. Give other people access
+
+Each person gets their own key, so their edits carry their name and you can remove one person without touching anyone else.
+
+1. On your own device open **Settings**. Under **People with access**, tap your own name once and set it (it starts as "Owner").
+2. Tap **Give someone access**, type their name and tap **Make their key**.
+3. Tap **Send setup on WhatsApp**. The message has the app link, the web app URL and their key, with the steps to set it up.
+4. To remove someone, tap their name and **Remove access**. Their key stops working at once, and the copy of the data saved on their phone is cleared the next time it tries to sync.
+
+What other people can and can't do:
+
+- They read and change the same data you do, including deleting. They don't see anyone's keys and can't change who has access.
+- They don't need access to the Sheet or the Drive folders; the script reads and writes on your behalf. The links to the Sheet and folders are hidden for them.
+- Every fabric, yarn and unit shows **Last edited** with the person and time. **Settings → Recent changes** lists who added, changed or deleted what, newest first; the same list is in the Sheet's **Change log** tab. Edits typed straight into the Sheet are not in the log.
+- If two people save the same fabric at the same moment, the later save wins. Different fabrics never affect each other.
+- The Sheet's own **File → Version history** can bring back anything deleted by mistake.
+
+Keys are kept in the script's properties (`API_KEY` for the owner, `PEOPLE` for everyone else), not in a tab of the Sheet.
 
 ## How the figures are worked out
 

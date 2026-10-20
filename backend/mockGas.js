@@ -96,7 +96,7 @@ export function loadCodeGs() {
     LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
     Utilities: {
       getUuid: () => crypto.randomUUID(),
-      formatDate: (d) => d.toISOString().slice(0, 10),
+      formatDate: (d, _tz, fmt) => (String(fmt).includes('HH') ? d.toISOString().slice(0, 19).replace('T', ' ') : d.toISOString().slice(0, 10)),
       base64Decode: (s) => [...Buffer.from(s, 'base64')],
       base64Encode: (bytes) => Buffer.from(bytes).toString('base64'),
       newBlob: (bytes, type, name) => ({ bytes, type, name, getBytes: () => bytes, getContentType: () => type }),
@@ -116,7 +116,9 @@ export function loadCodeGs() {
     console,
   };
   vm.createContext(ctx);
-  vm.runInContext(fs.readFileSync(new URL('./Code.gs', import.meta.url), 'utf8'), ctx);
+  // a plain path: under jsdom, URL is jsdom's own and fs won't take it
+  const here = decodeURIComponent(String(import.meta.url).replace(/^file:\/\//, ''));
+  vm.runInContext(fs.readFileSync(here.replace(/[^/]*$/, 'Code.gs'), 'utf8'), ctx);
   const post = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).getContent());
   return { ctx, ss, sheets, props, files, post };
 }

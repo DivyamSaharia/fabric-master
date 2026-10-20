@@ -4,7 +4,7 @@ import { rateLabel, yarnSub } from '../describe.js';
 import { deleteRates, deleteYarn, getIndex, saveYarn, toast, useStore, yarnUsage } from '../store.js';
 import { today } from '../schema.js';
 import { back, go, replace } from '../router.js';
-import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, SearchBox, Section, Segmented, SelectField, TextButton, useWide } from '../ui.jsx';
+import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, SearchBox, Section, Segmented, SelectField, TextButton, useWide, History } from '../ui.jsx';
 
 function YarnTable({ yarns, idx }) {
   const used = {};
@@ -276,6 +276,7 @@ function YarnEditForm({ id, query }) {
 
       {existing ? (
         <>
+          <History row={existing} what="yarn" />
           <Section footer={usage.fabrics || usage.tpmChildren ? 'A yarn in use cannot be deleted. Remove it from those fabrics or TPM yarns first.' : null}>
             <Row label="Used in fabrics" value={String(usage.fabrics)} />
             {!tpm ? <Row label="TPM yarns made from it" value={String(usage.tpmChildren)} /> : null}

@@ -34,6 +34,10 @@ function stamp(ops) {
   return ops.map((op) => (op.op === 'upsert' ? { ...op, rows: op.rows.map((r) => ({ ...r, updated_at: ts })) } : op));
 }
 
+async function notInDemo() {
+  throw new Error('Connect your Google Sheet first.');
+}
+
 export function demoBackend() {
   const read = () => {
     const t = local.get(DEMO_KEY);
@@ -73,6 +77,13 @@ export function demoBackend() {
     async saveExport() {
       return null;
     },
+    async log() {
+      return [];
+    },
+    people: notInDemo,
+    addPerson: notInDemo,
+    renamePerson: notInDemo,
+    removePerson: notInDemo,
     reset() {
       local.remove(DEMO_KEY);
     },
@@ -99,7 +110,12 @@ export function sheetBackend(url, key) {
     } catch {
       throw new Error('The Sheet sent an unexpected reply. Check the web app URL in Settings.');
     }
-    if (!data.ok) throw new Error(data.error || 'The Sheet refused the request.');
+    if (!data.ok) {
+      const err = new Error(data.error || 'The Sheet refused the request.');
+      // 'auth': the key is wrong or its access was removed
+      if (data.code) err.code = data.code;
+      throw err;
+    }
     return data;
   }
   return {
@@ -137,6 +153,24 @@ export function sheetBackend(url, key) {
     async saveExport({ name, mime, base64 }) {
       const data = await call('saveExport', { name, mime, base64 });
       return data.url || null;
+    },
+    // Change log, newest first: { when, who, action, type, item, details, ref }
+    async log(limit = 200) {
+      const data = await call('log', { limit });
+      return data.entries || [];
+    },
+    // Owner only: everyone with a key, and adding, renaming or removing a person.
+    async people() {
+      return (await call('people')).people || [];
+    },
+    async addPerson(name) {
+      return (await call('addPerson', { name })).person;
+    },
+    async renamePerson(id, name) {
+      return (await call('renamePerson', { id, name })).people || [];
+    },
+    async removePerson(id) {
+      return (await call('removePerson', { id })).people || [];
     },
   };
 }

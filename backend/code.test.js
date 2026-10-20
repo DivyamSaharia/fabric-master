@@ -106,3 +106,150 @@ describe('the app talks to Code.gs', () => {
     await expect(sheetBackend('https://x', 'bad').bootstrap()).rejects.toThrow(/Wrong API key/);
   });
 });
+
+describe('a key per person, last edited by, and the change log', () => {
+  const log = () => gas.post({ action: 'log', key }).entries;
+  const seed = () => {
+    const t = sampleTables();
+    const ops = Object.entries(t).filter(([, rows]) => rows.length).map(([table, rows]) => ({ op: 'upsert', table, rows }));
+    gas.post({ action: 'batch', key, ops });
+  };
+
+  it('the setup key is the owner; the owner names himself and adds a person', () => {
+    expect(gas.post({ action: 'bootstrap', key }).meta.me).toEqual({ name: 'Owner', role: 'owner' });
+    gas.post({ action: 'renamePerson', key, id: 'owner', name: 'Divyam' });
+    expect(gas.post({ action: 'ping', key }).me.name).toBe('Divyam');
+    const r = gas.post({ action: 'addPerson', key, name: '  Ishaan  ' });
+    expect(r.ok).toBe(true);
+    expect(r.person).toMatchObject({ name: 'Ishaan', role: 'editor' });
+    expect(r.person.key).toMatch(/^[0-9a-f]{40}$/);
+    expect(r.person.key).not.toBe(key);
+    const boot = gas.post({ action: 'bootstrap', key: r.person.key });
+    expect(boot.ok).toBe(true);
+    expect(boot.meta.me).toEqual({ name: 'Ishaan', role: 'editor' });
+    expect(gas.post({ action: 'addPerson', key, name: 'ishaan' }).error).toMatch(/already on the list/);
+    expect(gas.post({ action: 'people', key }).people.map((p) => p.name)).toEqual(['Divyam', 'Ishaan']);
+  });
+
+  it('only the owner can see keys or change who has access', () => {
+    const ishaan = gas.post({ action: 'addPerson', key, name: 'Ishaan' }).person;
+    for (const action of ['people', 'addPerson', 'renamePerson', 'removePerson']) {
+      const r = gas.post({ action, key: ishaan.key, name: 'X', id: ishaan.id });
+      expect(r.ok).toBe(false);
+      expect(r.error).toMatch(/Only the owner/);
+    }
+  });
+
+  it('removing one person stops only their key', () => {
+    const a = gas.post({ action: 'addPerson', key, name: 'Ishaan' }).person;
+    const b = gas.post({ action: 'addPerson', key, name: 'Aman' }).person;
+    gas.post({ action: 'removePerson', key, id: a.id });
+    const denied = gas.post({ action: 'bootstrap', key: a.key });
+    expect(denied.ok).toBe(false);
+    expect(denied.code).toBe('auth');
+    expect(gas.post({ action: 'bootstrap', key: b.key }).ok).toBe(true);
+    expect(gas.post({ action: 'bootstrap', key }).ok).toBe(true);
+    expect(gas.post({ action: 'removePerson', key, id: 'owner' }).ok).toBe(false);
+    const access = log().filter((e) => e.type === 'Access').map((e) => `${e.action} ${e.item}`);
+    expect(access).toEqual(['removed access Ishaan', 'gave access Aman', 'gave access Ishaan']);
+  });
+
+  it('stamps who saved, and leaves rows that did not change alone', () => {
+    seed();
+    const ishaan = gas.post({ action: 'addPerson', key, name: 'Ishaan' }).person;
+    const before = gas.post({ action: 'bootstrap', key }).tables.Fabrics.find((f) => f.id === 'f_crepe');
+    expect(before.updated_by).toBe('Owner');
+    expect(before.created_by).toBe('Owner');
+    // saving the same values again changes nothing
+    gas.post({ action: 'batch', key: ishaan.key, ops: [{ op: 'upsert', table: 'Fabrics', rows: [{ ...before, updated_by: 'someone', updated_at: 'x' }] }] });
+    const same = gas.post({ action: 'bootstrap', key }).tables.Fabrics.find((f) => f.id === 'f_crepe');
+    expect(same.updated_by).toBe('Owner');
+    expect(same.updated_at).toBe(before.updated_at);
+    // a real change is stamped with the person's name, whatever the app sent
+    const res = gas.post({ action: 'batch', key: ishaan.key, ops: [{ op: 'upsert', table: 'Fabrics', rows: [{ ...before, price: 47, updated_by: 'Divyam', created_by: 'Ishaan' }] }] });
+    expect(res.ops[0].rows[0]).toMatchObject({ price: 47, updated_by: 'Ishaan', created_by: 'Owner' });
+    const after = gas.post({ action: 'bootstrap', key }).tables.Fabrics.find((f) => f.id === 'f_crepe');
+    expect(after).toMatchObject({ price: 47, updated_by: 'Ishaan', created_by: 'Owner' });
+    const top = log()[0];
+    expect(top).toMatchObject({ who: 'Ishaan', action: 'changed', type: 'Fabric', item: 'Poly Crepe 60', ref: 'f_crepe' });
+    expect(top.details).toBe('Price 45 → 47');
+    expect(top.when).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+  });
+
+  it('logs one line per fabric save, with yarn lines and units under the fabric, and marks the fabric edited', () => {
+    seed();
+    const aman = gas.post({ action: 'addPerson', key, name: 'Aman' }).person;
+    const t = gas.post({ action: 'bootstrap', key }).tables;
+    const lines = t.FabricYarns.filter((l) => l.fabric_id === 'f_geo');
+    const warp = lines.find((l) => l.side === 'warp');
+    const res = gas.post({
+      action: 'batch',
+      key: aman.key,
+      ops: [
+        { op: 'upsert', table: 'Fabrics', rows: [t.Fabrics.find((f) => f.id === 'f_geo')] },
+        { op: 'upsert', table: 'FabricYarns', rows: lines.map((l) => (l.id === warp.id ? { ...l, ends: Number(l.ends) + 100 } : l)) },
+        { op: 'upsert', table: 'Assignments', rows: [{ id: 'a_new', fabric_id: 'f_geo', unit_id: 'u_caj' }] },
+      ],
+    });
+    // the fabric row itself did not change, but it is marked as edited by Aman
+    const touched = res.ops.find((o) => o.table === 'Fabrics' && o.rows[0].updated_by === 'Aman');
+    expect(touched).toBeTruthy();
+    const top = log()[0];
+    expect(top).toMatchObject({ who: 'Aman', action: 'changed', type: 'Fabric', item: 'Georgette 60' });
+    expect(top.details).toMatch(/^warp .+: Ends \d+ → \d+; added to Chinese AJ$/);
+    expect(log().filter((e) => e.who === 'Aman')).toHaveLength(1);
+  });
+
+  it('logs adds and deletes once, not once per yarn line or unit link', () => {
+    seed();
+    gas.post({
+      action: 'batch',
+      key,
+      ops: [
+        { op: 'upsert', table: 'Fabrics', rows: [{ id: 'f_n', name: 'Natural Crape', reed_space_in: 52.5, ppi: 80 }] },
+        { op: 'upsert', table: 'FabricYarns', rows: [{ id: 'l_n1', fabric_id: 'f_n', side: 'warp', yarn_id: 'y_tpm75', ends: 4000 }, { id: 'l_n2', fabric_id: 'f_n', side: 'weft', yarn_id: 'y_tpm75', parts: 1 }] },
+        { op: 'upsert', table: 'Assignments', rows: [{ id: 'a_n', fabric_id: 'f_n', unit_id: 'u_2' }] },
+      ],
+    });
+    expect(log()[0]).toMatchObject({ action: 'added', item: 'Natural Crape 53', details: 'added to Unit 2' });
+    gas.post({ action: 'batch', key, ops: [
+      { op: 'delete', table: 'FabricYarns', ids: ['l_n1', 'l_n2'] },
+      { op: 'delete', table: 'Assignments', ids: ['a_n'] },
+      { op: 'delete', table: 'Fabrics', ids: ['f_n'] },
+    ] });
+    const e = log();
+    expect(e[0]).toMatchObject({ action: 'deleted', type: 'Fabric', item: 'Natural Crape 53' });
+    expect(e[1].action).toBe('added');
+  });
+
+  it('deleting a unit is one line, not a line for every fabric that ran in it', () => {
+    seed();
+    const t = gas.post({ action: 'bootstrap', key }).tables;
+    const id = 'u_caj';
+    gas.post({ action: 'batch', key, ops: [
+      { op: 'delete', table: 'Assignments', ids: t.Assignments.filter((a) => a.unit_id === id).map((a) => a.id) },
+      { op: 'delete', table: 'Units', ids: [id] },
+    ] });
+    const e = log();
+    expect(e[0]).toMatchObject({ action: 'deleted', type: 'Unit', item: 'Chinese AJ' });
+    expect(e[1].action).toBe('added');
+  });
+
+  it('rates and photos are reported under their yarn and fabric', () => {
+    seed();
+    gas.post({ action: 'batch', key, ops: [{ op: 'upsert', table: 'YarnRates', rows: [{ id: 'r_new', yarn_id: 'y_fdy75', rate: 170, effective_date: '2026-10-20' }] }] });
+    expect(log()[0]).toMatchObject({ action: 'changed', type: 'Yarn', details: 'new rate ₹170 from 2026-10-20' });
+    const png = 'data:image/jpeg;base64,' + Buffer.from('x').toString('base64');
+    gas.post({ action: 'uploadPhoto', key, photo: { id: 'p9', fabric_id: 'f_geo', is_cover: true }, image: png, thumb: png });
+    expect(log()[0]).toMatchObject({ type: 'Fabric', item: 'Georgette 60', details: 'photo added' });
+    gas.post({ action: 'deletePhoto', key, id: 'p9' });
+    expect(log()[0]).toMatchObject({ type: 'Fabric', details: 'photo deleted' });
+  });
+
+  it('the change log never goes out with the tables', () => {
+    seed();
+    const tables = gas.post({ action: 'bootstrap', key }).tables;
+    expect(Object.keys(tables)).toEqual(Object.keys(TABLES));
+    expect(gas.ss.getSheetByName('Change log')).toBeTruthy();
+  });
+});

@@ -390,3 +390,42 @@ export function SearchBox({ value, onInput, placeholder }) {
     </label>
   );
 }
+
+// ---------- who edited what ----------
+// Times come as ISO (rows) or "yyyy-MM-dd HH:mm:ss" in India time (change log).
+export function parseWhen(v) {
+  if (!v) return null;
+  const s = String(v);
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/);
+  const d = m ? new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +(m[6] || 0)) : new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+export function dayText(d) {
+  const today = new Date();
+  const yesterday = new Date(today);
+  yesterday.setDate(today.getDate() - 1);
+  if (d.toDateString() === today.toDateString()) return 'Today';
+  if (d.toDateString() === yesterday.toDateString()) return 'Yesterday';
+  return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+export const timeText = (d) => d.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+
+export function whenText(v) {
+  const d = parseWhen(v);
+  return d ? `${dayText(d)}, ${timeText(d)}` : '';
+}
+
+// "Last edited" and "Added" rows for a fabric, yarn or unit, with a link to its full history.
+export function History({ row, added, what }) {
+  if (!row || !row.id) return null;
+  const sheet = backendMode() === 'sheet';
+  const line = (label, by, at) => <Row label={label} value={by || whenText(at) || '—'} valueSub={by ? whenText(at) : undefined} />;
+  const rows = [];
+  if (row.updated_at || row.updated_by) rows.push(line('Last edited', row.updated_by, row.updated_at));
+  if (added && (row.created_at || row.created_by)) rows.push(line('Added', row.created_by, row.created_at));
+  if (sheet) rows.push(<Row label={`All changes to this ${what}`} onClick={() => go(`/changes?ref=${encodeURIComponent(row.id)}`)} chevron />);
+  if (!rows.length) return null;
+  return <Section header="History">{rows}</Section>;
+}

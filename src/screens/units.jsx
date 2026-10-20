@@ -3,7 +3,7 @@ import { fabricCalc, fmt, isTpm, num, spindlesForUnit, tfoOutput, truthy, yarnDe
 import { deleteSpeed, deleteUnit, getIndex, saveSpeed, saveUnit, toast, useStore } from '../store.js';
 import { back, go, replace } from '../router.js';
 import { PanBlocks } from './fabrics.jsx';
-import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, Section, Segmented, SelectField, Sheet, TextButton, Toggle, classBadge } from '../ui.jsx';
+import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, Section, Segmented, SelectField, Sheet, TextButton, Toggle, classBadge, History } from '../ui.jsx';
 
 export function UnitList() {
   const st = useStore();
@@ -128,6 +128,7 @@ export function UnitDetail({ id }) {
           <Row label="TFO division" value="No" />
         </Section>
       )}
+      <History row={unit} what="unit" />
       </div>
       {hasTfo ? (
         <div class="col">

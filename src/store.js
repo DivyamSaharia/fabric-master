@@ -15,7 +15,8 @@ const listeners = new Set();
 let state = {
   tables: emptyTables(),
   meta: {},
-  settings: { mode: 'demo', url: '', key: '' },
+  // read now, so a screen opened straight from a link (e.g. Settings) starts from the saved source
+  settings: { mode: 'demo', url: '', key: '', ...(local.get(SETTINGS_KEY, {}) || {}) },
   status: { loading: true, error: null, lastSync: null },
   syncing: false,
   toast: null,
@@ -87,7 +88,11 @@ export async function refresh() {
       set({ tables, meta, status: { loading: false, error: null, lastSync: at } });
     }
   } catch (e) {
-    if (b === backend) set({ status: { ...state.status, loading: false, error: e.message } });
+    if (b === backend && e.code === 'auth') {
+      // The key no longer works (wrong, or the owner removed this person): drop the saved copy too.
+      local.remove(CACHE_KEY);
+      set({ tables: emptyTables(), meta: {}, status: { loading: false, error: e.message, lastSync: null } });
+    } else if (b === backend) set({ status: { ...state.status, loading: false, error: e.message } });
   } finally {
     inflight -= 1;
     if (inflight === 0) set({ syncing: false });
@@ -154,6 +159,16 @@ export async function commit(ops) {
 
 export const backendMode = () => backend.mode;
 
+// Who this device is signed in as, from the Sheet: { name, role: 'owner' | 'editor' }, or null.
+export const me = () => (backend.mode === 'sheet' && state.meta && state.meta.me) || null;
+export const fetchLog = (limit) => backend.log(limit);
+export const people = {
+  list: () => backend.people(),
+  add: (name) => backend.addPerson(name),
+  rename: (id, name) => backend.renamePerson(id, name),
+  remove: (id) => backend.removePerson(id),
+};
+
 // ---------- domain actions ----------
 
 export async function saveFabric(fabric, lines, unitIds) {
@@ -189,9 +204,9 @@ export async function setAssignments(fabricId, unitIds) {
 export async function duplicateFabric(fabricId) {
   const idx = getIndex();
   const src = idx.fabricsById[fabricId];
-  const lines = (idx.linesByFabric[fabricId] || []).map(({ id, fabric_id, updated_at, ...rest }) => rest);
+  const lines = (idx.linesByFabric[fabricId] || []).map(({ id, fabric_id, updated_at, updated_by, ...rest }) => rest);
   const units = (idx.assignmentsByFabric[fabricId] || []).map((a) => a.unit_id);
-  const { id, created_at, updated_at, ...rest } = src;
+  const { id, created_at, updated_at, updated_by, created_by, ...rest } = src;
   return saveFabric({ ...rest, base_name: undefined, name: `${src.base_name ?? src.name} (copy)` }, lines, units);
 }
 
@@ -211,7 +226,7 @@ export function rsCopyPlan(fabricId, newRs, price) {
   const k = oldRs ? newRs / oldRs : null;
   const oldPrice = num(fabric.price);
   const width = num(fabric.greige_width_in);
-  const lines = (idx.linesByFabric[fabricId] || []).map(({ id, fabric_id, updated_at, ...rest }) => rest);
+  const lines = (idx.linesByFabric[fabricId] || []).map(({ id, fabric_id, updated_at, updated_by, ...rest }) => rest);
   return {
     fabric,
     oldRs,
@@ -230,7 +245,7 @@ export function rsCopyPlan(fabricId, newRs, price) {
 
 export async function duplicateForRs(fabricId, newRs, price) {
   const plan = rsCopyPlan(fabricId, newRs, price);
-  const { id, created_at, updated_at, ...rest } = plan.fabric;
+  const { id, created_at, updated_at, updated_by, created_by, ...rest } = plan.fabric;
   return saveFabric(
     { ...rest, base_name: undefined, name: plan.name, reed_space_in: newRs, price: plan.price ?? '', greige_width_in: plan.width ?? rest.greige_width_in ?? '' },
     plan.lines,

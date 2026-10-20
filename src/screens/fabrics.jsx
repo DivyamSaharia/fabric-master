@@ -5,9 +5,7 @@ import {
   addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, toast, useStore,
 } from '../store.js';
 import { back, go, replace } from '../router.js';
-import {
-  Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero,
-} from '../ui.jsx';
+import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
 import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
 
 const WEAVES = ['Plain', 'Cam', 'Dobby'];
@@ -562,6 +560,8 @@ export function FabricDetail({ id }) {
         {!units.length ? <Row label="Not in any unit yet" sub="Assign it to see profit per pick and spindles." /> : null}
         <button type="button" class="add-row" onClick={() => setAssignOpen(true)}><Icon.plus size={20} />{units.length ? 'Change units' : 'Assign to units'}</button>
       </Section>
+
+      <History row={fabric} added what="fabric" />
 
       <div class="actions">
         <Button kind="secondary" onClick={() => setExportOpen(true)}><Icon.share size={20} /> Export or share</Button>
