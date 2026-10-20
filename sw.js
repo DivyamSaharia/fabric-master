@@ -1,6 +1,6 @@
 // Offline app shell: pages and assets come from cache when there is no signal.
 // Calls to the Google Sheet (script.google.com) always go to the network.
-const CACHE = 'fabric-master-v1';
+const CACHE = 'fabric-master-v2';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './apple-touch-icon.png'];
 
 self.addEventListener('install', (e) => {
