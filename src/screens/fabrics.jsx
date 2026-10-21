@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, spindlesForUnit, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
-import { beamRowsOf, groupLabel } from '../planner.js';
+import { beamRowsOf, beamSlots, slotLabel } from '../planner.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
   addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, fabricPlanCount, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, toast, useStore,
@@ -565,7 +565,7 @@ export function FabricDetail({ id }) {
       {units.length ? (
         <Section header="Beam length" footer="Per loom group of the units it is assigned to. Set it in Edit.">
           {beamRowsOf(id, idx).map((b) => (
-            <Row key={b.group.id} label={`${b.unit.name} · ${groupLabel(b.group)}`} value={b.length !== null ? `${fmt.n(b.length, 0)} m` : 'Not set'} />
+            <Row key={b.group.id} label={`${b.unit.name} · ${slotLabel(b)}`} value={b.length !== null ? `${fmt.n(b.length, 0)} m` : 'Not set'} />
           ))}
           {!beamRowsOf(id, idx).length ? <Row label="No loom groups yet" sub="Add loom groups to the unit to set beam lengths." /> : null}
         </Section>
@@ -858,11 +858,17 @@ function FabricEditForm({ id }) {
   const [f, setF] = useState(() => ({ ...blankFabric(), ...baseFabric(existing || {}) }));
   const [lines, setLines] = useState(() => (existing ? (idx.linesByFabric[id] || []).map((l) => ({ ...l })) : [{ side: 'warp', yarn_id: '', ends: '' }, { side: 'weft', yarn_id: '', parts: 1, pattern: '' }]));
   const [unitIds, setUnitIds] = useState(() => (existing ? unitsOf(id, idx).map((u) => u.id) : []));
+  // Beam length typed per slot (unit + make + width), keyed by the slot's first loom group.
   const [beams, setBeams] = useState(() => {
     const m = {};
-    for (const b of existing ? idx.beamsByFabric[id] || [] : []) m[b.loom_group_id] = b.beam_length_m === null || b.beam_length_m === undefined ? '' : String(b.beam_length_m);
+    for (const b of existing ? idx.beamsByFabric[id] || [] : []) if (num(b.beam_length_m) !== null) m[b.loom_group_id] = String(b.beam_length_m);
     return m;
   });
+  const slots = beamSlots(f.weave, unitIds, idx);
+  const slotValue = (slot) => {
+    const g = slot.groupIds.find((x) => beams[x] !== undefined && beams[x] !== '');
+    return g ? beams[g] : '';
+  };
   const [busy, setBusy] = useState(false);
   const up = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
 
@@ -897,7 +903,7 @@ function FabricEditForm({ id }) {
     setBusy(true);
     try {
       const clean = lines.filter((l) => l.yarn_id);
-      const fid = await saveFabric({ ...f, name: f.name.trim() }, clean, unitIds, Object.entries(beams).map(([loom_group_id, beam_length_m]) => ({ loom_group_id, beam_length_m })));
+      const fid = await saveFabric({ ...f, name: f.name.trim() }, clean, unitIds, slots.flatMap((slot) => slot.groupIds.map((loom_group_id) => ({ loom_group_id, beam_length_m: slotValue(slot) }))));
       if (existing) back(`/fabric/${fid}`);
       else replace(`/fabric/${fid}`);
     } catch (e) {
@@ -990,10 +996,11 @@ function FabricEditForm({ id }) {
         {!units.length ? <Row label="No units yet" sub="Add units in the Units tab." /> : null}
       </Section>
 
-      <Section header="Beam length" footer="Machine length in metres, for each loom group of the units above. Leave blank if not set.">
-        {units.filter((u) => unitIds.includes(u.id)).flatMap((u) => (idx.loomGroupsByUnit[u.id] || []).map((g) => (
-          <NumField key={g.id} label={`${u.name} · ${groupLabel(g)}`} value={beams[g.id] ?? ''} onInput={(v) => setBeams((m) => ({ ...m, [g.id]: v }))} suffix="m" />
-        )))}
+      <Section header="Beam length" footer="Machine length in metres for each loom width of the units above. A dobby quality shows dobby looms only; any other quality shows one length per width, used for its dobby looms too. Leave blank if not set.">
+        {slots.map((slot) => (
+          <NumField key={slot.key} label={`${slot.unit.name} · ${slotLabel(slot)}`} value={slotValue(slot)} onInput={(v) => setBeams((m) => ({ ...m, ...Object.fromEntries(slot.groupIds.map((g) => [g, v])) }))} suffix="m" />
+        ))}
+        {unitIds.length && !slots.length ? <Row label="No matching loom group" sub={String(f.weave).toLowerCase() === 'dobby' ? 'A dobby quality needs a dobby loom group in its units.' : 'Add loom groups to its units.'} /> : null}
         {!unitIds.length ? <Row label="Pick a unit first" sub="Beam lengths are per loom group of its units." /> : null}
       </Section>
 

@@ -61,20 +61,37 @@ export function planLines(idx, planId) {
   };
 }
 
-// Beam length (m) of a fabric on each loom group of the units it is assigned to.
-// Returns [{ unit, group, length }] with length null when not set.
-export function beamRowsOf(fabricId, idx) {
-  const beams = idx.beamsByFabric[fabricId] || [];
-  const rows = [];
-  for (const a of idx.assignmentsByFabric[fabricId] || []) {
-    const unit = idx.unitsById[a.unit_id];
+// Beam length slots for a fabric: one per unit, make and reed width (machine length).
+// A dobby fabric only runs on dobby looms; any other fabric runs on every loom of that
+// width, so a plain and a dobby group of the same width share one slot (one length entered).
+export function beamSlots(weave, unitIds, idx) {
+  const dobbyOnly = String(weave || '').toLowerCase() === 'dobby';
+  const slots = [];
+  for (const uid of unitIds) {
+    const unit = idx.unitsById[uid];
     if (!unit) continue;
-    for (const group of idx.loomGroupsByUnit[unit.id] || []) {
-      const b = beams.find((x) => x.loom_group_id === group.id);
-      rows.push({ unit, group, length: b ? num(b.beam_length_m) : null, id: b ? b.id : null });
+    for (const group of idx.loomGroupsByUnit[uid] || []) {
+      if (dobbyOnly && String(group.shedding || '').toLowerCase() !== 'dobby') continue;
+      const key = `${uid}|${String(group.make || '').trim().toLowerCase()}|${num(group.reed_width_cm) ?? ''}`;
+      let slot = slots.find((x) => x.key === key);
+      if (!slot) slots.push((slot = { key, unit, group, groupIds: [] }));
+      slot.groupIds.push(group.id);
     }
   }
-  return rows.sort((x, y) => String(x.unit.name).localeCompare(String(y.unit.name)));
+  return slots.sort((x, y) => String(x.unit.name).localeCompare(String(y.unit.name)));
+}
+
+export const slotLabel = (slot) => [slot.group.make, num(slot.group.reed_width_cm) ? `${num(slot.group.reed_width_cm)} cm` : null].filter(Boolean).join(' · ') || 'Loom group';
+
+// Beam length (m) of a saved fabric per slot; length is null when not set.
+export function beamRowsOf(fabricId, idx) {
+  const fabric = idx.fabricsById[fabricId];
+  const beams = idx.beamsByFabric[fabricId] || [];
+  const unitIds = (idx.assignmentsByFabric[fabricId] || []).map((a) => a.unit_id);
+  return beamSlots(fabric && fabric.weave, unitIds, idx).map((slot) => {
+    const b = beams.find((x) => slot.groupIds.includes(x.loom_group_id) && num(x.beam_length_m) !== null);
+    return { ...slot, length: b ? num(b.beam_length_m) : null };
+  });
 }
 
 export const groupLabel = (g) => (g ? [g.make, num(g.reed_width_cm) ? `${num(g.reed_width_cm)} cm` : null, g.shedding].filter(Boolean).join(' · ') || 'Loom group' : 'Loom group deleted');
