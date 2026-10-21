@@ -172,3 +172,14 @@ describe('single and double panna use the unit loom efficiency', () => {
     expect(s[0].total).toBeCloseTo(130.5, 1);
   });
 });
+
+describe('fmt.date', () => {
+  it('shows yyyy-mm-dd as "2 Oct 2026" and blanks as empty', async () => {
+    const { fmt } = await import('./calc.js');
+    expect(fmt.date('2026-10-02')).toBe('2 Oct 2026');
+    expect(fmt.date('2026-09-24T00:00:00.000Z')).toBe('24 Sep 2026');
+    expect(fmt.date('')).toBe('');
+    expect(fmt.date(undefined)).toBe('');
+    expect(fmt.date('garbage')).toBe('');
+  });
+});

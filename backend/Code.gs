@@ -8,6 +8,7 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
+ * Backend v11: Sale date for fabrics (Fabrics.sale_date, yyyy-mm-dd, date only).
  * Backend v10: Transportation cost head for RFD fabrics (Fabrics.transport_charge); RFD fabric names show as name + RS + (RFD).
  * Backend v9: the old TFO planner is gone (TfoPlans and Plan* tabs removed); planning is the separate TFO Planner app.
  * Backend v8: beam length per fabric and loom group (FabricBeams).
@@ -22,7 +23,7 @@ var TABLES = {
   LoomGroups: ['id', 'unit_id', 'make', 'reed_width_cm', 'shedding', 'looms', 'updated_at', 'updated_by'],
   TfoTypes: ['id', 'unit_id', 'name', 'machines', 'spindles_per_side', 'efficiency', 'updated_at', 'updated_by'],
   TfoSpeeds: ['id', 'unit_id', 'tfo_type_id', 'yarn_id', 'rpm', 'efficiency', 'updated_at', 'updated_by'],
-  Fabrics: ['id', 'name', 'weave', 'design_note', 'end_use', 'reed', 'ppi', 'reed_space_in', 'greige_width_in', 'warp_shortage_pct', 'weft_shortage_pct', 'price', 'vatav_pct', 'finish', 'rfd_shortage_pct', 'processing_charge', 'brokering_pct', 'transport_charge', 'loom_rpm', 'loom_rpm_dp', 'loom_eff_pct', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
+  Fabrics: ['id', 'name', 'weave', 'design_note', 'end_use', 'reed', 'ppi', 'reed_space_in', 'greige_width_in', 'warp_shortage_pct', 'weft_shortage_pct', 'price', 'sale_date', 'vatav_pct', 'finish', 'rfd_shortage_pct', 'processing_charge', 'brokering_pct', 'transport_charge', 'loom_rpm', 'loom_rpm_dp', 'loom_eff_pct', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
   FabricYarns: ['id', 'fabric_id', 'side', 'yarn_id', 'ends', 'parts', 'pattern', 'sort', 'updated_at', 'updated_by'],
   Assignments: ['id', 'fabric_id', 'unit_id', 'updated_at', 'updated_by'],
   FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
@@ -38,7 +39,7 @@ var NUMERIC = {
   machines: 1, spindles_per_side: 1, beam_length_m: 1
 };
 var BOOLEAN = { has_tfo: 1, is_cover: 1 };
-var DATE_ONLY = { effective_date: 1 };
+var DATE_ONLY = { effective_date: 1, sale_date: 1 };
 
 // ---------- menu and one-time setup ----------
 
@@ -106,7 +107,7 @@ function ensureSheets_() {
   if (first && first.getName() === 'Sheet1' && first.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(first);
 }
 
-var SCHEMA_VERSION = '10';
+var SCHEMA_VERSION = '11';
 
 // Cheap check on every load; the full tab and format setup runs only when something is missing.
 function ensureReady_() {
@@ -523,7 +524,7 @@ var KIND = { Fabrics: 'Fabric', Yarns: 'Yarn', Units: 'Unit' };
 var ID_REF = { yarn_id: 'Yarns', base_yarn_id: 'Yarns', unit_id: 'Units', tfo_type_id: 'TfoTypes', fabric_id: 'Fabrics', loom_group_id: 'LoomGroups' };
 var LABELS = {
   name: 'Name', weave: 'Weave', design_note: 'Design', end_use: 'End use', reed: 'Reed', ppi: 'PPI', reed_space_in: 'RS',
-  greige_width_in: 'Greige width', warp_shortage_pct: 'Warp shortage %', weft_shortage_pct: 'Weft shortage %', price: 'Price',
+  greige_width_in: 'Greige width', warp_shortage_pct: 'Warp shortage %', weft_shortage_pct: 'Weft shortage %', price: 'Price', sale_date: 'Sale date',
   vatav_pct: 'VATAV %', finish: 'Finish', rfd_shortage_pct: 'RFD shortage %', processing_charge: 'Processing charge',
   brokering_pct: 'Brokering %', transport_charge: 'Transportation', loom_rpm: 'Loom RPM', loom_rpm_dp: 'Loom RPM double panna', loom_eff_pct: 'Loom efficiency %',
   notes: 'Notes', kind: 'Kind', base_yarn_id: 'Base yarn', material: 'Material', form: 'Form', count: 'Count',

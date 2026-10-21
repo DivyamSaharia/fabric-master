@@ -78,6 +78,24 @@ describe('every screen renders with demo data', () => {
     expect(await screen.findByLabelText(/Transportation/)).toBeTruthy();
   });
 
+  it('sale date: on the sale rate tile, as a row, in the editor, blank for new fabrics', async () => {
+    await open('#/fabric/f_crepe');
+    await screen.findByText('Sale rate');
+    const tiles = [...document.querySelectorAll('.tiles .tile')];
+    expect(tiles[6].textContent).toContain('per RFD metre · 2 Oct 2026');
+    expect(screen.getByText('Sale date')).toBeTruthy();
+    cleanup();
+    await open('#/fabric/f_crepe/edit');
+    const field = await screen.findByLabelText('Sale date');
+    expect(field.value).toBe('2026-10-02');
+    fireEvent.input(field, { target: { value: '2026-10-09' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(JSON.parse(localStorage.getItem('fm.demo.v1')).Fabrics.find((f) => f.id === 'f_crepe').sale_date).toBe('2026-10-09'));
+    cleanup();
+    await open('#/fabric/new');
+    expect((await screen.findByLabelText('Sale date')).value).toBe('');
+  });
+
   it('edit form shows the live result and saves', async () => {
     await open('#/fabric/f_crepe/edit');
     await screen.findByText('Edit fabric');

@@ -508,7 +508,7 @@ export function FabricDetail({ id }) {
         <div class="tile span">
           <div class="t-label">Sale rate</div>
           <div class="t-value">{calc.price === null ? 'Not set' : fmt.rs(calc.price)}</div>
-          <div class="t-sub">{calc.price === null ? 'add a selling price' : rfd ? 'per RFD metre' : 'per metre'}</div>
+          <div class="t-sub">{calc.price === null ? 'add a selling price' : `${rfd ? 'per RFD metre' : 'per metre'}${fmt.date(fabric.sale_date) ? ` · ${fmt.date(fabric.sale_date)}` : ''}`}</div>
         </div>
       </div>
 
@@ -541,6 +541,7 @@ export function FabricDetail({ id }) {
       {rfd ? (
         <Section header="Finishing · RFD">
           <Row label="Selling price" value={`${fmt.rs(calc.price)} / RFD m`} />
+          <Row label="Sale date" value={fmt.date(fabric.sale_date) || '—'} />
           <Row label="RFD shortage" value={fabric.rfd_shortage_pct !== '' && fabric.rfd_shortage_pct !== undefined ? `${fabric.rfd_shortage_pct}%` : '—'} />
           <Row label="Processing charge" value={`${fmt.rs(num(fabric.processing_charge))} / m`} />
           <Row label="Transportation" value={num(fabric.transport_charge) === null ? '—' : `${fmt.rs(num(fabric.transport_charge))} / RFD m`} />
@@ -555,6 +556,7 @@ export function FabricDetail({ id }) {
       ) : (
         <Section header="Greige">
           <Row label="Selling price" value={`${fmt.rs(calc.price)} / m`} />
+          <Row label="Sale date" value={fmt.date(fabric.sale_date) || '—'} />
           <Row label="RM cost" value={`${fmt.rs(calc.rmCost)} / m`} />
           <Row label="Realisation without VATAV" value={<span class="strong">{fmt.pick(calc.realisationPerPick)} / pick</span>} valueSub={`${fmt.rs(calc.realisationPerM)} / m`} />
           <Row label="VATAV" value={calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'} />
@@ -840,7 +842,7 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
 }
 
 // ---------------- edit ----------------
-const blankFabric = () => ({ name: '', weave: 'Plain', design_note: '', end_use: '', reed: '', ppi: '', reed_space_in: '', greige_width_in: '', warp_shortage_pct: '', weft_shortage_pct: '', price: '', vatav_pct: '', finish: 'Greige', rfd_shortage_pct: '', processing_charge: '', brokering_pct: '', transport_charge: '', loom_rpm: '', loom_rpm_dp: '', loom_eff_pct: '', notes: '' });
+const blankFabric = () => ({ name: '', weave: 'Plain', design_note: '', end_use: '', reed: '', ppi: '', reed_space_in: '', greige_width_in: '', warp_shortage_pct: '', weft_shortage_pct: '', price: '', sale_date: '', vatav_pct: '', finish: 'Greige', rfd_shortage_pct: '', processing_charge: '', brokering_pct: '', transport_charge: '', loom_rpm: '', loom_rpm_dp: '', loom_eff_pct: '', notes: '' });
 
 export function FabricEdit({ id }) {
   const st = useStore();
@@ -979,6 +981,7 @@ function FabricEditForm({ id }) {
       <Section header="Price and finishing" footer={rfd ? 'For RFD the selling price is per RFD metre. VATAV is the discount off that price. Shrinkage grosses up RM and processing; transportation is per RFD metre; brokering is taken on the full selling price.' : 'VATAV is the discount off the selling price. Leave it blank if there is none.'}>
         <div class="row"><div style={{ width: '100%' }}><Segmented label="Finish" options={['Greige', 'RFD']} value={f.finish === 'RFD' ? 'RFD' : 'Greige'} onChange={up('finish')} /></div></div>
         <NumField label="Selling price" hint={rfd ? 'per RFD m' : 'per m'} prefix="₹" value={f.price} onInput={up('price')} />
+        <Field label="Sale date" hint="last sale" type="date" value={String(f.sale_date || '').slice(0, 10)} onInput={up('sale_date')} />
         <NumField label="VATAV" hint="discount" value={f.vatav_pct} onInput={up('vatav_pct')} suffix="%" placeholder="0" />
         {rfd ? (
           <>

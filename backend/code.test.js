@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, beforeEach } from 'vitest';
 import { loadCodeGs } from './mockGas.js';
+import vm from 'node:vm';
 import { sampleTables } from '../src/sampleData.js';
 import { sheetBackend } from '../src/api.js';
 import { TABLES } from '../src/schema.js';
@@ -53,6 +54,7 @@ describe('Code.gs', () => {
     expect(back.Units.find((u) => u.id === 'u_2').has_tfo).toBe(true);
     expect(back.Units.find((u) => u.id === 'u_caj').has_tfo).toBe(false);
     expect(back.YarnRates.find((r) => r.id === 'r1').effective_date).toBe('2026-10-01');
+    expect(crepe.sale_date).toBe('2026-10-02');
     // the same realisation comes out of the Sheet copy
     const idx = buildIndex(back);
     expect(fabricCalc(idx.fabricsById.f_crepe, idx).realisationPerPick).toBeCloseTo(0.2577, 4);
@@ -244,6 +246,23 @@ describe('a key per person, last edited by, and the change log', () => {
     expect(log()[0]).toMatchObject({ type: 'Fabric', item: 'Georgette 60 (RFD)', details: 'photo added' });
     gas.post({ action: 'deletePhoto', key, id: 'p9' });
     expect(log()[0]).toMatchObject({ type: 'Fabric', details: 'photo deleted' });
+  });
+
+  it('sale date stays a date (no time), is logged as "Sale date", and a Date cell reads back as yyyy-mm-dd', () => {
+    seed();
+    gas.post({ action: 'batch', key, ops: [{ op: 'upsert', table: 'Fabrics', rows: [{ id: 'f_crepe', sale_date: '2026-10-09' }] }] });
+    const back = gas.post({ action: 'bootstrap', key }).tables.Fabrics.find((f) => f.id === 'f_crepe');
+    expect(back.sale_date).toBe('2026-10-09');
+    const e = log().find((x) => x.type === 'Fabric' && x.action === 'changed');
+    expect(e.details).toContain('Sale date 2026-10-02 → 2026-10-09');
+    // a hand-typed date that Sheets turned into a Date still reads back date-only
+    const sh = gas.ss.getSheetByName('Fabrics');
+    const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    const col = head.indexOf('sale_date') + 1;
+    expect(col).toBeGreaterThan(0);
+    sh.getRange(2, col).setValue(vm.runInContext("new Date('2026-09-24T00:00:00Z')", gas.ctx));
+    const rows = gas.post({ action: 'bootstrap', key }).tables.Fabrics;
+    expect(rows.some((f) => f.sale_date === '2026-09-24')).toBe(true);
   });
 
   it('the change log never goes out with the tables', () => {

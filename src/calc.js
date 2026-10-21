@@ -310,4 +310,11 @@ export const fmt = {
   n: (v, dp = 1) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('en-IN', { minimumFractionDigits: dp, maximumFractionDigits: dp })),
   rate: (v) => (v === null || v === undefined ? '—' : `₹${Number(v).toLocaleString('en-IN', { maximumFractionDigits: 2 })}`),
   int: (v) => (v === null || v === undefined ? '—' : Math.round(v).toLocaleString('en-IN')),
+  // "2026-10-02" (or a date-time) → "2 Oct 2026"; blank or unreadable → ''.
+  date: (v) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(v ?? '').trim());
+    if (!m) return '';
+    const mon = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m[2]) - 1];
+    return mon ? `${Number(m[3])} ${mon} ${m[1]}` : '';
+  },
 };

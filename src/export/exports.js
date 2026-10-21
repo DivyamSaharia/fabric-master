@@ -207,6 +207,7 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
   const costRows = rfd
     ? [
         ['Selling price', `${fmt.rs(calc.price)} / RFD m`],
+        ['Sale date', fmt.date(fabric.sale_date) || '—'],
         ['RFD shortage', pctv(fabric.rfd_shortage_pct)],
         ['Processing charge', `${fmt.rs(num(fabric.processing_charge))} / m`],
         ['Transportation', num(fabric.transport_charge) === null ? '—' : `${fmt.rs(num(fabric.transport_charge))} / RFD m`],
@@ -220,6 +221,7 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
       ]
     : [
         ['Selling price', `${fmt.rs(calc.price)} / m`],
+        ['Sale date', fmt.date(fabric.sale_date) || '—'],
         ['RM cost (shortage included)', `${fmt.rs(calc.rmCost)} / m`],
         ['Realisation without VATAV', `${fmt.rs(calc.realisationPerM)} / m · ${fmt.pick(calc.realisationPerPick)} / pick`],
         ['VATAV', calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'],
@@ -290,6 +292,7 @@ function fabricRow(fabric, calc, idx, unit) {
     GSM: r2(calc.gsm, 1),
     'RM cost ₹/m': r2(calc.rmCost),
     'Selling price ₹/m': calc.price ?? '',
+    'Sale date': String(fabric.sale_date || '').slice(0, 10),
     'VATAV %': calc.vatavPct || '',
     'RFD shortage %': calc.finish === 'RFD' ? num(fabric.rfd_shortage_pct) ?? '' : '',
     'Processing ₹/m': calc.finish === 'RFD' ? num(fabric.processing_charge) ?? '' : '',
