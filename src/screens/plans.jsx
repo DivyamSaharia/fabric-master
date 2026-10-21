@@ -195,32 +195,24 @@ export function PlanDetail({ id }) {
         </div>
       ) : null}
 
+      <Section header="Running yarn requirement" footer={pc.runningRows.length ? 'kg/day of every yarn on the planned looms, shortage included. Spindles needed is for the TPM yarns (after outside yarn).' : null}>
+        {pc.runningRows.length ? (wide ? <RunningTable rows={pc.runningRows} totals={t} /> : <>{pc.runningRows.map((r) => <RunningCard r={r} />)}<Row label="Total running" strong value={<span class="strong">{fmt.n(t.running, 1)} kg</span>} valueSub={`warp ${fmt.n(t.runningWarp, 1)} · weft ${fmt.n(t.runningWeft, 1)} per day`} /></>) : <Row label="Nothing running yet" sub="Add loom lines from Edit." />}
+      </Section>
+
       <Section header="Spindle balance by yarn" footer="Needed = (loom demand − outside yarn) ÷ output per spindle-day, at the speed of the TFO types given out for that yarn (or the first TFO type with a speed). TFO RPM is already × 2. Loom efficiency is the unit's.">
         {pc.yarnRows.length ? (wide ? <BalanceTable rows={pc.yarnRows} /> : pc.yarnRows.map((y) => <BalanceCard y={y} />)) : <Row label="Nothing planned yet" sub="Add loom lines and TFO sides from Edit." />}
       </Section>
 
       <div class="detail-cols">
         <div class="col">
-          <Section header={`Loom plan · ${fmt.int(t.looms)} looms`}>
-            {pc.loomRows.map((r) => (
-              <Row
-                label={r.fabric ? r.fabric.name : 'Fabric deleted'}
-                sub={[`${fmt.int(r.looms)} × ${groupLabel(r.group)}`, r.panna === 2 ? 'double panna' : null, r.rpm ? `${fmt.int(r.rpm)} RPM${num(r.line.rpm) ? ' (set here)' : ''}` : null].filter(Boolean).join(' · ')}
-                value={<span class="strong">{r.mPerDay === null ? '—' : `${fmt.int(r.mPerDay)} m`}</span>}
-                valueSub="per day"
-                onClick={r.fabric ? () => go(`/fabric/${r.fabric.id}`) : undefined}
-              >
-                {r.tpm.length ? <div class="row-sub">{r.tpm.map((x) => `${x.side} ${x.yarn.name} ${x.kg === null ? '—' : `${fmt.n(x.kg, 1)} kg`}`).join(' · ')}</div> : <div class="row-sub">No TPM yarn</div>}
-                {r.problems.length ? <div class="row-sub bad">{r.problems.join(' · ')}</div> : null}
-              </Row>
-            ))}
-            {!pc.loomRows.length ? <Row label="No loom lines" /> : null}
-          </Section>
-          {pc.groupUse.length ? (
-            <Section header="Loom groups">
-              {pc.groupUse.map((u) => <Row label={groupLabel(u.group)} value={<span class={u.free !== null && u.free < 0 ? 'bad strong' : ''}>{u.have === null ? `${u.planned} planned` : `${u.planned} of ${u.have}`}</span>} valueSub={u.free === null ? 'looms not set' : u.free >= 0 ? `${u.free} free` : `${-u.free} over`} />)}
+          {pc.groupUse.map((u) => (
+            <Section header={`${groupLabel(u.group)} · ${u.planned}${u.have === null ? ' looms' : ` of ${u.have} looms`} · ${u.free === null ? 'count not set' : u.free >= 0 ? `${u.free} available` : `${-u.free} over`}`}>
+              {u.rows.map((r) => <LoomRow r={r} />)}
+              {!u.rows.length ? <Row label="Nothing planned" sub={u.have === null ? 'Set the loom count on the unit.' : `${u.have} looms available`} /> : null}
             </Section>
-          ) : null}
+          ))}
+          {pc.loomRows.some((r) => !r.group) ? <Section header="No loom group">{pc.loomRows.filter((r) => !r.group).map((r) => <LoomRow r={r} />)}</Section> : null}
+          {!pc.groupUse.length && !pc.loomRows.length ? <Section header="Loom plan"><Row label="No loom lines" /></Section> : null}
         </div>
         <div class="col">
           <Section header="TFO sides given out">
@@ -262,6 +254,77 @@ export function PlanDetail({ id }) {
       <NewPlanSheet open={copying} onClose={() => setCopying(false)} units={[]} unitId={plan.unit_id} idx={idx} fromPlan={plan} />
       <PlanExportSheet open={exporting} onClose={() => setExporting(false)} plan={plan} pc={pc} />
     </div>
+  );
+}
+
+function LoomRow({ r }) {
+  return (
+    <Row
+      label={r.fabric ? r.fabric.name : 'Fabric deleted'}
+      sub={[`${fmt.int(r.looms)} looms`, r.panna === 2 ? 'double panna' : null, r.rpm ? `${fmt.int(r.rpm)} RPM${num(r.line.rpm) ? ' (set here)' : ''}` : null].filter(Boolean).join(' · ')}
+      value={<span class="strong">{r.mPerDay === null ? '—' : `${fmt.int(r.mPerDay)} m`}</span>}
+      valueSub="per day"
+      onClick={r.fabric ? () => go(`/fabric/${r.fabric.id}`) : undefined}
+    >
+      {r.problems.length ? <div class="row-sub bad">{r.problems.join(' · ')}</div> : null}
+    </Row>
+  );
+}
+
+function RunningTable({ rows, totals }) {
+  return (
+    <div class="table-wrap" style={{ margin: 0 }}>
+      <table class="ftable plan-table">
+        <thead>
+          <tr>
+            <th class="txt"><span class="th">Yarn</span></th>
+            <th><span class="th">Warp kg/day</span></th>
+            <th><span class="th">Weft kg/day</span></th>
+            <th class="key"><span class="th">Total kg/day</span></th>
+            <th><span class="th">Outside</span></th>
+            <th><span class="th">Spindles needed</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr>
+              <td class="txt">
+                <div class="tname">{r.yarn.name}</div>
+                <div class="tmeta">{[r.tpm ? `TPM${r.base ? ` of ${r.base.name}` : ''}` : null, r.fabrics.join(', ')].filter(Boolean).join(' · ')}</div>
+                {!r.known ? <div class="tmeta bad">Incomplete: a loom line is missing data</div> : null}
+              </td>
+              <td class={r.warp ? '' : 'muted'}>{r.warp ? fmt.n(r.warp, 1) : '—'}</td>
+              <td class={r.weft ? '' : 'muted'}>{r.weft ? fmt.n(r.weft, 1) : '—'}</td>
+              <td class="key">{fmt.n(r.total, 1)}</td>
+              <td class={r.outside ? '' : 'muted'}>{r.outside ? fmt.n(r.outside, 1) : '—'}</td>
+              <td class={r.tpm ? '' : 'muted'}>{r.tpm ? (r.spindles === null ? '—' : fmt.int(r.spindles)) : '—'}</td>
+            </tr>
+          ))}
+          <tr>
+            <td class="txt strong">Total</td>
+            <td class="strong">{fmt.n(totals.runningWarp, 1)}</td>
+            <td class="strong">{fmt.n(totals.runningWeft, 1)}</td>
+            <td class="key">{fmt.n(totals.running, 1)}</td>
+            <td class="muted">{totals.outside ? fmt.n(totals.outside, 1) : '—'}</td>
+            <td class="strong">{totals.required === null ? '—' : fmt.int(totals.required)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RunningCard({ r }) {
+  return (
+    <Row
+      label={r.yarn.name}
+      sub={[r.tpm ? `TPM${r.base ? ` of ${r.base.name}` : ''}` : null, r.warp ? `warp ${fmt.n(r.warp, 1)}` : null, r.weft ? `weft ${fmt.n(r.weft, 1)}` : null].filter(Boolean).join(' · ')}
+      value={<span class="strong">{fmt.n(r.total, 1)} kg</span>}
+      valueSub={r.tpm && r.spindles !== null ? `${fmt.int(r.spindles)} spindles` : 'per day'}
+    >
+      {r.fabrics.length ? <div class="row-sub">{r.fabrics.join(', ')}</div> : null}
+      {!r.known ? <div class="row-sub bad">Incomplete: a loom line is missing data</div> : null}
+    </Row>
   );
 }
 
@@ -443,40 +506,68 @@ function PlanEditForm({ id, query, unitId }) {
     setBusy(false);
   }
 
-  const loomSection = (
-    <Section header="Loom plan" footer="Which fabric runs on how many looms of each group. RPM blank = the fabric's single or double panna RPM.">
-      {lines.looms.map((l, i) => {
-        const r = pc.loomRows[i];
-        const fabric = idx.fabricsById[l.fabric_id];
-        const defRpm = fabric ? num(num(l.panna) === 2 ? fabric.loom_rpm_dp : fabric.loom_rpm) : null;
-        return (
-          <div class="line">
-            <div class="line-top">
-              <select value={l.loom_group_id || ''} aria-label="Loom group" onChange={(e) => setLine('looms', i, { loom_group_id: e.currentTarget.value })}>
-                <option value="">Loom group</option>
-                {groups.map((g) => <option value={g.id}>{groupLabel(g)}{num(g.looms) ? ` · ${num(g.looms)} looms` : ''}</option>)}
-              </select>
-              <IconButton label="Remove loom line" onClick={() => dropLine('looms', i)}><span class="bad"><Icon.trash size={20} /></span></IconButton>
-            </div>
-            <div class="line-bottom">
-              <select class="line-select" value={l.fabric_id || ''} aria-label="Fabric" onChange={(e) => setLine('looms', i, { fabric_id: e.currentTarget.value })}>
-                <option value="">Fabric</option>
-                {fabricOptions.map((g) => <optgroup label={g.group}>{g.options.map((o) => <option value={o.value}>{o.label}</option>)}</optgroup>)}
-              </select>
-            </div>
-            <div class="line-bottom">
-              <label class="mini"><span>Looms</span><input inputmode="numeric" value={l.looms ?? ''} onInput={(e) => setLine('looms', i, { looms: e.currentTarget.value })} aria-label="Number of looms" /></label>
-              <label class="mini"><span>RPM</span><input inputmode="numeric" value={l.rpm ?? ''} placeholder={defRpm ? String(defRpm) : 'enter'} onInput={(e) => setLine('looms', i, { rpm: e.currentTarget.value })} aria-label="Loom RPM" /></label>
-              <div class="mini-out"><span class="strong">{r && r.mPerDay !== null ? `${fmt.int(r.mPerDay)} m` : '—'}</span><span>per day</span></div>
-            </div>
-            <div class="line-bottom"><div style={{ width: '100%' }}><Segmented small label="Panna" options={[{ value: '1', label: 'Single panna' }, { value: '2', label: 'Double panna' }]} value={num(l.panna) === 2 ? '2' : '1'} onChange={(v) => setLine('looms', i, { panna: Number(v) })} /></div></div>
-            {r && r.tpm.length ? <div class="row-sub" style={{ marginTop: '6px' }}>{r.tpm.map((x) => `${x.side} ${x.yarn.name} ${x.kg === null ? '—' : `${fmt.n(x.kg, 1)} kg/day`}`).join(' · ')}</div> : null}
-            {r && r.problems.length && l.fabric_id && l.loom_group_id ? <div class="row-sub bad" style={{ marginTop: '4px' }}>{r.problems.join(' · ')}</div> : null}
+  const loomLine = (l, i, showGroup) => {
+    const r = pc.loomRows[i];
+    const fabric = idx.fabricsById[l.fabric_id];
+    const defRpm = fabric ? num(num(l.panna) === 2 ? fabric.loom_rpm_dp : fabric.loom_rpm) : null;
+    return (
+      <div class="line">
+        <div class="line-top">
+          {showGroup ? (
+            <select value={l.loom_group_id || ''} aria-label="Loom group" onChange={(e) => setLine('looms', i, { loom_group_id: e.currentTarget.value })}>
+              <option value="">Loom group</option>
+              {groups.map((g) => <option value={g.id}>{groupLabel(g)}{num(g.looms) ? ` · ${num(g.looms)} looms` : ''}</option>)}
+            </select>
+          ) : (
+            <select class="line-select" value={l.fabric_id || ''} aria-label="Fabric" onChange={(e) => setLine('looms', i, { fabric_id: e.currentTarget.value })}>
+              <option value="">Fabric</option>
+              {fabricOptions.map((g) => <optgroup label={g.group}>{g.options.map((o) => <option value={o.value}>{o.label}</option>)}</optgroup>)}
+            </select>
+          )}
+          <IconButton label="Remove loom line" onClick={() => dropLine('looms', i)}><span class="bad"><Icon.trash size={20} /></span></IconButton>
+        </div>
+        {showGroup ? (
+          <div class="line-bottom">
+            <select class="line-select" value={l.fabric_id || ''} aria-label="Fabric" onChange={(e) => setLine('looms', i, { fabric_id: e.currentTarget.value })}>
+              <option value="">Fabric</option>
+              {fabricOptions.map((g) => <optgroup label={g.group}>{g.options.map((o) => <option value={o.value}>{o.label}</option>)}</optgroup>)}
+            </select>
           </div>
+        ) : null}
+        <div class="line-bottom">
+          <label class="mini"><span>Looms</span><input inputmode="numeric" value={l.looms ?? ''} onInput={(e) => setLine('looms', i, { looms: e.currentTarget.value })} aria-label="Number of looms" /></label>
+          <label class="mini"><span>RPM</span><input inputmode="numeric" value={l.rpm ?? ''} placeholder={defRpm ? String(defRpm) : 'enter'} onInput={(e) => setLine('looms', i, { rpm: e.currentTarget.value })} aria-label="Loom RPM" /></label>
+          <div class="mini-out"><span class="strong">{r && r.mPerDay !== null ? `${fmt.int(r.mPerDay)} m` : '—'}</span><span>per day</span></div>
+        </div>
+        <div class="line-bottom"><div style={{ width: '100%' }}><Segmented small label="Panna" options={[{ value: '1', label: 'Single panna' }, { value: '2', label: 'Double panna' }]} value={num(l.panna) === 2 ? '2' : '1'} onChange={(v) => setLine('looms', i, { panna: Number(v) })} /></div></div>
+        {r && r.tpm.length ? <div class="row-sub" style={{ marginTop: '6px' }}>{r.tpm.map((x) => `${x.side} ${x.yarn.name} ${x.kg === null ? '—' : `${fmt.n(x.kg, 1)} kg/day`}`).join(' · ')}</div> : null}
+        {r && r.problems.length && l.fabric_id && l.loom_group_id ? <div class="row-sub bad" style={{ marginTop: '4px' }}>{r.problems.join(' · ')}</div> : null}
+      </div>
+    );
+  };
+
+  // one section per loom group of the unit, always shown, with looms still available as lines are added or removed
+  const strayLines = lines.looms.map((l, i) => ({ l, i })).filter(({ l }) => !groups.some((g) => g.id === l.loom_group_id));
+  const loomSection = (
+    <>
+      {pc.groupUse.map((u) => {
+        const mine = lines.looms.map((l, i) => ({ l, i })).filter(({ l }) => l.loom_group_id === u.group.id);
+        const over = u.free !== null && u.free < 0;
+        return (
+          <Section header={groupLabel(u.group)} footer={mine.length ? null : 'No fabric on these looms yet.'}>
+            <Row
+              label="Looms"
+              sub={u.have === null ? 'Set the loom count on the unit to see what is available.' : `${u.planned} used of ${u.have}`}
+              value={<span class={`strong ${over ? 'bad' : u.free === 0 ? '' : 'good'}`}>{u.free === null ? `${u.planned} planned` : over ? `${-u.free} over` : `${u.free} available`}</span>}
+            />
+            {mine.map(({ l, i }) => loomLine(l, i, false))}
+            <button type="button" class="add-row" onClick={() => addLine('looms', { loom_group_id: u.group.id, fabric_id: '', looms: '', panna: 1, rpm: '' })}><Icon.plus size={20} />Add fabric to these looms</button>
+          </Section>
         );
       })}
-      <button type="button" class="add-row" disabled={!groups.length} onClick={() => addLine('looms', { loom_group_id: groups.length === 1 ? groups[0].id : '', fabric_id: '', looms: '', panna: 1, rpm: '' })}><Icon.plus size={20} />{groups.length ? 'Add loom line' : 'Add loom groups to the unit first'}</button>
-    </Section>
+      {strayLines.length ? <Section header="Lines without a loom group" footer="Choose a loom group, or remove the line.">{strayLines.map(({ l, i }) => loomLine(l, i, true))}</Section> : null}
+      {!groups.length ? <Section header="Loom plan"><Row label="This unit has no loom groups" sub="Add them from the unit's Edit screen." /></Section> : null}
+    </>
   );
 
   const tfoSection = (
@@ -546,6 +637,12 @@ function PlanEditForm({ id, query, unitId }) {
       {!pc.yarnRows.length ? <Row label="Add a loom line to see what's needed" /> : null}
     </Section>
   );
+  const runningLive = (
+    <Section header="Running yarn as you edit" footer={pc.runningRows.length ? `Total ${fmt.n(pc.totals.running, 1)} kg/day: warp ${fmt.n(pc.totals.runningWarp, 1)}, weft ${fmt.n(pc.totals.runningWeft, 1)}.` : null}>
+      {pc.runningRows.map((r) => <RunningCard r={r} />)}
+      {!pc.runningRows.length ? <Row label="Add a loom line to see the yarn running" /> : null}
+    </Section>
+  );
 
   return (
     <div>
@@ -562,7 +659,7 @@ function PlanEditForm({ id, query, unitId }) {
       {wide ? (
         <div class="detail-cols">
           <div class="col">{loomSection}{outsideSection}</div>
-          <div class="col">{liveSection}{tfoSection}</div>
+          <div class="col">{liveSection}{runningLive}{tfoSection}</div>
         </div>
       ) : (
         <>
@@ -570,6 +667,7 @@ function PlanEditForm({ id, query, unitId }) {
           {tfoSection}
           {outsideSection}
           {liveSection}
+          {runningLive}
         </>
       )}
     </div>

@@ -224,6 +224,30 @@ describe('TFO planner', () => {
     expect(t.PlanTfo).toHaveLength(3);
   });
 
+  it('plan page has a section per loom group with looms available, and the running yarn', async () => {
+    await open('#/plan/p1');
+    await screen.findByText('Running yarn requirement');
+    expect(screen.getByText('Toyota · 280 cm · Plain · 32 of 40 looms · 8 available')).toBeTruthy();
+    expect(screen.getByText('Toyota · 190 cm · Dobby · 10 of 24 looms · 14 available')).toBeTruthy();
+    expect(screen.getByText('Total running')).toBeTruthy();
+    expect(screen.getByText('317.1 kg')).toBeTruthy();
+  });
+
+  it('editor shows every loom group, and the available count moves as looms change', async () => {
+    await open('#/plan/p1/edit');
+    await screen.findByText('Running yarn as you edit');
+    expect(screen.getByText('14 available')).toBeTruthy(); // 190 cm: 10 of 24
+    expect(screen.getByText('8 available')).toBeTruthy(); // 280 cm: 32 of 40
+    const looms = screen.getAllByLabelText('Number of looms');
+    fireEvent.input(looms[1], { target: { value: '25' } }); // 280 cm group: Poly Crepe 20 → 25, so 37 of 40
+    await screen.findByText('3 available');
+    fireEvent.input(looms[1], { target: { value: '33' } });
+    await screen.findByText('5 over');
+    // a group with nothing planned still has its section; add a fabric to it
+    fireEvent.click(screen.getAllByText('Add fabric to these looms')[0]);
+    await waitFor(() => expect(screen.getAllByLabelText('Number of looms').length).toBe(4));
+  });
+
   it('copies a plan to a new date', async () => {
     await open('#/plan/p1');
     await screen.findByText('Spindle balance by yarn');
@@ -304,8 +328,14 @@ describe('laptop layout', () => {
 
   it('plan page shows the balance as a table', async () => {
     await open('#/plan/p1');
-    await waitFor(() => expect(document.querySelectorAll('.plan-table tbody tr').length).toBe(3));
-    expect(document.querySelector('.plan-table tbody tr').textContent).toContain('60D TPM 2400 S/Z');
+    await waitFor(() => expect(document.querySelectorAll('.plan-table').length).toBe(2));
+    const [running, balance] = [...document.querySelectorAll('.plan-table')];
+    // running yarn: 5 yarns + total; balance: 3 TPM yarns
+    expect(running.querySelectorAll('tbody tr').length).toBe(6);
+    expect(running.textContent).toContain('75D Polyester FDY');
+    expect(running.querySelector('tbody tr').textContent).toContain('317.1');
+    expect(balance.querySelectorAll('tbody tr').length).toBe(3);
+    expect(balance.querySelector('tbody tr').textContent).toContain('60D TPM 2400 S/Z');
     expect(document.querySelector('.sidebar').textContent).toContain('Planner');
   });
 

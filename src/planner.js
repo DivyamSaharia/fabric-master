@@ -75,6 +75,13 @@ export function planCalc(plan, lines, idx) {
     return yarns.get(yarn.id);
   };
 
+  // every yarn on the running looms (TPM or not), kg/day split warp and weft
+  const running = new Map();
+  const runRow = (yarn) => {
+    if (!running.has(yarn.id)) running.set(yarn.id, { yarn, warp: 0, weft: 0, known: true, fabrics: [] });
+    return running.get(yarn.id);
+  };
+
   const loomRows = (lines.looms || []).map((line) => {
     const fabric = idx.fabricsById[line.fabric_id] || null;
     const group = groups.find((g) => g.id === line.loom_group_id) || null;
@@ -99,6 +106,14 @@ export function planCalc(plan, lines, idx) {
     if (group && String(fabric.weave || '').toLowerCase() === 'dobby' && String(group.shedding || '').toLowerCase() !== 'dobby') out.problems.push('Dobby quality on a non-dobby loom');
     out.mPerLoom = out.rpm && unitEff && c.ppi ? ((out.rpm * MIN_PER_DAY * (unitEff / 100)) / (c.ppi * IN_PER_M)) * panna : null;
     out.mPerDay = out.mPerLoom !== null ? out.mPerLoom * looms : null;
+    for (const x of [...c.warp, ...c.weft]) {
+      if (!x.yarn) continue;
+      const kg = out.mPerDay !== null && x.gpm !== null ? (out.mPerDay * x.gpm) / 1000 : null;
+      const r = runRow(x.yarn);
+      if (kg === null) r.known = false;
+      else r[x.line.side === 'warp' ? 'warp' : 'weft'] += kg;
+      if (!r.fabrics.includes(fabric.name)) r.fabrics.push(fabric.name);
+    }
     for (const x of c.tpmLines) {
       const kg = out.mPerDay !== null && x.gpm !== null ? (out.mPerDay * x.gpm) / 1000 : null;
       out.tpm.push({ yarn: x.yarn, side: x.line.side, kg });
@@ -117,7 +132,7 @@ export function planCalc(plan, lines, idx) {
   const groupUse = groups.map((g) => {
     const planned = loomRows.filter((r) => r.group && r.group.id === g.id).reduce((s, r) => s + r.looms, 0);
     const have = num(g.looms);
-    return { group: g, planned, have, free: have === null ? null : have - planned };
+    return { group: g, planned, have, free: have === null ? null : have - planned, rows: loomRows.filter((r) => r.group && r.group.id === g.id) };
   });
   for (const u of groupUse) if (u.free !== null && u.free < 0) issues.push(`${groupLabel(u.group)}: ${u.planned} looms planned, only ${u.have} on the floor.`);
 
@@ -205,11 +220,23 @@ export function planCalc(plan, lines, idx) {
     return { ...y, net, qRef, refType, required, balanceKg, balanceSpindles, sidesNeeded: required === null ? null : required / perSide, balanceSides: balanceSpindles === null ? null : balanceSpindles / perSide, status, problems };
   }).sort((a, b) => (a.balanceSpindles ?? Infinity) - (b.balanceSpindles ?? Infinity) || String(a.yarn.name).localeCompare(String(b.yarn.name)));
 
+  const runningRows = [...running.values()].map((r) => {
+    const total = r.warp + r.weft;
+    const tpm = isTpm(r.yarn);
+    const sp = tpm ? yarnRows.find((y) => y.yarn.id === r.yarn.id) : null;
+    const base = tpm ? idx.yarnsById[r.yarn.base_yarn_id] || null : null;
+    return { ...r, total, tpm, base, outside: sp ? sp.outside : 0, net: sp ? sp.net : total, spindles: sp ? sp.required : null, spindleStatus: sp ? sp.status : null, balanceSpindles: sp ? sp.balanceSpindles : null };
+  }).sort((a, b) => b.total - a.total || String(a.yarn.name).localeCompare(String(b.yarn.name)));
+
   const known = yarnRows.filter((y) => y.balanceSpindles !== null);
   const capSpindles = typeUse.every((u) => u.spindles !== null) && typeUse.length ? typeUse.reduce((s, u) => s + u.spindles, 0) : null;
   const usedSpindles = typeUse.reduce((s, u) => s + u.usedSpindles, 0);
   const totals = {
     looms: loomRows.reduce((s, r) => s + r.looms, 0),
+    running: runningRows.reduce((s, r) => s + r.total, 0),
+    runningWarp: runningRows.reduce((s, r) => s + r.warp, 0),
+    runningWeft: runningRows.reduce((s, r) => s + r.weft, 0),
+    runningKnown: runningRows.every((r) => r.known),
     metres: loomRows.every((r) => r.mPerDay !== null || !r.looms) ? loomRows.reduce((s, r) => s + (r.mPerDay || 0), 0) : null,
     demand: yarnRows.reduce((s, y) => s + y.demand, 0),
     outside: yarnRows.reduce((s, y) => s + y.outside, 0),
@@ -227,7 +254,7 @@ export function planCalc(plan, lines, idx) {
   };
 
   const lineProblems = [...loomRows, ...tfoRows, ...outsideRows].filter((r) => r.problems.length).length;
-  return { unit, types, groups, loomRows, tfoRows, outsideRows, groupUse, typeUse, yarnRows, totals, issues, lineProblems };
+  return { unit, types, groups, loomRows, tfoRows, outsideRows, groupUse, typeUse, yarnRows, runningRows, totals, issues, lineProblems };
 }
 
 // One-line verdict for lists: "Short 1,240 spindles" / "Surplus 300 spindles" / "Balanced".

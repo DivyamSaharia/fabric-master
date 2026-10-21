@@ -135,6 +135,54 @@ describe('planCalc', () => {
   });
 });
 
+describe('running yarn requirement', () => {
+  it('lists every yarn on the running looms, split warp and weft, TPM or not', () => {
+    const idx = idxOf();
+    const pc = planCalc(plan, { looms: [{ loom_group_id: 'lg2', fabric_id: 'f_crepe', looms: 20, panna: 1 }], tfo: [], outside: [] }, idx);
+    const warpGpm = ((6000 * 75) / 9000) * 1.02; // 75D FDY, 6000 ends, 2% shortage
+    const m = crepeMPerLoom * 20;
+    const warp = pc.runningRows.find((r) => r.yarn.id === 'y_fdy75');
+    const weft = pc.runningRows.find((r) => r.yarn.id === 'y_tpm75');
+    expect(pc.runningRows).toHaveLength(2);
+    expect(warp.tpm).toBe(false);
+    expect(warp.warp).toBeCloseTo((m * warpGpm) / 1000, 6);
+    expect(warp.weft).toBe(0);
+    expect(weft.tpm).toBe(true);
+    expect(weft.weft).toBeCloseTo((m * crepeWeftGpm) / 1000, 6);
+    expect(weft.base.id).toBe('y_fdy75');
+    expect(weft.spindles).toBeCloseTo(weft.total / q75, 6);
+    expect(pc.totals.running).toBeCloseTo(warp.total + weft.total, 6);
+  });
+
+  it('adds the same yarn from different fabrics and keeps outside yarn off the TPM net', () => {
+    const idx = idxOf();
+    const pc = planCalc(plan, {
+      looms: [{ loom_group_id: 'lg2', fabric_id: 'f_crepe', looms: 10 }, { loom_group_id: 'lg2', fabric_id: 'f_pv', looms: 10, rpm: 600 }],
+      tfo: [],
+      outside: [{ yarn_id: 'y_tpm75', kg_per_day: 30 }],
+    }, idx);
+    const fdy = pc.runningRows.find((r) => r.yarn.id === 'y_fdy75');
+    expect(fdy.warp).toBeGreaterThan(0); // crepe warp
+    expect(fdy.weft).toBeGreaterThan(0); // PV weft
+    expect(fdy.fabrics).toEqual(['Poly Crepe 60', 'PV Plain 60']);
+    const tpm = pc.runningRows.find((r) => r.yarn.id === 'y_tpm75');
+    expect(tpm.outside).toBe(30);
+    expect(tpm.net).toBeCloseTo(tpm.total - 30, 9);
+  });
+});
+
+describe('looms available per group', () => {
+  it('counts looms planned against looms in the group', () => {
+    const idx = idxOf();
+    const pc = planCalc(plan, { looms: [{ loom_group_id: 'lg2', fabric_id: 'f_crepe', looms: 25 }, { loom_group_id: 'lg2', fabric_id: 'f_moss', looms: 10 }], tfo: [], outside: [] }, idx);
+    const g2 = pc.groupUse.find((u) => u.group.id === 'lg2');
+    const g1 = pc.groupUse.find((u) => u.group.id === 'lg1');
+    expect(g2).toMatchObject({ planned: 35, have: 40, free: 5 });
+    expect(g2.rows).toHaveLength(2);
+    expect(g1).toMatchObject({ planned: 0, have: 24, free: 24 });
+  });
+});
+
 describe('TFO efficiency', () => {
   it("uses the speed's own, else the TFO type's, else the unit default", () => {
     const t = sampleTables();

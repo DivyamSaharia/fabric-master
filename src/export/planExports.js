@@ -33,6 +33,20 @@ export async function exportPlanXlsx(plan, pc, opts = {}) {
     'Balance kg/day': r(y.balanceKg, 1),
   }));
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, balance.length ? balance : [{ Yarn: 'Nothing planned' }]), 'Spindle balance');
+  const runningX = pc.runningRows.map((x) => ({
+    Yarn: x.yarn.name,
+    Type: x.tpm ? `TPM${x.base ? ` of ${x.base.name}` : ''}` : 'Base yarn',
+    'Used in': x.fabrics.join(', '),
+    'Warp kg/day': r(x.warp, 1),
+    'Weft kg/day': r(x.weft, 1),
+    'Total kg/day': r(x.total, 1),
+    'Outside kg/day': x.tpm ? r(x.outside, 1) : '',
+    'Spindles needed': x.tpm ? r(x.spindles) : '',
+  }));
+  if (runningX.length) runningX.push({ Yarn: 'Total', 'Warp kg/day': r(pc.totals.runningWarp, 1), 'Weft kg/day': r(pc.totals.runningWeft, 1), 'Total kg/day': r(pc.totals.running, 1) });
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, runningX.length ? runningX : [{ Yarn: 'Nothing running' }]), 'Running yarn');
+  const groupsX = pc.groupUse.map((u) => ({ 'Loom group': groupLabel(u.group), 'Looms on floor': u.have ?? '', 'Looms planned': u.planned, 'Looms available': u.free ?? '' }));
+  XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, groupsX.length ? groupsX : [{ 'Loom group': 'None' }]), 'Loom groups');
   const looms = pc.loomRows.map((x) => ({
     'Loom group': groupLabel(x.group),
     Fabric: x.fabric ? x.fabric.name : '',
@@ -137,6 +151,10 @@ export async function exportPlanPdf(plan, pc, opts = {}) {
     y = doc.lastAutoTable.finalY + 8;
   };
 
+  table('Running yarn requirement', ['Yarn', 'Used in', 'Warp kg/day', 'Weft kg/day', 'Total kg/day', 'Outside', 'Spindles needed'],
+    [...pc.runningRows.map((x) => [`${x.yarn.name}${x.tpm ? ' (TPM)' : ''}`, x.fabrics.join(', '), x.warp ? fmt.n(x.warp, 1) : '—', x.weft ? fmt.n(x.weft, 1) : '—', fmt.n(x.total, 1), x.tpm && x.outside ? fmt.n(x.outside, 1) : '—', x.tpm ? (x.spindles === null ? '—' : fmt.int(x.spindles)) : '—']),
+      ['Total', '', fmt.n(t.runningWarp, 1), fmt.n(t.runningWeft, 1), fmt.n(t.running, 1), t.outside ? fmt.n(t.outside, 1) : '—', t.required === null ? '—' : fmt.int(t.required)]],
+    { columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } } });
   const right = Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map((i) => [i, { halign: 'right' }]));
   table('Spindle balance by yarn', ['Yarn', 'Used in', 'Demand kg/day', 'Outside', 'Net kg/day', 'Needed', 'Given out', 'Balance', 'Balance kg/day'],
     pc.yarnRows.map((x) => [x.yarn.name, x.fabrics.join(', '), fmt.n(x.demand, 1), x.outside ? fmt.n(x.outside, 1) : '—', fmt.n(x.net, 1), x.required === null ? '—' : fmt.int(x.required), `${fmt.int(x.allocSpindles)} (${x.allocSides} sides)`, x.balanceSpindles === null ? statusText.unknown : signed(x.balanceSpindles), x.balanceKg === null ? '—' : `${x.balanceKg >= 0 ? '+' : '−'}${fmt.n(Math.abs(x.balanceKg), 1)}`]),
@@ -151,6 +169,9 @@ export async function exportPlanPdf(plan, pc, opts = {}) {
         }
       },
     });
+  table('Looms by group', ['Loom group', 'On floor', 'Planned', 'Available'],
+    pc.groupUse.map((u) => [groupLabel(u.group), u.have ?? '—', fmt.int(u.planned), u.free === null ? '—' : u.free >= 0 ? fmt.int(u.free) : `${fmt.int(-u.free)} over`]),
+    { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } } });
   table('Loom plan', ['Loom group', 'Fabric', 'Looms', 'Panna', 'RPM', 'Metres/day', 'TPM yarn kg/day'],
     pc.loomRows.map((x) => [groupLabel(x.group), x.fabric ? x.fabric.name : '—', fmt.int(x.looms), x.panna === 2 ? 'Double' : 'Single', x.rpm ?? '—', x.mPerDay === null ? '—' : fmt.int(x.mPerDay), x.tpm.map((p) => `${p.yarn.name} ${p.kg === null ? '—' : fmt.n(p.kg, 1)}`).join('\n') || 'No TPM yarn']),
     { columnStyles: { 2: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } } });
