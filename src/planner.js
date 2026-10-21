@@ -10,8 +10,9 @@
 //   balance = spindles given out − spindles needed (+ surplus, − deficit)
 //
 // Conventions: TFO RPM is entered already × 2 (tfoOutput does not double it). Loom efficiency is the unit's.
+// TFO efficiency: the speed's own, else the TFO type's, else the unit default.
 // Every TFO machine has 2 sides; each side runs one yarn quality. Spindles per side default to 252.
-import { fabricCalc, isTpm, num, tfoOutput, truthy, yarnDenier } from './calc.js';
+import { fabricCalc, isTpm, num, tfoEff, tfoOutput, truthy, yarnDenier } from './calc.js';
 
 export const SIDES_PER_MACHINE = 2;
 export const DEFAULT_SPINDLES_PER_SIDE = 252;
@@ -133,7 +134,7 @@ export function planCalc(plan, lines, idx) {
   const outputFor = (type, yarn) => {
     const sp = type && yarn ? speedFor(type.id, yarn.id) : null;
     if (!sp) return { speed: null, q: null };
-    const eff = num(sp.efficiency) ?? num(unit && unit.tfo_default_eff);
+    const eff = tfoEff(sp, type, unit);
     return { speed: sp, q: tfoOutput(sp.rpm, yarn.tpm, eff, yarnDenier(yarn, idx)) };
   };
   const tfoRows = (lines.tfo || []).map((line) => {

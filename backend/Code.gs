@@ -8,7 +8,7 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
- * Backend v6: dated TFO plans (TfoPlans, PlanLooms, PlanTfo, PlanOutside) and TFO machine counts.
+ * Backend v6: dated TFO plans (TfoPlans, PlanLooms, PlanTfo, PlanOutside), TFO machine counts and an efficiency per TFO type.
  */
 
 var TABLES = {
@@ -16,7 +16,7 @@ var TABLES = {
   YarnRates: ['id', 'yarn_id', 'rate', 'effective_date', 'updated_at', 'updated_by'],
   Units: ['id', 'name', 'type', 'cost_per_pick', 'has_tfo', 'tfo_default_eff', 'loom_eff_pct', 'notes', 'updated_at', 'updated_by'],
   LoomGroups: ['id', 'unit_id', 'make', 'reed_width_cm', 'shedding', 'looms', 'updated_at', 'updated_by'],
-  TfoTypes: ['id', 'unit_id', 'name', 'machines', 'spindles_per_side', 'updated_at', 'updated_by'],
+  TfoTypes: ['id', 'unit_id', 'name', 'machines', 'spindles_per_side', 'efficiency', 'updated_at', 'updated_by'],
   TfoSpeeds: ['id', 'unit_id', 'tfo_type_id', 'yarn_id', 'rpm', 'efficiency', 'updated_at', 'updated_by'],
   Fabrics: ['id', 'name', 'weave', 'design_note', 'end_use', 'reed', 'ppi', 'reed_space_in', 'greige_width_in', 'warp_shortage_pct', 'weft_shortage_pct', 'price', 'vatav_pct', 'finish', 'rfd_shortage_pct', 'processing_charge', 'brokering_pct', 'loom_rpm', 'loom_rpm_dp', 'loom_eff_pct', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
   FabricYarns: ['id', 'fabric_id', 'side', 'yarn_id', 'ends', 'parts', 'pattern', 'sort', 'updated_at', 'updated_by'],

@@ -195,7 +195,7 @@ describe('TFO planner', () => {
     cleanup();
     await open('#/unit/u_2');
     await screen.findByText('Latest · 21 Oct 2026');
-    expect(screen.getByText('12 machines · 24 sides · 6,048 spindles')).toBeTruthy();
+    expect(screen.getByText('12 machines · 24 sides · 6,048 spindles · 90% efficiency (unit default)')).toBeTruthy();
   });
 
   it('plan page shows the spindle balance per yarn', async () => {

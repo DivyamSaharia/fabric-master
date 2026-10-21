@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'preact/hooks';
-import { fabricCalc, fmt, isTpm, num, spindlesForUnit, tfoOutput, truthy, yarnDenier } from '../calc.js';
+import { fabricCalc, fmt, isTpm, num, spindlesForUnit, tfoEff, tfoOutput, truthy, yarnDenier } from '../calc.js';
 import { deleteSpeed, deleteUnit, getIndex, saveSpeed, saveUnit, toast, useStore } from '../store.js';
 import { back, go, replace } from '../router.js';
 import { PanBlocks } from './fabrics.jsx';
@@ -95,10 +95,10 @@ export function UnitDetail({ id }) {
 
       {hasTfo ? (
         <>
-          <Section header="TFO types" footer={types.length ? `Default TFO efficiency ${num(unit.tfo_default_eff) ?? '—'}%.` : 'Add a TFO type from Edit, e.g. M/C 1–12 and M/C 13–16, for each set of machines that runs at its own speed.'}>
+          <Section header="TFO types" footer={types.length ? `Efficiency per TFO type; a type without one uses the unit default of ${num(unit.tfo_default_eff) ?? '—'}%. A speed can still set its own.` : 'Add a TFO type from Edit, e.g. M/C 1–12 and M/C 13–16, for each set of machines that runs at its own speed.'}>
             {types.map((t) => {
               const cap = typeCapacity(t);
-              return <Row label={t.name} sub={cap.machines === null ? 'Machines not set' : `${cap.machines} machines · ${cap.sides} sides · ${fmt.int(cap.spindles)} spindles`} value={`${speeds.filter((s) => s.tfo_type_id === t.id).length} speeds`} />;
+              return <Row label={t.name} sub={[cap.machines === null ? 'Machines not set' : `${cap.machines} machines · ${cap.sides} sides · ${fmt.int(cap.spindles)} spindles`, `${tfoEff(null, t, unit) ?? '—'}% efficiency${num(t.efficiency) === null ? ' (unit default)' : ''}`].join(' · ')} value={`${speeds.filter((s) => s.tfo_type_id === t.id).length} speeds`} />;
             })}
             {!types.length ? <Row label="No TFO types yet" /> : null}
           </Section>
@@ -116,7 +116,7 @@ export function UnitDetail({ id }) {
                 .map((s) => {
                   const y = idx.yarnsById[yid];
                   const t = types.find((x) => x.id === s.tfo_type_id);
-                  const eff = num(s.efficiency) ?? num(unit.tfo_default_eff);
+                  const eff = tfoEff(s, t, unit);
                   const q = y ? tfoOutput(s.rpm, y.tpm, eff, yarnDenier(y, idx)) : null;
                   return (
                     <Row
@@ -189,7 +189,9 @@ function SpeedSheet({ speed, unit, idx, onClose }) {
   const types = idx.tfoTypesByUnit[unit.id] || [];
   const tpmYarns = Object.values(idx.yarnsById).filter(isTpm).sort((a, b) => String(a.name).localeCompare(String(b.name)));
   const y = idx.yarnsById[s.yarn_id];
-  const eff = num(s.efficiency) ?? num(unit.tfo_default_eff);
+  const type = types.find((t) => t.id === s.tfo_type_id) || null;
+  const eff = tfoEff(s, type, unit);
+  const typeEff = tfoEff(null, type, unit);
   const q = y ? tfoOutput(s.rpm, y.tpm, eff, yarnDenier(y, idx)) : null;
   const up = (k) => (v) => setS((x) => ({ ...x, [k]: v }));
   return (
@@ -221,7 +223,7 @@ function SpeedSheet({ speed, unit, idx, onClose }) {
         <SelectField label="TPM yarn" required value={s.yarn_id} onChange={up('yarn_id')} options={tpmYarns.map((t) => ({ value: t.id, label: t.name }))} />
         <SelectField label="TFO type" required value={s.tfo_type_id} onChange={up('tfo_type_id')} options={types.map((t) => ({ value: t.id, label: t.name }))} />
         <NumField label="RPM" hint="already × 2" required value={s.rpm} onInput={up('rpm')} />
-        <NumField label="Efficiency" value={s.efficiency} onInput={up('efficiency')} suffix="%" placeholder={num(unit.tfo_default_eff) !== null ? String(unit.tfo_default_eff) : ''} />
+        <NumField label="Efficiency" value={s.efficiency} onInput={up('efficiency')} suffix="%" placeholder={typeEff !== null ? String(typeEff) : ''} hint={type ? `blank = ${type.name}'s` : undefined} />
       </Section>
       <Section>
         <Row label="Output" strong value={<span class="strong">{q === null ? '—' : `${fmt.n(q, 3)} kg`}</span>} valueSub="per spindle per day" />
@@ -287,7 +289,7 @@ function UnitEditForm({ id }) {
       const uid = await saveUnit(
         { ...u, name: u.name.trim(), cost_per_pick: num(u.cost_per_pick) ?? '', tfo_default_eff: num(u.tfo_default_eff) ?? '', loom_eff_pct: num(u.loom_eff_pct) ?? '' },
         groups.map((g) => ({ ...g, reed_width_cm: num(g.reed_width_cm) ?? '', looms: num(g.looms) ?? '' })),
-        u.has_tfo ? types.map((t) => ({ ...t, machines: num(t.machines) ?? '', spindles_per_side: num(t.spindles_per_side) ?? '' })) : [],
+        u.has_tfo ? types.map((t) => ({ ...t, machines: num(t.machines) ?? '', spindles_per_side: num(t.spindles_per_side) ?? '', efficiency: num(t.efficiency) ?? '' })) : [],
       );
       if (existing) back(`/unit/${uid}`);
       else replace(`/unit/${uid}`);
@@ -331,7 +333,7 @@ function UnitEditForm({ id }) {
 
       <Section header="TFO" footer={u.has_tfo ? 'Each TFO type is a set of machines that runs at its own speed. Every machine has 2 sides; each side runs one yarn quality. Speeds are added on the unit page.' : null}>
         <Toggle label="TFO division" value={!!u.has_tfo} onChange={up('has_tfo')} />
-        {u.has_tfo ? <NumField label="Default TFO efficiency" value={u.tfo_default_eff} onInput={up('tfo_default_eff')} suffix="%" placeholder="90" /> : null}
+        {u.has_tfo ? <NumField label="Default TFO efficiency" hint="for types without their own" value={u.tfo_default_eff} onInput={up('tfo_default_eff')} suffix="%" placeholder="90" /> : null}
       </Section>
       {u.has_tfo ? (
         <Section header="TFO types">
@@ -344,6 +346,9 @@ function UnitEditForm({ id }) {
               <div class="line-bottom">
                 <label class="mini"><span>Machines</span><input inputmode="numeric" value={t.machines ?? ''} placeholder="12" onInput={(e) => setType(i, { machines: e.currentTarget.value })} aria-label="Number of machines" /></label>
                 <label class="mini"><span>Spindles/side</span><input inputmode="numeric" value={t.spindles_per_side ?? ''} placeholder={String(DEFAULT_SPINDLES_PER_SIDE)} onInput={(e) => setType(i, { spindles_per_side: e.currentTarget.value })} aria-label="Spindles per side" /></label>
+              </div>
+              <div class="line-bottom">
+                <label class="mini"><span>Efficiency %</span><input inputmode="decimal" value={t.efficiency ?? ''} placeholder={u.tfo_default_eff !== '' && u.tfo_default_eff !== undefined ? String(u.tfo_default_eff) : '85'} onInput={(e) => setType(i, { efficiency: e.currentTarget.value })} aria-label="TFO type efficiency" /></label>
               </div>
             </div>
           ))}

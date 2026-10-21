@@ -135,6 +135,24 @@ describe('planCalc', () => {
   });
 });
 
+describe('TFO efficiency', () => {
+  it("uses the speed's own, else the TFO type's, else the unit default", () => {
+    const t = sampleTables();
+    t.TfoSpeeds.forEach((sp) => { sp.efficiency = ''; });
+    t.TfoTypes.find((x) => x.id === 'tt2').efficiency = 80;
+    const idx = buildIndex(t);
+    const lines = { looms: [], tfo: [{ tfo_type_id: 'tt1', yarn_id: 'y_tpm75', sides: 1 }, { tfo_type_id: 'tt2', yarn_id: 'y_tpm75', sides: 1 }], outside: [] };
+    const pc = planCalc(plan, lines, idx);
+    // tt1 has no efficiency of its own: unit default 90%. tt2: its own 80%.
+    expect(pc.tfoRows[0].q).toBeCloseTo((18000 / 2000) * 1440 * 0.9 * (75 / 9000000), 9);
+    expect(pc.tfoRows[1].q).toBeCloseTo((21000 / 2000) * 1440 * 0.8 * (75 / 9000000), 9);
+    // a speed's own efficiency still wins
+    t.TfoSpeeds.find((sp) => sp.id === 'sp2').efficiency = 95;
+    const pc2 = planCalc(plan, lines, buildIndex(t));
+    expect(pc2.tfoRows[1].q).toBeCloseTo((21000 / 2000) * 1440 * 0.95 * (75 / 9000000), 9);
+  });
+});
+
 describe('typeCapacity', () => {
   it('has 2 sides a machine and 252 spindles a side unless set', () => {
     expect(typeCapacity({ machines: 12 })).toMatchObject({ sides: 24, spindles: 6048, perSide: 252 });

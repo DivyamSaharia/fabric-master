@@ -243,6 +243,11 @@ export function tfoOutput(rpm, tpm, effPct, denier) {
   return (r / t) * MIN_PER_DAY * (e / 100) * (d / 9000000);
 }
 
+// TFO efficiency for a speed: the speed's own, else its TFO type's, else the unit's default.
+export function tfoEff(speed, type, unit) {
+  return num(speed && speed.efficiency) ?? num(type && type.efficiency) ?? num(unit && unit.tfo_default_eff);
+}
+
 export const truthy = (v) => v === true || v === 'TRUE' || v === 'true' || v === 1;
 
 // Loom output per day for single (panna 1) or double (panna 2) panna.
@@ -274,7 +279,7 @@ export function spindlesForUnit(calc, fabric, unit, idx, panna = 1) {
   return types.map((type) => {
     const perYarn = calc.tpmLines.map((x) => {
       const sp = speeds.find((s) => s.tfo_type_id === type.id && s.yarn_id === x.yarn.id);
-      const eff = sp ? num(sp.efficiency) ?? num(unit.tfo_default_eff) : null;
+      const eff = sp ? tfoEff(sp, type, unit) : null;
       const q = sp ? tfoOutput(sp.rpm, x.yarn.tpm, eff, x.denier) : null;
       const kgPerDay = loom.mPerDay !== null && x.gpm !== null ? (loom.mPerDay * x.gpm) / 1000 : null;
       return { yarn: x.yarn, side: x.line.side, speed: sp || null, q, kgPerDay, spindles: q && kgPerDay !== null ? kgPerDay / q : null };
