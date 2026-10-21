@@ -8,6 +8,7 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
+ * Backend v8: beam length per fabric and loom group (FabricBeams).
  * Backend v7: TFO plans can hold twisted yarn on hand, total kg (PlanStock). The planner is weft-only.
  * Backend v6: dated TFO plans (TfoPlans, PlanLooms, PlanTfo, PlanOutside), TFO machine counts and an efficiency per TFO type.
  */
@@ -22,6 +23,7 @@ var TABLES = {
   Fabrics: ['id', 'name', 'weave', 'design_note', 'end_use', 'reed', 'ppi', 'reed_space_in', 'greige_width_in', 'warp_shortage_pct', 'weft_shortage_pct', 'price', 'vatav_pct', 'finish', 'rfd_shortage_pct', 'processing_charge', 'brokering_pct', 'loom_rpm', 'loom_rpm_dp', 'loom_eff_pct', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
   FabricYarns: ['id', 'fabric_id', 'side', 'yarn_id', 'ends', 'parts', 'pattern', 'sort', 'updated_at', 'updated_by'],
   Assignments: ['id', 'fabric_id', 'unit_id', 'updated_at', 'updated_by'],
+  FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
   Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
   TfoPlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
   PlanLooms: ['id', 'plan_id', 'loom_group_id', 'fabric_id', 'looms', 'panna', 'rpm', 'sort', 'updated_at', 'updated_by'],
@@ -36,7 +38,7 @@ var NUMERIC = {
   count: 1, filaments: 1, tpm: 1, tpm_delta: 1, rate: 1, cost_per_pick: 1, tfo_default_eff: 1, reed_width_cm: 1, looms: 1, rpm: 1, efficiency: 1,
   reed: 1, ppi: 1, reed_space_in: 1, greige_width_in: 1, warp_shortage_pct: 1, weft_shortage_pct: 1, price: 1, vatav_pct: 1, rfd_shortage_pct: 1,
   processing_charge: 1, brokering_pct: 1, loom_rpm: 1, loom_rpm_dp: 1, loom_eff_pct: 1, ends: 1, parts: 1, sort: 1,
-  machines: 1, spindles_per_side: 1, panna: 1, sides: 1, kg_per_day: 1, qty: 1
+  machines: 1, spindles_per_side: 1, panna: 1, sides: 1, kg_per_day: 1, qty: 1, beam_length_m: 1
 };
 var BOOLEAN = { has_tfo: 1, is_cover: 1 };
 var DATE_ONLY = { effective_date: 1, plan_date: 1 };
@@ -107,7 +109,7 @@ function ensureSheets_() {
   if (first && first.getName() === 'Sheet1' && first.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(first);
 }
 
-var SCHEMA_VERSION = '7';
+var SCHEMA_VERSION = '8';
 
 // Cheap check on every load; the full tab and format setup runs only when something is missing.
 function ensureReady_() {
@@ -513,6 +515,7 @@ var LOG_COLS = ['When', 'Who', 'Action', 'Type', 'Item', 'Details', 'Ref'];
 var ROOT_OF = {
   FabricYarns: ['Fabrics', 'fabric_id'],
   Assignments: ['Fabrics', 'fabric_id'],
+  FabricBeams: ['Fabrics', 'fabric_id'],
   Photos: ['Fabrics', 'fabric_id'],
   YarnRates: ['Yarns', 'yarn_id'],
   LoomGroups: ['Units', 'unit_id'],
@@ -532,7 +535,7 @@ var LABELS = {
   brokering_pct: 'Brokering %', loom_rpm: 'Loom RPM', loom_rpm_dp: 'Loom RPM double panna', loom_eff_pct: 'Loom efficiency %',
   notes: 'Notes', kind: 'Kind', base_yarn_id: 'Base yarn', material: 'Material', form: 'Form', count: 'Count',
   count_unit: 'Count unit', filaments: 'Filaments', lustre: 'Lustre', tpm: 'TPM', twist: 'Twist', tpm_delta: 'TPM delta',
-  qty: 'Quantity', type: 'Type', cost_per_pick: 'Cost per pick', has_tfo: 'TFO', tfo_default_eff: 'TFO efficiency', side: 'Side',
+  qty: 'Quantity', beam_length_m: 'Beam length (m)', type: 'Type', cost_per_pick: 'Cost per pick', has_tfo: 'TFO', tfo_default_eff: 'TFO efficiency', side: 'Side',
   yarn_id: 'Yarn', ends: 'Ends', parts: 'Pick share', pattern: 'Pattern', rate: 'Rate', effective_date: 'From',
   make: 'Make', reed_width_cm: 'Reed width cm', shedding: 'Shedding', looms: 'Looms', rpm: 'RPM', efficiency: 'Efficiency',
   tfo_type_id: 'TFO type', unit_id: 'Unit', caption: 'Caption', is_cover: 'Cover',
@@ -661,6 +664,12 @@ function describe_(ev) {
       if (a === 'added') return 'added to ' + (nameOf_('Units', r.unit_id) || 'a unit');
       if (a === 'deleted') return 'removed from ' + (nameOf_('Units', r.unit_id) || 'a unit');
       return '';
+    case 'FabricBeams': {
+      var fb = 'beam length on ' + (nameOf_('LoomGroups', r.loom_group_id) || 'loom group');
+      if (a === 'added') return fb + (r.beam_length_m !== '' ? ' ' + r.beam_length_m + ' m' : '');
+      if (a === 'deleted') return fb + ' removed';
+      return fieldDiffs_(ev, fb);
+    }
     case 'Photos':
       if (a === 'added') return 'photo added';
       if (a === 'deleted') return 'photo deleted';

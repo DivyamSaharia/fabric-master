@@ -153,7 +153,7 @@ export async function commit(ops) {
       applied = await backend.batch(ops);
     } catch (e) {
       // TFO plans need backend v6; an older script in the Sheet doesn't know their tabs.
-      if (/Unknown table (TfoPlans|PlanLooms|PlanTfo|PlanOutside|PlanStock)/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save TFO plans.');
+      if (/Unknown table (TfoPlans|PlanLooms|PlanTfo|PlanOutside|PlanStock|FabricBeams)/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save TFO plans.');
       throw e;
     }
     const tables = applyOps(state.tables, applied || ops);
@@ -178,7 +178,8 @@ export const people = {
 
 // ---------- domain actions ----------
 
-export async function saveFabric(fabric, lines, unitIds) {
+// beams: optional [{ loom_group_id, beam_length_m }]. Left out = keep as is (except for units the fabric no longer has).
+export async function saveFabric(fabric, lines, unitIds, beams) {
   fabric = baseFabric(fabric);
   const idx = getIndex();
   const isNew = !fabric.id;
@@ -196,6 +197,22 @@ export async function saveFabric(fabric, lines, unitIds) {
   if (dropLines.length) ops.push({ op: 'delete', table: 'FabricYarns', ids: dropLines });
   if (addAssign.length) ops.push({ op: 'upsert', table: 'Assignments', rows: addAssign });
   if (dropAssign.length) ops.push({ op: 'delete', table: 'Assignments', ids: dropAssign });
+  const wantedGroups = new Set([...wanted].flatMap((u) => (idx.loomGroupsByUnit[u] || []).map((g) => g.id)));
+  const oldBeams = idx.beamsByFabric[f.id] || [];
+  if (beams === undefined) {
+    const dropB = oldBeams.filter((b) => !wantedGroups.has(b.loom_group_id)).map((b) => b.id);
+    if (dropB.length) ops.push({ op: 'delete', table: 'FabricBeams', ids: dropB });
+  } else {
+    const want = beams.filter((b) => wantedGroups.has(b.loom_group_id) && num(b.beam_length_m) !== null);
+    const rows = want.map((b) => {
+      const old = oldBeams.find((o) => o.loom_group_id === b.loom_group_id);
+      return { id: old ? old.id : newId('fb'), fabric_id: f.id, loom_group_id: b.loom_group_id, beam_length_m: num(b.beam_length_m) };
+    });
+    const keepB = new Set(rows.map((r) => r.id));
+    const dropB = oldBeams.filter((b) => !keepB.has(b.id)).map((b) => b.id);
+    if (rows.length) ops.push({ op: 'upsert', table: 'FabricBeams', rows });
+    if (dropB.length) ops.push({ op: 'delete', table: 'FabricBeams', ids: dropB });
+  }
   await commit(ops);
   toast(isNew ? 'Fabric added' : 'Fabric saved');
   return f.id;
@@ -213,8 +230,9 @@ export async function duplicateFabric(fabricId) {
   const src = idx.fabricsById[fabricId];
   const lines = (idx.linesByFabric[fabricId] || []).map(({ id, fabric_id, updated_at, updated_by, ...rest }) => rest);
   const units = (idx.assignmentsByFabric[fabricId] || []).map((a) => a.unit_id);
+  const beams = (idx.beamsByFabric[fabricId] || []).map((b) => ({ loom_group_id: b.loom_group_id, beam_length_m: b.beam_length_m }));
   const { id, created_at, updated_at, updated_by, created_by, ...rest } = src;
-  return saveFabric({ ...rest, base_name: undefined, name: `${src.base_name ?? src.name} (copy)` }, lines, units);
+  return saveFabric({ ...rest, base_name: undefined, name: `${src.base_name ?? src.name} (copy)` }, lines, units, beams);
 }
 
 // Name for a copy at a new RS: the stored name without its RS, or "(copy)" if that name + RS is taken.
@@ -246,6 +264,7 @@ export function rsCopyPlan(fabricId, newRs, price) {
     })),
     lines: lines.map((l) => (l.side === 'warp' && num(l.ends) !== null && k !== null ? { ...l, ends: Math.round(num(l.ends) * k) } : l)),
     units: (idx.assignmentsByFabric[fabricId] || []).map((a) => a.unit_id),
+    beams: (idx.beamsByFabric[fabricId] || []).map((b) => ({ loom_group_id: b.loom_group_id, beam_length_m: b.beam_length_m })),
     name: oldRs ? rsCopyName(fabric, oldRs, newRs, Object.values(idx.fabricsById)) : '',
   };
 }
@@ -257,6 +276,7 @@ export async function duplicateForRs(fabricId, newRs, price) {
     { ...rest, base_name: undefined, name: plan.name, reed_space_in: newRs, price: plan.price ?? '', greige_width_in: plan.width ?? rest.greige_width_in ?? '' },
     plan.lines,
     plan.units,
+    plan.beams,
   );
 }
 
@@ -266,6 +286,7 @@ export async function deleteFabric(fabricId) {
     { op: 'delete', table: 'FabricYarns', ids: (idx.linesByFabric[fabricId] || []).map((l) => l.id) },
     { op: 'delete', table: 'Assignments', ids: (idx.assignmentsByFabric[fabricId] || []).map((a) => a.id) },
     { op: 'delete', table: 'PlanLooms', ids: (idx.tables.PlanLooms || []).filter((l) => l.fabric_id === fabricId).map((l) => l.id) },
+    { op: 'delete', table: 'FabricBeams', ids: (idx.beamsByFabric[fabricId] || []).map((b) => b.id) },
     { op: 'delete', table: 'Fabrics', ids: [fabricId] },
   ].filter((o) => o.ids.length);
   for (const p of idx.photosByFabric[fabricId] || []) await backend.deletePhoto(p);
@@ -333,6 +354,8 @@ export async function saveUnit(unit, loomGroups, tfoTypes) {
   if (dropTt.length) ops.push({ op: 'delete', table: 'TfoTypes', ids: dropTt });
   const dropPl = (idx.tables.PlanLooms || []).filter((l) => dropLg.includes(l.loom_group_id)).map((l) => l.id);
   const dropPt = (idx.tables.PlanTfo || []).filter((l) => dropTt.includes(l.tfo_type_id)).map((l) => l.id);
+  const dropFb = (idx.tables.FabricBeams || []).filter((b) => dropLg.includes(b.loom_group_id)).map((b) => b.id);
+  if (dropFb.length) ops.push({ op: 'delete', table: 'FabricBeams', ids: dropFb });
   if (dropPl.length) ops.push({ op: 'delete', table: 'PlanLooms', ids: dropPl });
   if (dropPt.length) ops.push({ op: 'delete', table: 'PlanTfo', ids: dropPt });
   await commit(ops);
@@ -351,6 +374,7 @@ export async function deleteUnit(unitId) {
     { op: 'delete', table: 'PlanStock', ids: inPlans('PlanStock') },
     { op: 'delete', table: 'TfoPlans', ids: planIds },
     { op: 'delete', table: 'Assignments', ids: (idx.assignmentsByUnit[unitId] || []).map((a) => a.id) },
+    { op: 'delete', table: 'FabricBeams', ids: (idx.tables.FabricBeams || []).filter((b) => (idx.loomGroupsByUnit[unitId] || []).some((g) => g.id === b.loom_group_id)).map((b) => b.id) },
     { op: 'delete', table: 'TfoSpeeds', ids: (idx.speedsByUnit[unitId] || []).map((s) => s.id) },
     { op: 'delete', table: 'TfoTypes', ids: (idx.tfoTypesByUnit[unitId] || []).map((t) => t.id) },
     { op: 'delete', table: 'LoomGroups', ids: (idx.loomGroupsByUnit[unitId] || []).map((g) => g.id) },

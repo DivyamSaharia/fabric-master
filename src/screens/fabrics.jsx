@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, spindlesForUnit, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
+import { beamRowsOf, groupLabel } from '../planner.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
   addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, fabricPlanCount, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, toast, useStore,
@@ -561,6 +562,15 @@ export function FabricDetail({ id }) {
         <button type="button" class="add-row" onClick={() => setAssignOpen(true)}><Icon.plus size={20} />{units.length ? 'Change units' : 'Assign to units'}</button>
       </Section>
 
+      {units.length ? (
+        <Section header="Beam length" footer="Per loom group of the units it is assigned to. Set it in Edit.">
+          {beamRowsOf(id, idx).map((b) => (
+            <Row key={b.group.id} label={`${b.unit.name} · ${groupLabel(b.group)}`} value={b.length !== null ? `${fmt.n(b.length, 0)} m` : 'Not set'} />
+          ))}
+          {!beamRowsOf(id, idx).length ? <Row label="No loom groups yet" sub="Add loom groups to the unit to set beam lengths." /> : null}
+        </Section>
+      ) : null}
+
       <History row={fabric} added what="fabric" />
 
       <div class="actions">
@@ -848,6 +858,11 @@ function FabricEditForm({ id }) {
   const [f, setF] = useState(() => ({ ...blankFabric(), ...baseFabric(existing || {}) }));
   const [lines, setLines] = useState(() => (existing ? (idx.linesByFabric[id] || []).map((l) => ({ ...l })) : [{ side: 'warp', yarn_id: '', ends: '' }, { side: 'weft', yarn_id: '', parts: 1, pattern: '' }]));
   const [unitIds, setUnitIds] = useState(() => (existing ? unitsOf(id, idx).map((u) => u.id) : []));
+  const [beams, setBeams] = useState(() => {
+    const m = {};
+    for (const b of existing ? idx.beamsByFabric[id] || [] : []) m[b.loom_group_id] = b.beam_length_m === null || b.beam_length_m === undefined ? '' : String(b.beam_length_m);
+    return m;
+  });
   const [busy, setBusy] = useState(false);
   const up = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
 
@@ -882,7 +897,7 @@ function FabricEditForm({ id }) {
     setBusy(true);
     try {
       const clean = lines.filter((l) => l.yarn_id);
-      const fid = await saveFabric({ ...f, name: f.name.trim() }, clean, unitIds);
+      const fid = await saveFabric({ ...f, name: f.name.trim() }, clean, unitIds, Object.entries(beams).map(([loom_group_id, beam_length_m]) => ({ loom_group_id, beam_length_m })));
       if (existing) back(`/fabric/${fid}`);
       else replace(`/fabric/${fid}`);
     } catch (e) {
@@ -973,6 +988,13 @@ function FabricEditForm({ id }) {
           <Row label={u.name} sub={`${u.type || 'Unit'} · ${fmt.pick(num(u.cost_per_pick))} / pick`} onClick={() => setUnitIds((s) => (s.includes(u.id) ? s.filter((x) => x !== u.id) : [...s, u.id]))} value={unitIds.includes(u.id) ? <span class="accent-text"><Icon.check size={20} /></span> : ''} />
         ))}
         {!units.length ? <Row label="No units yet" sub="Add units in the Units tab." /> : null}
+      </Section>
+
+      <Section header="Beam length" footer="Machine length in metres, for each loom group of the units above. Leave blank if not set.">
+        {units.filter((u) => unitIds.includes(u.id)).flatMap((u) => (idx.loomGroupsByUnit[u.id] || []).map((g) => (
+          <NumField key={g.id} label={`${u.name} · ${groupLabel(g)}`} value={beams[g.id] ?? ''} onInput={(v) => setBeams((m) => ({ ...m, [g.id]: v }))} suffix="m" />
+        )))}
+        {!unitIds.length ? <Row label="Pick a unit first" sub="Beam lengths are per loom group of its units." /> : null}
       </Section>
 
       {preview.missing.length ? <p class="section-footer">Still needed for every figure: {preview.missing.join(', ')}.</p> : null}

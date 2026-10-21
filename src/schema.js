@@ -9,6 +9,8 @@ export const TABLES = {
   Fabrics: ['id', 'name', 'weave', 'design_note', 'end_use', 'reed', 'ppi', 'reed_space_in', 'greige_width_in', 'warp_shortage_pct', 'weft_shortage_pct', 'price', 'vatav_pct', 'finish', 'rfd_shortage_pct', 'processing_charge', 'brokering_pct', 'loom_rpm', 'loom_rpm_dp', 'loom_eff_pct', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
   FabricYarns: ['id', 'fabric_id', 'side', 'yarn_id', 'ends', 'parts', 'pattern', 'sort', 'updated_at', 'updated_by'],
   Assignments: ['id', 'fabric_id', 'unit_id', 'updated_at', 'updated_by'],
+  // Beam length (metres) of a fabric on one loom group of a unit it is assigned to.
+  FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
   Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
   // Dated TFO plans: what each loom group runs, how TFO sides are given out, and twisted yarn bought in.
   TfoPlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],

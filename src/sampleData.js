@@ -77,6 +77,10 @@ export function sampleTables() {
       { id: 'a7', fabric_id: 'f_moss', unit_id: 'u_2' },
       { id: 'a8', fabric_id: 'f_moss', unit_id: 'u_wj' },
     ],
+    FabricBeams: [
+      { id: 'fb1', fabric_id: 'f_geo', loom_group_id: 'lg1', beam_length_m: 4000 },
+      { id: 'fb2', fabric_id: 'f_moss', loom_group_id: 'lg2', beam_length_m: 6000 },
+    ],
     Photos: [],
     TfoPlans: [
       { id: 'p1', unit_id: 'u_2', plan_date: '2026-10-21', name: 'Current running', notes: '', created_at: now },

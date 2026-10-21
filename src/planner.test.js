@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { sampleTables } from './sampleData.js';
 import { buildIndex } from './calc.js';
-import { planCalc, planLines, planVerdict, plansOf, typeCapacity } from './planner.js';
+import { beamRowsOf, planCalc, planLines, planVerdict, plansOf, typeCapacity } from './planner.js';
 
 const idxOf = (t = sampleTables()) => buildIndex(t);
 const plan = { id: 'x', unit_id: 'u_2', plan_date: '2026-10-21' };
@@ -250,5 +250,14 @@ describe('typeCapacity', () => {
     expect(typeCapacity({ machines: 12 })).toMatchObject({ sides: 24, spindles: 6048, perSide: 252 });
     expect(typeCapacity({ machines: 4, spindles_per_side: 240 })).toMatchObject({ sides: 8, spindles: 1920 });
     expect(typeCapacity({}).sides).toBeNull();
+  });
+});
+
+describe('beam length', () => {
+  it('lists every loom group of the assigned units, blank when not set', () => {
+    const idx = idxOf();
+    const rows = beamRowsOf('f_geo', idx);
+    expect(rows.map((r) => [r.group.id, r.length])).toEqual([['lg1', 4000], ['lg2', null]]);
+    expect(beamRowsOf('f_moss', idx).find((r) => r.group.id === 'lg2').length).toBe(6000);
   });
 });

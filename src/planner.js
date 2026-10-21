@@ -61,6 +61,22 @@ export function planLines(idx, planId) {
   };
 }
 
+// Beam length (m) of a fabric on each loom group of the units it is assigned to.
+// Returns [{ unit, group, length }] with length null when not set.
+export function beamRowsOf(fabricId, idx) {
+  const beams = idx.beamsByFabric[fabricId] || [];
+  const rows = [];
+  for (const a of idx.assignmentsByFabric[fabricId] || []) {
+    const unit = idx.unitsById[a.unit_id];
+    if (!unit) continue;
+    for (const group of idx.loomGroupsByUnit[unit.id] || []) {
+      const b = beams.find((x) => x.loom_group_id === group.id);
+      rows.push({ unit, group, length: b ? num(b.beam_length_m) : null, id: b ? b.id : null });
+    }
+  }
+  return rows.sort((x, y) => String(x.unit.name).localeCompare(String(y.unit.name)));
+}
+
 export const groupLabel = (g) => (g ? [g.make, num(g.reed_width_cm) ? `${num(g.reed_width_cm)} cm` : null, g.shedding].filter(Boolean).join(' · ') || 'Loom group' : 'Loom group deleted');
 
 // The whole plan worked out. `lines` is { looms, tfo, outside } (saved rows or a draft being edited).

@@ -1,5 +1,6 @@
 import { fmt, loomPerDay, num, spindlesForUnit, truthy, unitHasTfo, unitProfit } from '../calc.js';
 import { constructionLine, unitsOf } from '../describe.js';
+import { beamRowsOf, groupLabel } from '../planner.js';
 import { getPhoto, saveExportToDrive, setPendingShare, toast } from '../store.js';
 import { today } from '../schema.js';
 
@@ -233,6 +234,11 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
     }), { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } });
   }
 
+  const beamRows = beamRowsOf(fabric.id, idx);
+  if (beamRows.length) {
+    table('Beam length', ['Unit', 'Loom group', 'Beam length'], beamRows.map((b) => [b.unit.name, groupLabel(b.group), b.length !== null ? `${fmt.n(b.length, 0)} m` : 'Not set']), { 2: { halign: 'right' } });
+  }
+
   if (y - 8 > 282) doc.addPage();
   doc.setFont('DejaVu', 'normal');
   doc.setFontSize(8);
@@ -369,6 +375,10 @@ export async function exportFabricXlsx(fabric, calc, idx, opts = {}) {
       }
     }
     XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, unitRows), 'Units');
+  }
+  const beamRows = beamRowsOf(fabric.id, idx);
+  if (beamRows.length) {
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, beamRows.map((b) => ({ Unit: b.unit.name, 'Loom group': groupLabel(b.group), 'Beam length (m)': b.length ?? '' }))), 'Beam length');
   }
   await deliver(writeBook(XLSX, wb), fileName(fabric.name, 'costing', 'xlsx'), `${fabric.name} costing`, opts);
 }

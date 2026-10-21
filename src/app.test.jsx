@@ -78,6 +78,20 @@ describe('every screen renders with demo data', () => {
     await waitFor(() => expect(JSON.parse(localStorage.getItem('fm.demo.v1')).Fabrics.find((f) => f.id === 'f_crepe').price).toBe('50'));
   });
 
+  it('beam length: shown per loom group, saved from the editor, dropped when the unit is unassigned', async () => {
+    await open('#/fabric/f_geo');
+    await screen.findByText('Beam length');
+    expect(screen.getByText('4,000 m')).toBeTruthy();
+    cleanup();
+    await open('#/fabric/f_geo/edit');
+    await screen.findByText('Edit fabric');
+    const field = screen.getAllByLabelText(/Toyota · 190 cm/)[0];
+    fireEvent.input(field, { target: { value: '4500' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    const beams = () => JSON.parse(localStorage.getItem('fm.demo.v1')).FabricBeams;
+    await waitFor(() => expect(beams().find((b) => b.fabric_id === 'f_geo').beam_length_m).toBe(4500));
+  });
+
   it('duplicate for new RS scales ends, width and sale rate', async () => {
     localStorage.setItem('fm.demo.v1', JSON.stringify(sampleTables()));
     await open('#/fabric/f_crepe');
