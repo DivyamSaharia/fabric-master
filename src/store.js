@@ -148,7 +148,14 @@ export async function commit(ops) {
   if (!ops.length) return;
   mutationSeq += 1;
   try {
-    const applied = await backend.batch(ops);
+    let applied;
+    try {
+      applied = await backend.batch(ops);
+    } catch (e) {
+      // TFO plans need backend v6; an older script in the Sheet doesn't know their tabs.
+      if (/Unknown table (TfoPlans|PlanLooms|PlanTfo|PlanOutside)/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save TFO plans.');
+      throw e;
+    }
     const tables = applyOps(state.tables, applied || ops);
     if (backend.mode === 'sheet') local.set(CACHE_KEY, { tables, meta: state.meta, at: new Date().toISOString() });
     set({ tables });
@@ -258,6 +265,7 @@ export async function deleteFabric(fabricId) {
   const ops = [
     { op: 'delete', table: 'FabricYarns', ids: (idx.linesByFabric[fabricId] || []).map((l) => l.id) },
     { op: 'delete', table: 'Assignments', ids: (idx.assignmentsByFabric[fabricId] || []).map((a) => a.id) },
+    { op: 'delete', table: 'PlanLooms', ids: (idx.tables.PlanLooms || []).filter((l) => l.fabric_id === fabricId).map((l) => l.id) },
     { op: 'delete', table: 'Fabrics', ids: [fabricId] },
   ].filter((o) => o.ids.length);
   for (const p of idx.photosByFabric[fabricId] || []) await backend.deletePhoto(p);
@@ -284,7 +292,13 @@ export function yarnUsage(yarnId) {
   const idx = getIndex();
   const fabrics = new Set((idx.tables.FabricYarns || []).filter((l) => l.yarn_id === yarnId).map((l) => l.fabric_id));
   const tpmChildren = (idx.tables.Yarns || []).filter((y) => y.base_yarn_id === yarnId);
-  return { fabrics: fabrics.size, tpmChildren: tpmChildren.length };
+  const plans = new Set([...(idx.tables.PlanTfo || []), ...(idx.tables.PlanOutside || [])].filter((l) => l.yarn_id === yarnId).map((l) => l.plan_id));
+  return { fabrics: fabrics.size, tpmChildren: tpmChildren.length, plans: plans.size };
+}
+
+// TFO plans whose loom lines use this fabric.
+export function fabricPlanCount(fabricId) {
+  return new Set((getIndex().tables.PlanLooms || []).filter((l) => l.fabric_id === fabricId).map((l) => l.plan_id)).size;
 }
 
 export async function deleteRates(ids) {
@@ -317,6 +331,10 @@ export async function saveUnit(unit, loomGroups, tfoTypes) {
   if (dropLg.length) ops.push({ op: 'delete', table: 'LoomGroups', ids: dropLg });
   if (dropSp.length) ops.push({ op: 'delete', table: 'TfoSpeeds', ids: dropSp });
   if (dropTt.length) ops.push({ op: 'delete', table: 'TfoTypes', ids: dropTt });
+  const dropPl = (idx.tables.PlanLooms || []).filter((l) => dropLg.includes(l.loom_group_id)).map((l) => l.id);
+  const dropPt = (idx.tables.PlanTfo || []).filter((l) => dropTt.includes(l.tfo_type_id)).map((l) => l.id);
+  if (dropPl.length) ops.push({ op: 'delete', table: 'PlanLooms', ids: dropPl });
+  if (dropPt.length) ops.push({ op: 'delete', table: 'PlanTfo', ids: dropPt });
   await commit(ops);
   toast(unit.id ? 'Unit saved' : 'Unit added');
   return u.id;
@@ -324,7 +342,13 @@ export async function saveUnit(unit, loomGroups, tfoTypes) {
 
 export async function deleteUnit(unitId) {
   const idx = getIndex();
+  const planIds = (idx.tables.TfoPlans || []).filter((p) => p.unit_id === unitId).map((p) => p.id);
+  const inPlans = (table) => (idx.tables[table] || []).filter((l) => planIds.includes(l.plan_id)).map((l) => l.id);
   await commit([
+    { op: 'delete', table: 'PlanLooms', ids: inPlans('PlanLooms') },
+    { op: 'delete', table: 'PlanTfo', ids: inPlans('PlanTfo') },
+    { op: 'delete', table: 'PlanOutside', ids: inPlans('PlanOutside') },
+    { op: 'delete', table: 'TfoPlans', ids: planIds },
     { op: 'delete', table: 'Assignments', ids: (idx.assignmentsByUnit[unitId] || []).map((a) => a.id) },
     { op: 'delete', table: 'TfoSpeeds', ids: (idx.speedsByUnit[unitId] || []).map((s) => s.id) },
     { op: 'delete', table: 'TfoTypes', ids: (idx.tfoTypesByUnit[unitId] || []).map((t) => t.id) },
@@ -345,6 +369,49 @@ export async function saveSpeed(speed) {
 export async function deleteSpeed(id) {
   await commit([{ op: 'delete', table: 'TfoSpeeds', ids: [id] }]);
   toast('Speed removed');
+}
+
+// ---------- TFO plans ----------
+
+const PLAN_TABLES = { looms: ['PlanLooms', 'pl'], tfo: ['PlanTfo', 'pt'], outside: ['PlanOutside', 'po'] };
+
+// Saves a plan and its three lists of lines. Lines left out of a list are deleted.
+export async function savePlan(plan, lines) {
+  const idx = getIndex();
+  const isNew = !plan.id;
+  const p = { ...plan, id: plan.id || newId('p'), created_at: plan.created_at || new Date().toISOString() };
+  const ops = [{ op: 'upsert', table: 'TfoPlans', rows: [p] }];
+  for (const [key, [table, prefix]] of Object.entries(PLAN_TABLES)) {
+    const keep = (lines[key] || []).map((l, i) => ({ ...l, id: l.id || newId(prefix), plan_id: p.id, sort: i + 1 }));
+    const keepIds = new Set(keep.map((l) => l.id));
+    const drop = (idx.tables[table] || []).filter((l) => l.plan_id === p.id && !keepIds.has(l.id)).map((l) => l.id);
+    if (keep.length) ops.push({ op: 'upsert', table, rows: keep });
+    if (drop.length) ops.push({ op: 'delete', table, ids: drop });
+  }
+  await commit(ops);
+  toast(isNew ? 'Plan added' : 'Plan saved');
+  return p.id;
+}
+
+// A new plan on another date, starting from an existing plan's lines.
+export async function copyPlan(planId, planDate, name) {
+  const idx = getIndex();
+  const src = (idx.tables.TfoPlans || []).find((p) => p.id === planId);
+  if (!src) throw new Error('Plan not found');
+  const strip = ({ id, plan_id, updated_at, updated_by, ...rest }) => rest;
+  const lines = {};
+  for (const [key, [table]] of Object.entries(PLAN_TABLES)) {
+    lines[key] = (idx.tables[table] || []).filter((l) => l.plan_id === planId).sort((a, b) => (num(a.sort) ?? 0) - (num(b.sort) ?? 0)).map(strip);
+  }
+  return savePlan({ unit_id: src.unit_id, plan_date: planDate, name: name ?? src.name ?? '', notes: src.notes || '' }, lines);
+}
+
+export async function deletePlan(planId) {
+  const idx = getIndex();
+  const ops = Object.values(PLAN_TABLES).map(([table]) => ({ op: 'delete', table, ids: (idx.tables[table] || []).filter((l) => l.plan_id === planId).map((l) => l.id) }));
+  ops.push({ op: 'delete', table: 'TfoPlans', ids: [planId] });
+  await commit(ops.filter((o) => o.ids.length));
+  toast('Plan deleted');
 }
 
 export async function addPhoto(fabricId, file) {

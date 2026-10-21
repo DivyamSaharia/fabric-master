@@ -79,7 +79,7 @@ export async function shareFile(file, title) {
   return true;
 }
 
-async function deliver(blob, name, title, { toDrive } = {}) {
+export async function deliver(blob, name, title, { toDrive } = {}) {
   const file = new File([blob], name, { type: blob.type });
   if (toDrive) {
     try {
@@ -304,14 +304,14 @@ function fabricRow(fabric, calc, idx, unit) {
   return row;
 }
 
-function sheetFromRows(XLSX, rows) {
+export function sheetFromRows(XLSX, rows) {
   const ws = XLSX.utils.json_to_sheet(rows);
   const keys = rows.length ? Object.keys(rows[0]) : [];
   ws['!cols'] = keys.map((k) => ({ wch: Math.max(10, Math.min(36, Math.max(k.length, ...rows.map((r) => String(r[k] ?? '').length)) + 2)) }));
   return ws;
 }
 
-function writeBook(XLSX, wb) {
+export function writeBook(XLSX, wb) {
   const out = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   return new Blob([out], { type: XLSX_MIME });
 }

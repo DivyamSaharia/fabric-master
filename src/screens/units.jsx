@@ -3,6 +3,8 @@ import { fabricCalc, fmt, isTpm, num, spindlesForUnit, tfoOutput, truthy, yarnDe
 import { deleteSpeed, deleteUnit, getIndex, saveSpeed, saveUnit, toast, useStore } from '../store.js';
 import { back, go, replace } from '../router.js';
 import { PanBlocks } from './fabrics.jsx';
+import { DEFAULT_SPINDLES_PER_SIDE, planCalc, planLines, planVerdict, plansOf, typeCapacity } from '../planner.js';
+import { dateText } from './plans.jsx';
 import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, Section, Segmented, SelectField, Sheet, TextButton, Toggle, classBadge, History } from '../ui.jsx';
 
 export function UnitList() {
@@ -54,6 +56,9 @@ export function UnitDetail({ id }) {
   const speeds = idx.speedsByUnit[id] || [];
   const groups = idx.loomGroupsByUnit[id] || [];
   const hasTfo = truthy(unit.has_tfo);
+  const plans = plansOf(idx, id);
+  const latest = plans[0] || null;
+  const verdict = latest ? planVerdict(planCalc(latest, planLines(idx, latest.id), idx)) : null;
   const tpmFabrics = fabrics.map((f) => ({ f, c: fabricCalc(f, idx) })).filter((x) => x.c.tpmLines.length).sort((a, b) => String(a.f.name).localeCompare(String(b.f.name)));
 
   // speed table grouped by TPM yarn
@@ -91,8 +96,16 @@ export function UnitDetail({ id }) {
       {hasTfo ? (
         <>
           <Section header="TFO types" footer={types.length ? `Default TFO efficiency ${num(unit.tfo_default_eff) ?? '—'}%.` : 'Add a TFO type from Edit, e.g. M/C 1–12 and M/C 13–16, for each set of machines that runs at its own speed.'}>
-            {types.map((t) => <Row label={t.name} value={`${speeds.filter((s) => s.tfo_type_id === t.id).length} speeds`} />)}
+            {types.map((t) => {
+              const cap = typeCapacity(t);
+              return <Row label={t.name} sub={cap.machines === null ? 'Machines not set' : `${cap.machines} machines · ${cap.sides} sides · ${fmt.int(cap.spindles)} spindles`} value={`${speeds.filter((s) => s.tfo_type_id === t.id).length} speeds`} />;
+            })}
             {!types.length ? <Row label="No TFO types yet" /> : null}
+          </Section>
+
+          <Section header="TFO planner" footer="Dated plans: what each loom group runs, how TFO sides are given out, and yarn bought in. Shows the surplus or deficit of spindles for each TPM yarn.">
+            {latest ? <Row label={`Latest · ${dateText(latest.plan_date)}`} sub={latest.name || null} value={<span class={verdict.kind === 'bad' ? 'bad' : verdict.kind === 'good' ? 'good' : ''}>{verdict.text}</span>} onClick={() => go(`/plan/${latest.id}`)} chevron /> : null}
+            <Row label="All plans" value={String(plans.length)} onClick={() => go(`/plans?unit=${id}`)} chevron />
           </Section>
 
           <Section header="TFO speed table" footer={<><strong class="note-strong">Enter RPM already multiplied by 2. The app does not double it.</strong> Output per spindle = RPM ÷ TPM × 1,440 minutes × efficiency × denier ÷ 9,000,000.</>}>
@@ -264,13 +277,17 @@ function UnitEditForm({ id }) {
     }
     const keptTypes = u.has_tfo ? types : [];
     const dropping = (idx.tfoTypesByUnit[id] || []).filter((t) => !keptTypes.some((x) => x.id === t.id));
-    if (dropping.length && !window.confirm(`Removing ${dropping.map((t) => t.name).join(', ')} also removes its speeds. Continue?`)) return;
+    const droppingGroups = (idx.loomGroupsByUnit[id] || []).filter((g) => !groups.some((x) => x.id === g.id));
+    const planHits = (idx.tables.PlanTfo || []).filter((l) => dropping.some((t) => t.id === l.tfo_type_id)).length + (idx.tables.PlanLooms || []).filter((l) => droppingGroups.some((g) => g.id === l.loom_group_id)).length;
+    const planNote = planHits ? ` ${planHits} TFO plan ${planHits === 1 ? 'line goes' : 'lines go'} too.` : '';
+    if (dropping.length && !window.confirm(`Removing ${dropping.map((t) => t.name).join(', ')} also removes its speeds.${planNote} Continue?`)) return;
+    if (!dropping.length && planHits && !window.confirm(`Removing that loom group also removes it from TFO plans.${planNote} Continue?`)) return;
     setBusy(true);
     try {
       const uid = await saveUnit(
         { ...u, name: u.name.trim(), cost_per_pick: num(u.cost_per_pick) ?? '', tfo_default_eff: num(u.tfo_default_eff) ?? '', loom_eff_pct: num(u.loom_eff_pct) ?? '' },
         groups.map((g) => ({ ...g, reed_width_cm: num(g.reed_width_cm) ?? '', looms: num(g.looms) ?? '' })),
-        u.has_tfo ? types : [],
+        u.has_tfo ? types.map((t) => ({ ...t, machines: num(t.machines) ?? '', spindles_per_side: num(t.spindles_per_side) ?? '' })) : [],
       );
       if (existing) back(`/unit/${uid}`);
       else replace(`/unit/${uid}`);
@@ -312,7 +329,7 @@ function UnitEditForm({ id }) {
         <button type="button" class="add-row" onClick={() => setGroups((gs) => [...gs, { make: '', reed_width_cm: '', shedding: 'Plain', looms: '' }])}><Icon.plus size={20} />Add loom group</button>
       </Section>
 
-      <Section header="TFO" footer={u.has_tfo ? 'Each TFO type is a set of machines that runs at its own speed. Speeds are added on the unit page.' : null}>
+      <Section header="TFO" footer={u.has_tfo ? 'Each TFO type is a set of machines that runs at its own speed. Every machine has 2 sides; each side runs one yarn quality. Speeds are added on the unit page.' : null}>
         <Toggle label="TFO division" value={!!u.has_tfo} onChange={up('has_tfo')} />
         {u.has_tfo ? <NumField label="Default TFO efficiency" value={u.tfo_default_eff} onInput={up('tfo_default_eff')} suffix="%" placeholder="90" /> : null}
       </Section>
@@ -323,6 +340,10 @@ function UnitEditForm({ id }) {
               <div class="line-top">
                 <label class="mini" style={{ flex: 1 }}><span>Name</span><input value={t.name ?? ''} placeholder="M/C 1–12" onInput={(e) => setType(i, { name: e.currentTarget.value })} aria-label="TFO type name" style={{ textAlign: 'right' }} /></label>
                 <IconButton label="Remove TFO type" onClick={() => setTypes((ts) => ts.filter((_, j) => j !== i))}><span class="bad"><Icon.trash size={20} /></span></IconButton>
+              </div>
+              <div class="line-bottom">
+                <label class="mini"><span>Machines</span><input inputmode="numeric" value={t.machines ?? ''} placeholder="12" onInput={(e) => setType(i, { machines: e.currentTarget.value })} aria-label="Number of machines" /></label>
+                <label class="mini"><span>Spindles/side</span><input inputmode="numeric" value={t.spindles_per_side ?? ''} placeholder={String(DEFAULT_SPINDLES_PER_SIDE)} onInput={(e) => setType(i, { spindles_per_side: e.currentTarget.value })} aria-label="Spindles per side" /></label>
               </div>
             </div>
           ))}

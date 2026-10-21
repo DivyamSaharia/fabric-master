@@ -246,6 +246,35 @@ describe('a key per person, last edited by, and the change log', () => {
     expect(log()[0]).toMatchObject({ type: 'Fabric', details: 'photo deleted' });
   });
 
+  it('TFO plans: lines are logged under their plan, and a plan date stays a plain date', () => {
+    seed();
+    let t = gas.post({ action: 'bootstrap', key }).tables;
+    expect(t.TfoPlans.find((p) => p.id === 'p1').plan_date).toBe('2026-10-21');
+    expect(t.TfoTypes.find((x) => x.id === 'tt1').machines).toBe(12);
+    gas.post({ action: 'batch', key, ops: [
+      { op: 'upsert', table: 'TfoPlans', rows: [{ id: 'p2', unit_id: 'u_2', plan_date: '2026-11-01', name: 'Nov plan' }] },
+      { op: 'upsert', table: 'PlanLooms', rows: [{ id: 'q1', plan_id: 'p2', loom_group_id: 'lg2', fabric_id: 'f_crepe', looms: 20, panna: 1 }] },
+      { op: 'upsert', table: 'PlanTfo', rows: [{ id: 'q2', plan_id: 'p2', tfo_type_id: 'tt1', yarn_id: 'y_tpm75', sides: 10 }] },
+    ] });
+    expect(log()[0]).toMatchObject({ action: 'added', type: 'TFO plan', item: 'Unit 2 · 1 Nov 2026 · Nov plan', details: '2 plan lines' });
+    gas.post({ action: 'batch', key, ops: [
+      { op: 'upsert', table: 'PlanTfo', rows: [{ id: 'q2', plan_id: 'p2', tfo_type_id: 'tt1', yarn_id: 'y_tpm75', sides: 12 }] },
+      { op: 'upsert', table: 'PlanOutside', rows: [{ id: 'q3', plan_id: 'p2', yarn_id: 'y_tpm75', kg_per_day: 25 }] },
+    ] });
+    expect(log()[0]).toMatchObject({ action: 'changed', type: 'TFO plan', details: 'TFO 75D TPM 2000 S/Z on M/C 1–12: Sides 10 → 12; outside 75D TPM 2000 S/Z 25 kg/day' });
+    t = gas.post({ action: 'bootstrap', key }).tables;
+    expect(t.TfoPlans.find((p) => p.id === 'p2').updated_by).toBeTruthy();
+    expect(t.PlanOutside.find((x) => x.id === 'q3').kg_per_day).toBe(25);
+    gas.post({ action: 'batch', key, ops: [
+      { op: 'delete', table: 'PlanLooms', ids: ['q1'] },
+      { op: 'delete', table: 'PlanTfo', ids: ['q2'] },
+      { op: 'delete', table: 'PlanOutside', ids: ['q3'] },
+      { op: 'delete', table: 'TfoPlans', ids: ['p2'] },
+    ] });
+    expect(log()[0]).toMatchObject({ action: 'deleted', type: 'TFO plan', item: 'Unit 2 · 1 Nov 2026 · Nov plan' });
+    expect(log()[1].action).toBe('changed');
+  });
+
   it('the change log never goes out with the tables', () => {
     seed();
     const tables = gas.post({ action: 'bootstrap', key }).tables;

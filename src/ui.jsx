@@ -45,6 +45,7 @@ export const Icon = {
   yarns: (p) => <S {...p}><path d="M9 3h6l3.5 18h-13z" /><path d="M7.8 9h8.4M6.8 14.5h10.4" /></S>,
   units: (p) => <S {...p}><path d="M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17z" /></S>,
   ranking: (p) => <S {...p} w={2.2}><path d="M5 20v-8M12 20V5M19 20v-5" /></S>,
+  spindle: (p) => <S {...p}><path d="M12 2.5v19" /><path d="M8 6.5h8l-1.2 3H9.2zM7.5 9.5h9l-1 8h-7z" /><path d="M9 12.5h6M8.8 15h6.4" /></S>,
   refresh: (p) => <S {...p}><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4" /></S>,
 };
 
@@ -278,6 +279,7 @@ const TABS = [
   { id: 'fabrics', label: 'Fabrics', icon: Icon.fabrics },
   { id: 'yarns', label: 'Yarns', icon: Icon.yarns },
   { id: 'units', label: 'Units', icon: Icon.units },
+  { id: 'plans', label: 'Planner', icon: Icon.spindle },
   { id: 'ranking', label: 'Ranking', icon: Icon.ranking },
 ];
 

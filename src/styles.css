@@ -231,7 +231,7 @@ button.row:active { background: var(--fill-2); }
 
 /* tab bar */
 .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; display: flex; justify-content: space-around; padding: 7px 0 calc(var(--safe-bottom) + 4px); min-height: 50px; background: var(--bar); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 -0.5px 0 var(--sep); }
-.tabbar button { width: 80px; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-2); font-size: 10px; font-weight: 500; }
+.tabbar button { flex: 1; max-width: 80px; min-width: 0; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; color: var(--text-2); font-size: 10px; font-weight: 500; }
 .tabbar button.on { color: var(--accent); font-weight: 600; }
 
 /* sticky result bar on forms */
@@ -377,3 +377,21 @@ button.row:active { background: var(--fill-2); }
 
 /* access keys */
 .key-text { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 14px; line-height: 20px; color: var(--text); word-break: break-all; user-select: all; -webkit-user-select: all; }
+
+/* TFO planner */
+.badge.red { background: var(--bad-bg, rgba(255, 59, 48, 0.12)); color: var(--bad); }
+.tile.bad-tile { background: var(--bad-bg, rgba(255, 59, 48, 0.12)); }
+.tile.bad-tile .t-label, .tile.bad-tile .t-value, .tile.bad-tile .t-sub { color: var(--bad); }
+.plan-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.shell.wide .plan-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 420px) {
+  .plan-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-tiles .tile:first-child { grid-column: 1 / -1; }
+}
+.plan-bal { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+.line-select { flex: 1; min-width: 0; height: 40px; border: 0; border-radius: 8px; background: var(--bg); padding: 0 10px; font-size: 16px; color: var(--text); appearance: none; -webkit-appearance: none; }
+.mini-out .strong { color: var(--text); font-weight: 600; font-size: 15px; }
+.ftable.plan-table td.key.bad { color: var(--bad); }
+.ftable.plan-table td.key.good { color: var(--good); }
+.ftable.plan-table td.bad { color: var(--bad); }
+.tmeta.bad { color: var(--bad); }

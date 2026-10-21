@@ -186,6 +186,61 @@ describe('every screen renders with demo data', () => {
   });
 });
 
+describe('TFO planner', () => {
+  it('lists dated plans with their verdict, and the unit page links to them', async () => {
+    await open('#/plans');
+    await screen.findByText('Wed, 21 Oct 2026');
+    expect(screen.getByText('Short 786 spindles')).toBeTruthy();
+    expect(screen.getByText(/42 looms · 24 sides given out/)).toBeTruthy();
+    cleanup();
+    await open('#/unit/u_2');
+    await screen.findByText('Latest · 21 Oct 2026');
+    expect(screen.getByText('12 machines · 24 sides · 6,048 spindles')).toBeTruthy();
+  });
+
+  it('plan page shows the spindle balance per yarn', async () => {
+    await open('#/plan/p1');
+    await screen.findByText('Spindle balance by yarn');
+    const cards = [...document.querySelectorAll('.unit-card')].map((c) => c.textContent);
+    expect(cards[0]).toContain('60D TPM 2400 S/Z');
+    expect(cards[0]).toContain('−786');
+    expect(cards.some((t) => t.includes('75D TPM 2000 S/Z') && t.includes('+116'))).toBe(true);
+    expect(screen.getByText('Job work')).toBeTruthy();
+    expect(screen.getByText('16 of 24')).toBeTruthy();
+  });
+
+  it('editing sides updates the balance live and saves', async () => {
+    await open('#/plan/p1/edit');
+    await screen.findByText('Balance as you edit');
+    const sides = screen.getAllByLabelText('Number of sides');
+    fireEvent.input(sides[2], { target: { value: '12' } });
+    await screen.findByText(/M\/C 13–16: 12 sides given out, only 8 on 4 machines|\+222/);
+    fireEvent.input(sides[2], { target: { value: '8' } });
+    fireEvent.input(sides[0], { target: { value: '9' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText('Spindle balance by yarn');
+    const t = JSON.parse(localStorage.getItem('fm.demo.v1'));
+    expect(t.PlanTfo.find((l) => l.id === 'pt1').sides).toBe(9);
+    expect(t.PlanTfo).toHaveLength(3);
+  });
+
+  it('copies a plan to a new date', async () => {
+    await open('#/plan/p1');
+    await screen.findByText('Spindle balance by yarn');
+    fireEvent.click(screen.getByText('Copy to a new date'));
+    fireEvent.input(screen.getByLabelText('Date'), { target: { value: '2026-11-01' } });
+    fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Nov plan' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create copy' }));
+    await screen.findByText('Sun, 1 Nov 2026');
+    const t = JSON.parse(localStorage.getItem('fm.demo.v1'));
+    const copy = t.TfoPlans.find((p) => p.plan_date === '2026-11-01');
+    expect(copy.name).toBe('Nov plan');
+    expect(t.PlanLooms.filter((l) => l.plan_id === copy.id)).toHaveLength(3);
+    expect(t.PlanTfo.filter((l) => l.plan_id === copy.id)).toHaveLength(3);
+    expect(t.PlanOutside.filter((l) => l.plan_id === copy.id)).toHaveLength(1);
+  });
+});
+
 describe('exports', () => {
   it('WhatsApp text carries spec and price, not costs', () => {
     const idx = buildIndex(sampleTables());
@@ -245,6 +300,13 @@ describe('laptop layout', () => {
     const row = [...document.querySelectorAll('.ftable tbody tr')].find((r) => r.textContent.includes('75D TPM 2000 S/Z'));
     expect(row.textContent).toContain('168.00');
     expect(row.textContent).toContain('base ₹118 + ₹50');
+  });
+
+  it('plan page shows the balance as a table', async () => {
+    await open('#/plan/p1');
+    await waitFor(() => expect(document.querySelectorAll('.plan-table tbody tr').length).toBe(3));
+    expect(document.querySelector('.plan-table tbody tr').textContent).toContain('60D TPM 2400 S/Z');
+    expect(document.querySelector('.sidebar').textContent).toContain('Planner');
   });
 
   it('"/" jumps to the search box', async () => {

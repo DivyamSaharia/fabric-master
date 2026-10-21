@@ -9,6 +9,7 @@ import { UnitDetail, UnitEdit, UnitList } from './screens/units.jsx';
 import { Ranking } from './screens/ranking.jsx';
 import { Settings } from './screens/settings.jsx';
 import { Changes } from './screens/changes.jsx';
+import { PlanDetail, PlanEdit, PlanList } from './screens/plans.jsx';
 
 function resolve({ path, query }) {
   const [a, b, c] = path;
@@ -27,6 +28,12 @@ function resolve({ path, query }) {
       if (b === 'new') return { tab: 'units', modal: true, el: <UnitEdit key="new" /> };
       if (c === 'edit') return { tab: 'units', modal: true, el: <UnitEdit key={`e${b}`} id={b} /> };
       return { tab: 'units', el: <UnitDetail key={b} id={b} /> };
+    case 'plans':
+      return { tab: 'plans', el: <PlanList key={query.unit || 'all'} query={query} /> };
+    case 'plan':
+      if (b === 'new') return { tab: 'plans', modal: true, el: <PlanEdit key={`n${query.unit}${query.date}`} query={query} /> };
+      if (c === 'edit') return { tab: 'plans', modal: true, el: <PlanEdit key={`e${b}`} id={b} query={query} /> };
+      return { tab: 'plans', el: <PlanDetail key={b} id={b} /> };
     case 'ranking':
       return { tab: 'ranking', el: <Ranking /> };
     case 'settings':

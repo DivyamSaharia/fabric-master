@@ -33,12 +33,12 @@ export function sampleTables() {
       { id: 'u_wj', name: 'Waterjet', type: 'Waterjet', cost_per_pick: 0.165, has_tfo: false, tfo_default_eff: '', loom_eff_pct: 85, notes: '' },
     ],
     LoomGroups: [
-      { id: 'lg1', unit_id: 'u_2', make: 'Toyota', reed_width_cm: 190, shedding: 'Dobby', looms: '' },
-      { id: 'lg2', unit_id: 'u_2', make: 'Toyota', reed_width_cm: 280, shedding: 'Plain', looms: '' },
+      { id: 'lg1', unit_id: 'u_2', make: 'Toyota', reed_width_cm: 190, shedding: 'Dobby', looms: 24 },
+      { id: 'lg2', unit_id: 'u_2', make: 'Toyota', reed_width_cm: 280, shedding: 'Plain', looms: 40 },
     ],
     TfoTypes: [
-      { id: 'tt1', unit_id: 'u_2', name: 'M/C 1–12' },
-      { id: 'tt2', unit_id: 'u_2', name: 'M/C 13–16' },
+      { id: 'tt1', unit_id: 'u_2', name: 'M/C 1–12', machines: 12, spindles_per_side: 252 },
+      { id: 'tt2', unit_id: 'u_2', name: 'M/C 13–16', machines: 4, spindles_per_side: 252 },
     ],
     TfoSpeeds: [
       { id: 'sp1', unit_id: 'u_2', tfo_type_id: 'tt1', yarn_id: 'y_tpm75', rpm: 18000, efficiency: 90 },
@@ -78,5 +78,21 @@ export function sampleTables() {
       { id: 'a8', fabric_id: 'f_moss', unit_id: 'u_wj' },
     ],
     Photos: [],
+    TfoPlans: [
+      { id: 'p1', unit_id: 'u_2', plan_date: '2026-10-21', name: 'Current running', notes: '', created_at: now },
+    ],
+    PlanLooms: [
+      { id: 'pl1', plan_id: 'p1', loom_group_id: 'lg2', fabric_id: 'f_crepe', looms: 20, panna: 1, rpm: '', sort: 1 },
+      { id: 'pl2', plan_id: 'p1', loom_group_id: 'lg2', fabric_id: 'f_moss', looms: 12, panna: 1, rpm: '', sort: 2 },
+      { id: 'pl3', plan_id: 'p1', loom_group_id: 'lg1', fabric_id: 'f_geo', looms: 10, panna: 1, rpm: '', sort: 3 },
+    ],
+    PlanTfo: [
+      { id: 'pt1', plan_id: 'p1', tfo_type_id: 'tt1', yarn_id: 'y_tpm75', sides: 10, sort: 1 },
+      { id: 'pt2', plan_id: 'p1', tfo_type_id: 'tt1', yarn_id: 'y_tpm100', sides: 6, sort: 2 },
+      { id: 'pt3', plan_id: 'p1', tfo_type_id: 'tt2', yarn_id: 'y_tpm60', sides: 8, sort: 3 },
+    ],
+    PlanOutside: [
+      { id: 'po1', plan_id: 'p1', yarn_id: 'y_tpm75', kg_per_day: 20, source: 'Job work', sort: 1 },
+    ],
   };
 }

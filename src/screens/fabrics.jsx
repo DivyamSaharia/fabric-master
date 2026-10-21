@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, spindlesForUnit, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
-  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, toast, useStore,
+  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, fabricPlanCount, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, toast, useStore,
 } from '../store.js';
 import { back, go, replace } from '../router.js';
 import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
@@ -575,7 +575,8 @@ export function FabricDetail({ id }) {
         }}><Icon.copy size={20} /> Duplicate</Button>
         <RsDuplicate id={id} fabric={fabric} />
         <Button kind="danger" onClick={async () => {
-          if (!window.confirm(`Delete ${fabric.name}? This removes it from the Sheet, with its yarn lines, unit links and photos.`)) return;
+          const inPlans = fabricPlanCount(fabric.id);
+          if (!window.confirm(`Delete ${fabric.name}? This removes it from the Sheet, with its yarn lines, unit links and photos.${inPlans ? ` It is also taken out of ${inPlans} TFO ${inPlans === 1 ? 'plan' : 'plans'}.` : ''}`)) return;
           try {
             await deleteFabric(id);
             replace('/fabrics');
