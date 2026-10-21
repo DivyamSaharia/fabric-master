@@ -171,7 +171,7 @@ describe('a key per person, last edited by, and the change log', () => {
     const after = gas.post({ action: 'bootstrap', key }).tables.Fabrics.find((f) => f.id === 'f_crepe');
     expect(after).toMatchObject({ price: 47, updated_by: 'Ishaan', created_by: 'Owner' });
     const top = log()[0];
-    expect(top).toMatchObject({ who: 'Ishaan', action: 'changed', type: 'Fabric', item: 'Poly Crepe 60', ref: 'f_crepe' });
+    expect(top).toMatchObject({ who: 'Ishaan', action: 'changed', type: 'Fabric', item: 'Poly Crepe 60 (RFD)', ref: 'f_crepe' });
     expect(top.details).toBe('Price 45 → 47');
     expect(top.when).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
   });
@@ -195,7 +195,7 @@ describe('a key per person, last edited by, and the change log', () => {
     const touched = res.ops.find((o) => o.table === 'Fabrics' && o.rows[0].updated_by === 'Aman');
     expect(touched).toBeTruthy();
     const top = log()[0];
-    expect(top).toMatchObject({ who: 'Aman', action: 'changed', type: 'Fabric', item: 'Georgette 60' });
+    expect(top).toMatchObject({ who: 'Aman', action: 'changed', type: 'Fabric', item: 'Georgette 60 (RFD)' });
     expect(top.details).toMatch(/^warp .+: Ends \d+ → \d+; added to Chinese AJ$/);
     expect(log().filter((e) => e.who === 'Aman')).toHaveLength(1);
   });
@@ -241,7 +241,7 @@ describe('a key per person, last edited by, and the change log', () => {
     expect(log()[0]).toMatchObject({ action: 'changed', type: 'Yarn', details: 'new rate ₹170 from 2026-10-20' });
     const png = 'data:image/jpeg;base64,' + Buffer.from('x').toString('base64');
     gas.post({ action: 'uploadPhoto', key, photo: { id: 'p9', fabric_id: 'f_geo', is_cover: true }, image: png, thumb: png });
-    expect(log()[0]).toMatchObject({ type: 'Fabric', item: 'Georgette 60', details: 'photo added' });
+    expect(log()[0]).toMatchObject({ type: 'Fabric', item: 'Georgette 60 (RFD)', details: 'photo added' });
     gas.post({ action: 'deletePhoto', key, id: 'p9' });
     expect(log()[0]).toMatchObject({ type: 'Fabric', details: 'photo deleted' });
   });

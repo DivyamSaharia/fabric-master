@@ -190,6 +190,7 @@ button.row:active { background: var(--fill-2); }
 .tiles { margin: 14px 16px 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .tile { background: var(--card); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .tile.accent { background: var(--accent-tint); }
+.tile.span { grid-column: 1 / -1; }
 .tile .t-label { font-size: 13px; color: var(--text-2); font-weight: 600; }
 .tile.accent .t-label, .tile.accent .t-sub { color: var(--accent-ink); }
 .tile .t-value { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -326,6 +327,7 @@ button.row:active { background: var(--fill-2); }
 .shell.wide .detail-cols > .col > .hero:first-child { margin-top: 14px; }
 .shell.wide .hero { height: 320px; }
 .shell.wide .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.shell.wide .tile.span { grid-column: auto; }
 
 /* tables (laptop lists) */
 .table-wrap { margin: 0 16px; background: var(--card); border-radius: 12px; overflow-x: auto; }

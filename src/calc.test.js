@@ -25,6 +25,13 @@ describe('worked example from the scope (Poly Crepe 75x75)', () => {
     expect(c.realisationPerPick).toBeCloseTo(0.2577, 4);
     expect(c.tfoClass).toBe('Weft TPM');
   });
+  it('transportation adds per RFD metre, not grossed up by shrinkage', () => {
+    const t = fabricCalc({ ...crepe, transport_charge: 0.5 }, idx);
+    expect(t.transport).toBe(0.5);
+    expect(t.finishingCost).toBeCloseTo(c.finishingCost + 0.5, 6);
+    expect(t.rfdCost).toBeCloseTo(c.rfdCost + 0.5, 6);
+    expect(t.realisationPerM).toBeCloseTo(c.realisationPerM - 0.5, 6);
+  });
   it('VATAV comes off the selling price; brokering stays on the full price', () => {
     expect(c.vatavPct).toBe(3);
     expect(c.vatavAmount).toBeCloseTo(1.35, 6);
@@ -130,9 +137,16 @@ describe('fabric names show the RS', () => {
     expect(stripRs('Natural Crape 53', 52.5)).toBe('Natural Crape');
     expect(stripRs('Poly Crepe 75', 60)).toBe('Poly Crepe 75');
   });
+  it('finished (RFD) fabrics read name + RS + (RFD)', () => {
+    expect(fabricLabel({ name: 'Gajji Silk', reed_space_in: 41, finish: 'RFD' })).toBe('Gajji Silk 41 (RFD)');
+    expect(fabricLabel({ name: 'Organza Twill (RFD)', reed_space_in: 50, finish: 'RFD' })).toBe('Organza Twill 50 (RFD)');
+    expect(fabricLabel({ name: 'Ganesh 72', reed_space_in: 72, finish: 'RFD' })).toBe('Ganesh 72 (RFD)');
+    expect(fabricLabel({ name: 'Gajji Silk (copy)', reed_space_in: 64, finish: 'RFD' })).toBe('Gajji Silk 64 (RFD) (copy)');
+    expect(fabricLabel({ name: 'Gajji Silk', reed_space_in: 41, finish: 'Greige' })).toBe('Gajji Silk 41');
+  });
   it('index shows name + RS and keeps the stored name', () => {
     const f = idx.fabricsById.f_crepe;
-    expect(f.name).toBe('Poly Crepe 60');
+    expect(f.name).toBe('Poly Crepe 60 (RFD)');
     expect(f.base_name).toBe('Poly Crepe');
     expect(baseFabric(f).name).toBe('Poly Crepe');
     expect('base_name' in baseFabric(f)).toBe(false);

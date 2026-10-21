@@ -238,7 +238,7 @@ export async function duplicateFabric(fabricId) {
 // Name for a copy at a new RS: the stored name without its RS, or "(copy)" if that name + RS is taken.
 function rsCopyName(fabric, oldRs, newRs, fabrics) {
   const base = stripRs(fabric.base_name ?? fabric.name, oldRs);
-  const shown = fabricLabel({ name: base, reed_space_in: newRs }).toLowerCase();
+  const shown = fabricLabel({ name: base, reed_space_in: newRs, finish: fabric.finish }).toLowerCase();
   return fabrics.some((f) => String(f.name || '').trim().toLowerCase() === shown) ? `${base} (copy)` : base;
 }
 

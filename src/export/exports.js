@@ -24,7 +24,7 @@ export function preloadExports() {
 
 // ---------- WhatsApp ----------
 export function whatsappText(fabric, calc, idx) {
-  const lines = [`*${fabric.name}*${calc.finish === 'RFD' ? ' (RFD)' : ' (Greige)'}`];
+  const lines = [`*${fabric.name}*${calc.finish === 'RFD' ? (/\(RFD\)/.test(fabric.name) ? '' : ' (RFD)') : ' (Greige)'}`];
   const reed = num(fabric.reed);
   lines.push(`Reed × Pick: ${reed ? `${reed} × ${calc.ppi ?? '—'}` : `— × ${calc.ppi ?? '—'}`}`);
   for (const w of calc.warp) lines.push(`Warp: ${w.yarn ? w.yarn.name : '—'}${w.ends ? `, ${fmt.int(w.ends)} ends` : ''}`);
@@ -209,6 +209,7 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
         ['Selling price', `${fmt.rs(calc.price)} / RFD m`],
         ['RFD shortage', pctv(fabric.rfd_shortage_pct)],
         ['Processing charge', `${fmt.rs(num(fabric.processing_charge))} / m`],
+        ['Transportation', num(fabric.transport_charge) === null ? '—' : `${fmt.rs(num(fabric.transport_charge))} / RFD m`],
         ['Brokering', pctv(fabric.brokering_pct)],
         ['RM cost per RFD m', fmt.rs(calc.rmPerSaleM)],
         ['Finishing cost', fmt.rs(calc.finishingCost)],
@@ -292,6 +293,7 @@ function fabricRow(fabric, calc, idx, unit) {
     'VATAV %': calc.vatavPct || '',
     'RFD shortage %': calc.finish === 'RFD' ? num(fabric.rfd_shortage_pct) ?? '' : '',
     'Processing ₹/m': calc.finish === 'RFD' ? num(fabric.processing_charge) ?? '' : '',
+    'Transportation ₹/m': calc.finish === 'RFD' ? num(fabric.transport_charge) ?? '' : '',
     'Brokering %': calc.finish === 'RFD' ? num(fabric.brokering_pct) ?? '' : '',
     'RFD cost ₹/m': r2(calc.rfdCost),
     'Realisation ₹/m without VATAV': r2(calc.realisationPerM),

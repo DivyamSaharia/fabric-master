@@ -69,7 +69,7 @@ describe('people with access', () => {
 
   it('recent changes lists who changed what', async () => {
     await openAs(ishaan.key, '#/changes');
-    await screen.findByText('Ishaan changed Georgette 60');
+    await screen.findByText('Ishaan changed Georgette 60 (RFD)');
     expect(screen.getByText('Price 58 → 60')).toBeTruthy();
     expect(screen.getByText('Divyam gave access to Ishaan')).toBeTruthy();
   });
@@ -77,13 +77,13 @@ describe('people with access', () => {
   it('a removed person is signed out and their saved copy is cleared', async () => {
     const tmp = gas.post({ action: 'addPerson', key: ownerKey, name: 'Temp' }).person;
     await openAs(tmp.key, '#/fabrics');
-    await screen.findByText('Georgette 60');
+    await screen.findByText('Georgette 60 (RFD)');
     expect(localStorage.getItem('fm.cache.v1')).toBeTruthy();
     gas.post({ action: 'removePerson', key: ownerKey, id: tmp.id });
     cleanup();
     await openAs(tmp.key, '#/fabrics');
     await waitFor(() => expect(localStorage.getItem('fm.cache.v1')).toBeNull());
-    expect(screen.queryByText('Georgette 60')).toBeNull();
+    expect(screen.queryByText('Georgette 60 (RFD)')).toBeNull();
   });
 
   it('the setup message carries the app link, URL and key', () => {

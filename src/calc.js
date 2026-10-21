@@ -4,6 +4,7 @@
 // - consumption per metre of greige fabric, shortage % included
 // - cost per pick = Rs per metre per pick of PPI (conversion/m = k x PPI)
 // - RFD: g = 1 / (1 - f) greige metres per RFD metre; price is per RFD metre
+// - RFD finishing = processing x g + transportation (per RFD m) + brokering % of price
 
 export const NE_TO_DENIER = 5315;
 const IN_PER_M = 39.37;
@@ -69,15 +70,22 @@ export function stripRs(name, rs) {
 }
 
 // Name + RS. Names already ending in their RS are not doubled; " (copy)" stays at the end.
+// Finished (RFD) fabrics: name + RS + " (RFD)", e.g. "Gajji Silk 41 (RFD)". A stored "(RFD)" is moved to the end.
 export function fabricLabel(fabric) {
   const name = String((fabric && fabric.name) || '').trim();
-  const rs = num(fabric && fabric.reed_space_in);
-  if (rs === null) return name;
+  const rfd = !!fabric && fabric.finish === 'RFD';
   const m = name.match(/^(.*?)((?: \(copy\))*)$/);
-  const head = m[1];
+  let head = m[1];
   const tail = m[2];
-  return stripRs(head, rs) !== head.trim() ? name : `${head} ${rsText(rs)}${tail}`.trim();
+  if (rfd) head = stripRfd(head);
+  const suffix = rfd ? ' (RFD)' : '';
+  const rs = num(fabric && fabric.reed_space_in);
+  if (rs === null || stripRs(head, rs) !== head.trim()) return `${head}${suffix}${tail}`.trim();
+  return `${head} ${rsText(rs)}${suffix}${tail}`.trim();
 }
+
+// Drops "(RFD)" from a name ("Organza Twill (RFD)" -> "Organza Twill").
+export const stripRfd = (name) => String(name || '').replace(/\s*\(RFD\)\s*/gi, ' ').replace(/\s+/g, ' ').trim();
 
 // The fabric row as stored: the shown name swapped back for the stored one.
 export function baseFabric(fabric) {
@@ -193,13 +201,16 @@ export function fabricCalc(fabric, idx, asOf) {
   let g = 1;
   let finishingCost = 0;
   let rfdCost = null;
+  let transport = null;
   if (finish === 'RFD') {
     const f = pct(fabric.rfd_shortage_pct);
     if (num(fabric.rfd_shortage_pct) === null) missing.push('RFD shortage');
     g = f < 1 ? 1 / (1 - f) : null;
     const c = num(fabric.processing_charge) ?? 0;
     const b = pct(fabric.brokering_pct);
-    finishingCost = g !== null && price !== null ? c * g + b * price : null;
+    // Transportation: Rs per RFD metre, added as is (not grossed up by shrinkage).
+    transport = num(fabric.transport_charge) ?? 0;
+    finishingCost = g !== null && price !== null ? c * g + transport + b * price : null;
     rfdCost = rmCost !== null && finishingCost !== null ? rmCost * g + finishingCost : null;
   }
   const rmPerSaleM = rmCost !== null && g !== null ? rmCost * g : null;
@@ -222,7 +233,7 @@ export function fabricCalc(fabric, idx, asOf) {
     ppi, rs, width, sw, sf, warp, weft, totalEnds, warpGpm, weftGpm, totalGpm,
     kgPer100: totalGpm === null ? null : totalGpm / 10, gsm, rmCost,
     tfoClass, tpmLines, tpmMin: tpmValues.length ? Math.min(...tpmValues) : null, tpmMax: tpmValues.length ? Math.max(...tpmValues) : null,
-    finish, price, g, finishingCost: finish === 'RFD' ? finishingCost : null, rfdCost, rmPerSaleM,
+    finish, price, g, finishingCost: finish === 'RFD' ? finishingCost : null, transport, rfdCost, rmPerSaleM,
     realisationPerM, realisationPerPick, vatavPct, vatavAmount, netPrice, realisationNetPerM, realisationNetPerPick,
     picksPerSaleM, loomMPerDay, missing,
   };

@@ -505,6 +505,11 @@ export function FabricDetail({ id }) {
           <div class="t-value">{calc.totalGpm === null ? '—' : `${fmt.n(calc.totalGpm, 1)} g/m`}</div>
           <div class="t-sub">{calc.kgPer100 === null ? '—' : `${fmt.n(calc.kgPer100, 2)} kg per 100 m`}</div>
         </div>
+        <div class="tile span">
+          <div class="t-label">Sale rate</div>
+          <div class="t-value">{calc.price === null ? 'Not set' : fmt.rs(calc.price)}</div>
+          <div class="t-sub">{calc.price === null ? 'add a selling price' : rfd ? 'per RFD metre' : 'per metre'}</div>
+        </div>
       </div>
 
       <Section header="Construction">
@@ -538,6 +543,7 @@ export function FabricDetail({ id }) {
           <Row label="Selling price" value={`${fmt.rs(calc.price)} / RFD m`} />
           <Row label="RFD shortage" value={fabric.rfd_shortage_pct !== '' && fabric.rfd_shortage_pct !== undefined ? `${fabric.rfd_shortage_pct}%` : '—'} />
           <Row label="Processing charge" value={`${fmt.rs(num(fabric.processing_charge))} / m`} />
+          <Row label="Transportation" value={num(fabric.transport_charge) === null ? '—' : `${fmt.rs(num(fabric.transport_charge))} / RFD m`} />
           <Row label="Brokering" value={`${num(fabric.brokering_pct) ?? 0}%`} />
           <Row label="RM cost per RFD m" value={fmt.rs(calc.rmPerSaleM)} />
           <Row label="Finishing cost" value={fmt.rs(calc.finishingCost)} />
@@ -711,7 +717,7 @@ function RsDuplicate({ id, fabric }) {
             </Section>
             {plan ? (
               <Section header="New quality">
-                <Row label="Name" value={fabricLabel({ name: plan.name, reed_space_in: newRs })} />
+                <Row label="Name" value={fabricLabel({ name: plan.name, reed_space_in: newRs, finish: plan.fabric.finish })} />
                 <Row label="RS" value={`${oldRs} → ${newRs} in`} />
                 {plan.warp.map((w) => <Row label="Warp ends" sub={w.name} value={`${fmt.int(w.from)} → ${fmt.int(w.to)}`} />)}
                 <Row label="Sale rate" value={plan.price === null ? '—' : `${fmt.rs(plan.price)} / m`} valueSub={price === null && plan.price !== null ? `scaled from ${fmt.rs(num(fabric.price))}` : undefined} />
@@ -834,7 +840,7 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
 }
 
 // ---------------- edit ----------------
-const blankFabric = () => ({ name: '', weave: 'Plain', design_note: '', end_use: '', reed: '', ppi: '', reed_space_in: '', greige_width_in: '', warp_shortage_pct: '', weft_shortage_pct: '', price: '', vatav_pct: '', finish: 'Greige', rfd_shortage_pct: '', processing_charge: '', brokering_pct: '', loom_rpm: '', loom_rpm_dp: '', loom_eff_pct: '', notes: '' });
+const blankFabric = () => ({ name: '', weave: 'Plain', design_note: '', end_use: '', reed: '', ppi: '', reed_space_in: '', greige_width_in: '', warp_shortage_pct: '', weft_shortage_pct: '', price: '', vatav_pct: '', finish: 'Greige', rfd_shortage_pct: '', processing_charge: '', brokering_pct: '', transport_charge: '', loom_rpm: '', loom_rpm_dp: '', loom_eff_pct: '', notes: '' });
 
 export function FabricEdit({ id }) {
   const st = useStore();
@@ -943,7 +949,7 @@ function FabricEditForm({ id }) {
         left={<TextButton onClick={() => back(existing ? `/fabric/${id}` : '/fabrics')}>Cancel</TextButton>}
         right={<TextButton bold onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</TextButton>}
       />
-      <Section header="Identity" footer={String(f.name || '').trim() ? `Shown as ${fabricLabel(f)}. The RS is added to the name automatically.` : 'Enter the quality without the RS. The RS is added to the name automatically.'}>
+      <Section header="Identity" footer={String(f.name || '').trim() ? `Shown as ${fabricLabel(f)}. The RS${f.finish === 'RFD' ? ' and (RFD) are' : ' is'} added to the name automatically.` : 'Enter the quality without the RS. The RS (and (RFD) for RFD fabrics) is added to the name automatically.'}>
         <Field label="Quality name" required value={f.name} onInput={up('name')} placeholder="e.g. Natural Crape" autofocus={!existing} />
         <div class="row"><div style={{ width: '100%' }}><Segmented label="Weave" options={WEAVES} value={f.weave} onChange={up('weave')} /></div></div>
         <Field label="Design note" value={f.design_note} onInput={up('design_note')} placeholder="e.g. 2/1 twill" />
@@ -970,7 +976,7 @@ function FabricEditForm({ id }) {
       </Section>
       {!opts.length ? <p class="section-footer">No yarns yet. Add them in the Yarns tab first.</p> : null}
 
-      <Section header="Price and finishing" footer={rfd ? 'For RFD the selling price is per RFD metre. VATAV is the discount off that price. Shrinkage grosses up RM and processing; brokering is taken on the full selling price.' : 'VATAV is the discount off the selling price. Leave it blank if there is none.'}>
+      <Section header="Price and finishing" footer={rfd ? 'For RFD the selling price is per RFD metre. VATAV is the discount off that price. Shrinkage grosses up RM and processing; transportation is per RFD metre; brokering is taken on the full selling price.' : 'VATAV is the discount off the selling price. Leave it blank if there is none.'}>
         <div class="row"><div style={{ width: '100%' }}><Segmented label="Finish" options={['Greige', 'RFD']} value={f.finish === 'RFD' ? 'RFD' : 'Greige'} onChange={up('finish')} /></div></div>
         <NumField label="Selling price" hint={rfd ? 'per RFD m' : 'per m'} prefix="₹" value={f.price} onInput={up('price')} />
         <NumField label="VATAV" hint="discount" value={f.vatav_pct} onInput={up('vatav_pct')} suffix="%" placeholder="0" />
@@ -978,6 +984,7 @@ function FabricEditForm({ id }) {
           <>
             <NumField label="RFD shortage" hint="shrinkage" value={f.rfd_shortage_pct} onInput={up('rfd_shortage_pct')} suffix="%" />
             <NumField label="Processing charge" hint="per m" prefix="₹" value={f.processing_charge} onInput={up('processing_charge')} />
+            <NumField label="Transportation" hint="per RFD m" prefix="₹" value={f.transport_charge} onInput={up('transport_charge')} />
             <NumField label="Brokering" value={f.brokering_pct} onInput={up('brokering_pct')} suffix="%" />
           </>
         ) : null}

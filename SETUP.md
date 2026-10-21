@@ -59,7 +59,7 @@ Add units, yarns and fabrics in the app, or paste rows straight into the Sheet's
 | Yarns | name, kind, count, count_unit, material, form, … | kind: base or tpm. count_unit: D or Ne. A TPM yarn also needs base_yarn_id, tpm, twist (S, Z or S/Z); leave its count blank to use the base yarn's denier. tpm_delta is the ₹/kg added to the base yarn's rate (blank = ₹50). |
 | YarnRates | yarn_id, rate, effective_date | Base yarns only. Rate ₹/kg; the latest date applies. A TPM yarn's rate is its base yarn's rate plus tpm_delta. |
 | TfoSpeeds | unit_id, tfo_type_id, yarn_id, rpm, efficiency | One row per TPM yarn per TFO type. **rpm is entered already multiplied by 2.** efficiency blank = the unit's default. |
-| Fabrics | name, weave, ppi, reed_space_in, greige_width_in, warp_shortage_pct, weft_shortage_pct, price, finish, … | Widths in inches, percentages as plain numbers (2 = 2%). finish: Greige or RFD; RFD adds rfd_shortage_pct, processing_charge, brokering_pct. vatav_pct is the VATAV % (blank = none). loom_rpm and loom_eff_pct are only for spindles. |
+| Fabrics | name, weave, ppi, reed_space_in, greige_width_in, warp_shortage_pct, weft_shortage_pct, price, finish, … | Widths in inches, percentages as plain numbers (2 = 2%). finish: Greige or RFD; RFD adds rfd_shortage_pct, processing_charge, brokering_pct, transport_charge (Transportation, ₹ per RFD m). vatav_pct is the VATAV % (blank = none). loom_rpm and loom_eff_pct are only for spindles. |
 | FabricYarns | fabric_id, side, yarn_id, ends, parts, pattern | side: warp or weft. Warp rows carry ends; weft rows carry parts (pick share). |
 | Assignments | fabric_id, unit_id | Puts a fabric in a unit's database. |
 | Photos | (filled by the app) | Photos are added from the fabric screen. |
@@ -88,7 +88,7 @@ Keys are kept in the script's properties (`API_KEY` for the owner, `PEOPLE` for 
 1. Warp g/m = ends × denier ÷ 9,000 × (1 + warp shortage). Weft g/m = PPI × reed space (in) × denier ÷ 9,000 × (1 + weft shortage). Ne is converted with denier = 5,315 ÷ Ne.
 2. RM cost ₹/m = each yarn's kg/m × its rate.
 3. Greige: realisation per pick = (price − RM cost) ÷ PPI.
-4. RFD: g = 1 ÷ (1 − RFD shortage). RFD cost = (RM cost + processing) × g + brokering × price. Realisation per pick = (price − RFD cost) ÷ (PPI × g).
+4. RFD: g = 1 ÷ (1 − RFD shortage). RFD cost = (RM cost + processing) × g + transportation + brokering × price. RFD fabrics are shown as name + RS + (RFD). Realisation per pick = (price − RFD cost) ÷ (PPI × g).
 5. With VATAV: the price less VATAV % is used in place of the full price; brokering stays on the full price. Both realisations are shown.
 6. Profit per pick at a unit = realisation per pick with VATAV − the unit's cost per pick.
 7. TFO output kg/spindle/day = RPM ÷ TPM × 1,440 × efficiency × denier ÷ 9,000,000. **Enter RPM already multiplied by 2; the app does not double it.** Spindles per loom = loom m/day × TPM yarn g/m ÷ 1,000 ÷ that output, for every TFO type of the unit.

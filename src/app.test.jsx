@@ -24,7 +24,7 @@ async function open(hash) {
 describe('every screen renders with demo data', () => {
   it('fabric list ranks by realisation per pick', async () => {
     await open('#/fabrics');
-    await screen.findByText('Poly Crepe 60');
+    await screen.findByText('Poly Crepe 60 (RFD)');
     // list shows realisation with VATAV, and without it underneath when VATAV is set
     expect(screen.getByText('₹0.242')).toBeTruthy();
     expect(screen.getByText(/₹0\.258\s+without/)).toBeTruthy();
@@ -42,12 +42,12 @@ describe('every screen renders with demo data', () => {
 
   it('search and unit switcher narrow the list', async () => {
     await open('#/fabrics');
-    await screen.findByText('Poly Crepe 60');
+    await screen.findByText('Poly Crepe 60 (RFD)');
     fireEvent.input(screen.getByPlaceholderText('Search quality or yarn'), { target: { value: 'geor' } });
     await waitFor(() => expect(document.querySelectorAll('.fname').length).toBe(1));
     fireEvent.input(screen.getByPlaceholderText('Search quality or yarn'), { target: { value: '' } });
     fireEvent.click(screen.getByRole('button', { name: 'Chinese AJ' }));
-    await waitFor(() => expect([...document.querySelectorAll('.fname')].map((n) => n.textContent).sort()).toEqual(['PV Plain 60', 'Poly Crepe 60']));
+    await waitFor(() => expect([...document.querySelectorAll('.fname')].map((n) => n.textContent).sort()).toEqual(['PV Plain 60', 'Poly Crepe 60 (RFD)']));
   });
 
   it('fabric detail shows RFD cost, profit per unit and spindles for each TFO type', async () => {
@@ -63,6 +63,19 @@ describe('every screen renders with demo data', () => {
     expect(screen.getByText('Realisation without VATAV')).toBeTruthy();
     expect(screen.getByText('Realisation with VATAV')).toBeTruthy();
     expect(screen.getByText('3% · −₹1.35 / m')).toBeTruthy();
+  });
+
+  it('sale rate is the 7th tile, and RFD fabrics show transportation', async () => {
+    await open('#/fabric/f_crepe');
+    await screen.findByText('Sale rate');
+    const tiles = [...document.querySelectorAll('.tiles .tile')];
+    expect(tiles.length).toBe(7);
+    expect(tiles[6].textContent).toContain('₹45.00');
+    expect(tiles[6].textContent).toContain('per RFD metre');
+    expect(screen.getByText('Transportation')).toBeTruthy();
+    cleanup();
+    await open('#/fabric/f_crepe/edit');
+    expect(await screen.findByLabelText(/Transportation/)).toBeTruthy();
   });
 
   it('edit form shows the live result and saves', async () => {
@@ -98,7 +111,7 @@ describe('every screen renders with demo data', () => {
     fireEvent.click(await screen.findByText('Duplicate for new RS'));
     fireEvent.input(screen.getByLabelText('New RS'), { target: { value: '72' } });
     await screen.findByText('6,000 → 7,200');
-    expect(screen.getByText('Poly Crepe 72')).toBeTruthy();
+    expect(screen.getByText('Poly Crepe 72 (RFD)')).toBeTruthy();
     fireEvent.click(document.querySelector('.sheet-foot button'));
     await waitFor(() => expect(JSON.parse(localStorage.getItem('fm.demo.v1')).Fabrics.length).toBe(6));
     const db = JSON.parse(localStorage.getItem('fm.demo.v1'));
@@ -199,8 +212,8 @@ describe('every screen renders with demo data', () => {
     await open('#/unit/u_2');
     await screen.findByText('Spindle requirement · per loom');
     const cards = [...document.querySelectorAll('.unit-card')].map((c) => c.textContent);
-    expect(cards.some((t) => t.includes('Poly Crepe 60') && t.includes('M/C 1–12') && t.includes('M/C 13–16'))).toBe(true);
-    expect(cards.some((t) => t.includes('Georgette 60') && t.includes('warp') && t.includes('weft'))).toBe(true);
+    expect(cards.some((t) => t.includes('Poly Crepe 60 (RFD)') && t.includes('M/C 1–12') && t.includes('M/C 13–16'))).toBe(true);
+    expect(cards.some((t) => t.includes('Georgette 60 (RFD)') && t.includes('warp') && t.includes('weft'))).toBe(true);
   });
 
   it('unit list, unit edit, ranking and settings', async () => {
@@ -223,7 +236,7 @@ describe('exports', () => {
     const idx = buildIndex(sampleTables());
     const f = idx.fabricsById.f_crepe;
     const t = whatsappText(f, fabricCalc(f, idx), idx);
-    expect(t).toContain('*Poly Crepe 60* (RFD)');
+    expect(t).toContain('*Poly Crepe 60 (RFD)*');
     expect(t).toContain('Reed × Pick: 100 × 80');
     expect(t).toContain('Weft: 75D TPM 2000 S/Z (2S:2Z)');
     expect(t).toContain('Price ₹45.00 / m');
