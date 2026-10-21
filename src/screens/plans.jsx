@@ -173,7 +173,7 @@ export function PlanDetail({ id }) {
         <div class="tile">
           <span class="t-label">Spindles needed</span>
           <span class="t-value">{t.required === null ? '—' : fmt.int(t.required)}</span>
-          <span class="t-sub">{fmt.n(t.net, 0)} kg/day to twist{t.outside ? ` · ${fmt.n(t.outside, 0)} kg/day bought` : ''}</span>
+          <span class="t-sub">{t.required === null ? `${fmt.n(t.net, 0)} kg/day to twist` : `warp ${fmt.int(t.requiredWarp)} · weft ${fmt.int(t.requiredWeft)}`}{t.outside ? ` · ${fmt.n(t.outside, 0)} kg/day bought` : ''}</span>
         </div>
         <div class="tile">
           <span class="t-label">Given out</span>
@@ -195,7 +195,7 @@ export function PlanDetail({ id }) {
         </div>
       ) : null}
 
-      <Section header="Running yarn requirement" footer={pc.runningRows.length ? 'kg/day of every yarn on the planned looms, shortage included. Spindles needed is for the TPM yarns (after outside yarn).' : null}>
+      <Section header="Running yarn requirement" footer={pc.runningRows.length ? 'kg/day of every yarn on the planned looms, shortage included. Spindles are for the TPM yarns, split into warp and weft, after outside yarn (taken off the weft first).' : null}>
         {pc.runningRows.length ? (wide ? <RunningTable rows={pc.runningRows} totals={t} /> : <>{pc.runningRows.map((r) => <RunningCard r={r} />)}<Row label="Total running" strong value={<span class="strong">{fmt.n(t.running, 1)} kg</span>} valueSub={`warp ${fmt.n(t.runningWarp, 1)} · weft ${fmt.n(t.runningWeft, 1)} per day`} /></>) : <Row label="Nothing running yet" sub="Add loom lines from Edit." />}
       </Section>
 
@@ -282,7 +282,9 @@ function RunningTable({ rows, totals }) {
             <th><span class="th">Weft kg/day</span></th>
             <th class="key"><span class="th">Total kg/day</span></th>
             <th><span class="th">Outside</span></th>
-            <th><span class="th">Spindles needed</span></th>
+            <th><span class="th">Spindles warp</span></th>
+            <th><span class="th">Spindles weft</span></th>
+            <th class="key"><span class="th">Spindles total</span></th>
           </tr>
         </thead>
         <tbody>
@@ -297,7 +299,9 @@ function RunningTable({ rows, totals }) {
               <td class={r.weft ? '' : 'muted'}>{r.weft ? fmt.n(r.weft, 1) : '—'}</td>
               <td class="key">{fmt.n(r.total, 1)}</td>
               <td class={r.outside ? '' : 'muted'}>{r.outside ? fmt.n(r.outside, 1) : '—'}</td>
-              <td class={r.tpm ? '' : 'muted'}>{r.tpm ? (r.spindles === null ? '—' : fmt.int(r.spindles)) : '—'}</td>
+              <td class={r.tpm ? '' : 'muted'}>{r.tpm && r.spindlesWarp !== null ? fmt.int(r.spindlesWarp) : '—'}</td>
+              <td class={r.tpm ? '' : 'muted'}>{r.tpm && r.spindlesWeft !== null ? fmt.int(r.spindlesWeft) : '—'}</td>
+              <td class="key">{r.tpm && r.spindles !== null ? fmt.int(r.spindles) : '—'}</td>
             </tr>
           ))}
           <tr>
@@ -306,7 +310,9 @@ function RunningTable({ rows, totals }) {
             <td class="strong">{fmt.n(totals.runningWeft, 1)}</td>
             <td class="key">{fmt.n(totals.running, 1)}</td>
             <td class="muted">{totals.outside ? fmt.n(totals.outside, 1) : '—'}</td>
-            <td class="strong">{totals.required === null ? '—' : fmt.int(totals.required)}</td>
+            <td class="strong">{totals.requiredWarp === null ? '—' : fmt.int(totals.requiredWarp)}</td>
+            <td class="strong">{totals.requiredWeft === null ? '—' : fmt.int(totals.requiredWeft)}</td>
+            <td class="key">{totals.required === null ? '—' : fmt.int(totals.required)}</td>
           </tr>
         </tbody>
       </table>
@@ -322,6 +328,7 @@ function RunningCard({ r }) {
       value={<span class="strong">{fmt.n(r.total, 1)} kg</span>}
       valueSub={r.tpm && r.spindles !== null ? `${fmt.int(r.spindles)} spindles` : 'per day'}
     >
+      {r.tpm && r.spindles !== null ? <div class="row-sub">Spindles: warp {fmt.int(r.spindlesWarp)} · weft {fmt.int(r.spindlesWeft)} · total {fmt.int(r.spindles)}</div> : null}
       {r.fabrics.length ? <div class="row-sub">{r.fabrics.join(', ')}</div> : null}
       {!r.known ? <div class="row-sub bad">Incomplete: a loom line is missing data</div> : null}
     </Row>
@@ -339,7 +346,9 @@ function BalanceTable({ rows }) {
             <th><span class="th">Outside</span></th>
             <th><span class="th">Net kg/day</span></th>
             <th class="opt"><span class="th">kg / spindle-day</span></th>
-            <th><span class="th">Needed</span></th>
+            <th><span class="th">Needed warp</span></th>
+            <th><span class="th">Needed weft</span></th>
+            <th><span class="th">Needed total</span></th>
             <th><span class="th">Given out</span></th>
             <th class="key"><span class="th">Balance spindles</span></th>
             <th><span class="th">Balance sides</span></th>
@@ -358,7 +367,9 @@ function BalanceTable({ rows }) {
               <td class={y.outside ? '' : 'muted'}>{y.outside ? fmt.n(y.outside, 1) : '—'}</td>
               <td>{fmt.n(y.net, 1)}</td>
               <td class="opt muted">{y.qRef === null ? '—' : fmt.n(y.qRef, 4)}</td>
-              <td>{y.required === null ? '—' : fmt.int(y.required)}</td>
+              <td>{y.requiredWarp === null ? '—' : fmt.int(y.requiredWarp)}</td>
+              <td>{y.requiredWeft === null ? '—' : fmt.int(y.requiredWeft)}</td>
+              <td class="strong">{y.required === null ? '—' : fmt.int(y.required)}</td>
               <td>{fmt.int(y.allocSpindles)}<div class="tmeta">{y.allocSides} {y.allocSides === 1 ? 'side' : 'sides'}</div></td>
               <td class={`key ${y.status === 'short' ? 'bad' : y.status === 'unknown' ? '' : 'good'}`}>{y.status === 'unknown' ? '—' : signed(y.balanceSpindles)}</td>
               <td class={y.status === 'short' ? 'bad' : ''}>{y.balanceSides === null ? '—' : `${y.balanceSides >= 0 ? '+' : '−'}${fmt.n(Math.abs(y.balanceSides), 1)}`}</td>
@@ -387,6 +398,8 @@ function BalanceCard({ y }) {
       <div class="kv">
         <span class="k">Demand</span><span class="v">{fmt.n(y.demand, 1)} kg/day</span>
         {y.outside ? <><span class="k">Outside</span><span class="v">− {fmt.n(y.outside, 1)} kg/day</span></> : null}
+        <span class="k">Spindles for warp</span><span class="v">{y.requiredWarp === null ? '—' : fmt.int(y.requiredWarp)}</span>
+        <span class="k">Spindles for weft</span><span class="v">{y.requiredWeft === null ? '—' : fmt.int(y.requiredWeft)}</span>
         <span class="k">Spindles needed</span><span class="v">{y.required === null ? '—' : fmt.int(y.required)}{y.sidesNeeded !== null ? ` (${fmt.n(y.sidesNeeded, 1)} sides)` : ''}</span>
         <span class="k">Given out</span><span class="v">{fmt.int(y.allocSpindles)} ({y.allocSides} {y.allocSides === 1 ? 'side' : 'sides'})</span>
         <span class="k">Balance</span><span class="v">{signedKg(y.balanceKg)} kg/day</span>
@@ -629,7 +642,7 @@ function PlanEditForm({ id, query, unitId }) {
       {pc.yarnRows.map((y) => (
         <Row
           label={y.yarn.name}
-          sub={`Needed ${y.required === null ? '—' : fmt.int(y.required)}${y.sidesNeeded !== null ? ` (${fmt.n(y.sidesNeeded, 1)} sides)` : ''} · given ${fmt.int(y.allocSpindles)}`}
+          sub={`Needed ${y.required === null ? '—' : `${fmt.int(y.required)} (warp ${fmt.int(y.requiredWarp)} · weft ${fmt.int(y.requiredWeft)})`}${y.sidesNeeded !== null ? ` · ${fmt.n(y.sidesNeeded, 1)} sides` : ''} · given ${fmt.int(y.allocSpindles)}`}
           value={<span class={`strong ${y.status === 'short' ? 'bad' : y.status === 'unknown' ? '' : 'good'}`}>{y.status === 'unknown' ? '—' : signed(y.balanceSpindles)}</span>}
           valueSub={y.balanceSides === null ? STATUS[y.status][1] : `${y.balanceSides >= 0 ? '+' : '−'}${fmt.n(Math.abs(y.balanceSides), 1)} sides`}
         />

@@ -171,6 +171,42 @@ describe('running yarn requirement', () => {
   });
 });
 
+describe('spindles needed, warp and weft', () => {
+  it('splits the requirement into warp and weft and they add up to the total', () => {
+    const idx = idxOf();
+    // Georgette: 60D TPM on both warp and weft
+    const pc = planCalc(plan, { looms: [{ loom_group_id: 'lg1', fabric_id: 'f_geo', looms: 10 }], tfo: [], outside: [] }, idx);
+    const y = pc.yarnRows.find((r) => r.yarn.id === 'y_tpm60');
+    expect(y.warp).toBeGreaterThan(0);
+    expect(y.weft).toBeGreaterThan(0);
+    expect(y.requiredWarp).toBeCloseTo(y.warp / y.qRef, 6);
+    expect(y.requiredWeft).toBeCloseTo(y.weft / y.qRef, 6);
+    expect(y.requiredWarp + y.requiredWeft).toBeCloseTo(y.required, 9);
+    expect(pc.totals.requiredWarp + pc.totals.requiredWeft).toBeCloseTo(pc.totals.required, 9);
+    const r = pc.runningRows.find((x) => x.yarn.id === 'y_tpm60');
+    expect(r.spindlesWarp).toBeCloseTo(y.requiredWarp, 9);
+  });
+
+  it('takes outside yarn off the weft first, then the warp', () => {
+    const idx = idxOf();
+    const looms = [{ loom_group_id: 'lg1', fabric_id: 'f_geo', looms: 10 }];
+    const base = planCalc(plan, { looms, tfo: [], outside: [] }, idx).yarnRows[0];
+    // less than the weft: only weft drops
+    let y = planCalc(plan, { looms, tfo: [], outside: [{ yarn_id: 'y_tpm60', kg_per_day: 40 }] }, idx).yarnRows[0];
+    expect(y.requiredWarp).toBeCloseTo(base.requiredWarp, 9);
+    expect(y.requiredWeft).toBeCloseTo((base.weft - 40) / base.qRef, 6);
+    // more than the weft: weft is nil and the rest comes off the warp
+    y = planCalc(plan, { looms, tfo: [], outside: [{ yarn_id: 'y_tpm60', kg_per_day: base.weft + 20 }] }, idx).yarnRows[0];
+    expect(y.requiredWeft).toBe(0);
+    expect(y.requiredWarp).toBeCloseTo((base.warp - 20) / base.qRef, 6);
+    expect(y.requiredWarp + y.requiredWeft).toBeCloseTo(y.required, 9);
+    // more than everything: nothing needed
+    y = planCalc(plan, { looms, tfo: [], outside: [{ yarn_id: 'y_tpm60', kg_per_day: 1000 }] }, idx).yarnRows[0];
+    expect(y.required).toBe(0);
+    expect(y.requiredWarp + y.requiredWeft).toBe(0);
+  });
+});
+
 describe('looms available per group', () => {
   it('counts looms planned against looms in the group', () => {
     const idx = idxOf();

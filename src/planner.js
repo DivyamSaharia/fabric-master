@@ -207,7 +207,12 @@ export function planCalc(plan, lines, idx) {
         }
       }
     }
+    // outside yarn comes off the weft first (twisted yarn is usually bought for weft), then the warp
+    const netWeft = Math.max(y.weft - y.outside, 0);
+    const netWarp = Math.max(y.warp - Math.max(y.outside - y.weft, 0), 0);
     const required = qRef && y.demandKnown ? Math.max(net, 0) / qRef : null;
+    const requiredWarp = required === null ? null : netWarp / qRef;
+    const requiredWeft = required === null ? null : netWeft / qRef;
     const balanceKg = y.demandKnown && y.allocKnown ? y.allocKg - net : null;
     const balanceSpindles = balanceKg !== null && qRef ? balanceKg / qRef : null;
     const perSide = spindlesPerSide(types.find((t) => t.name === refType) || types[0]);
@@ -217,7 +222,7 @@ export function planCalc(plan, lines, idx) {
     if (!y.demandKnown) problems.push('Demand incomplete: a loom line is missing data');
     if (!y.allocKnown) problems.push('Output incomplete: a TFO line has no speed');
     if (!qRef && net > 0) problems.push(`No TFO speed for ${y.yarn.name} on this unit`);
-    return { ...y, net, qRef, refType, required, balanceKg, balanceSpindles, sidesNeeded: required === null ? null : required / perSide, balanceSides: balanceSpindles === null ? null : balanceSpindles / perSide, status, problems };
+    return { ...y, net, netWarp, netWeft, qRef, refType, required, requiredWarp, requiredWeft, balanceKg, balanceSpindles, sidesNeeded: required === null ? null : required / perSide, balanceSides: balanceSpindles === null ? null : balanceSpindles / perSide, status, problems };
   }).sort((a, b) => (a.balanceSpindles ?? Infinity) - (b.balanceSpindles ?? Infinity) || String(a.yarn.name).localeCompare(String(b.yarn.name)));
 
   const runningRows = [...running.values()].map((r) => {
@@ -225,7 +230,7 @@ export function planCalc(plan, lines, idx) {
     const tpm = isTpm(r.yarn);
     const sp = tpm ? yarnRows.find((y) => y.yarn.id === r.yarn.id) : null;
     const base = tpm ? idx.yarnsById[r.yarn.base_yarn_id] || null : null;
-    return { ...r, total, tpm, base, outside: sp ? sp.outside : 0, net: sp ? sp.net : total, spindles: sp ? sp.required : null, spindleStatus: sp ? sp.status : null, balanceSpindles: sp ? sp.balanceSpindles : null };
+    return { ...r, total, tpm, base, outside: sp ? sp.outside : 0, net: sp ? sp.net : total, spindles: sp ? sp.required : null, spindlesWarp: sp ? sp.requiredWarp : null, spindlesWeft: sp ? sp.requiredWeft : null, spindleStatus: sp ? sp.status : null, balanceSpindles: sp ? sp.balanceSpindles : null };
   }).sort((a, b) => b.total - a.total || String(a.yarn.name).localeCompare(String(b.yarn.name)));
 
   const known = yarnRows.filter((y) => y.balanceSpindles !== null);
@@ -243,6 +248,8 @@ export function planCalc(plan, lines, idx) {
     net: yarnRows.reduce((s, y) => s + y.net, 0),
     allocKg: yarnRows.reduce((s, y) => s + y.allocKg, 0),
     required: yarnRows.every((y) => y.required !== null) ? yarnRows.reduce((s, y) => s + y.required, 0) : null,
+    requiredWarp: yarnRows.every((y) => y.required !== null) ? yarnRows.reduce((s, y) => s + y.requiredWarp, 0) : null,
+    requiredWeft: yarnRows.every((y) => y.required !== null) ? yarnRows.reduce((s, y) => s + y.requiredWeft, 0) : null,
     deficit: known.filter((y) => y.balanceSpindles < -0.5).reduce((s, y) => s - y.balanceSpindles, 0),
     surplus: known.filter((y) => y.balanceSpindles > 0.5).reduce((s, y) => s + y.balanceSpindles, 0),
     shortYarns: known.filter((y) => y.status === 'short').length,

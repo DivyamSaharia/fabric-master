@@ -25,6 +25,8 @@ export async function exportPlanXlsx(plan, pc, opts = {}) {
     'Net kg/day': r(y.net, 1),
     'Output kg/spindle-day': r(y.qRef, 4),
     'At speed of': y.refType || '',
+    'Spindles warp': r(y.requiredWarp),
+    'Spindles weft': r(y.requiredWeft),
     'Spindles needed': r(y.required),
     'Spindles given out': y.allocSpindles,
     'Sides given out': y.allocSides,
@@ -41,9 +43,11 @@ export async function exportPlanXlsx(plan, pc, opts = {}) {
     'Weft kg/day': r(x.weft, 1),
     'Total kg/day': r(x.total, 1),
     'Outside kg/day': x.tpm ? r(x.outside, 1) : '',
+    'Spindles warp': x.tpm ? r(x.spindlesWarp) : '',
+    'Spindles weft': x.tpm ? r(x.spindlesWeft) : '',
     'Spindles needed': x.tpm ? r(x.spindles) : '',
   }));
-  if (runningX.length) runningX.push({ Yarn: 'Total', 'Warp kg/day': r(pc.totals.runningWarp, 1), 'Weft kg/day': r(pc.totals.runningWeft, 1), 'Total kg/day': r(pc.totals.running, 1) });
+  if (runningX.length) runningX.push({ Yarn: 'Total', 'Warp kg/day': r(pc.totals.runningWarp, 1), 'Weft kg/day': r(pc.totals.runningWeft, 1), 'Total kg/day': r(pc.totals.running, 1), 'Spindles warp': r(pc.totals.requiredWarp), 'Spindles weft': r(pc.totals.requiredWeft), 'Spindles needed': r(pc.totals.required) });
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, runningX.length ? runningX : [{ Yarn: 'Nothing running' }]), 'Running yarn');
   const groupsX = pc.groupUse.map((u) => ({ 'Loom group': groupLabel(u.group), 'Looms on floor': u.have ?? '', 'Looms planned': u.planned, 'Looms available': u.free ?? '' }));
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, groupsX.length ? groupsX : [{ 'Loom group': 'None' }]), 'Loom groups');
@@ -107,7 +111,7 @@ export async function exportPlanPdf(plan, pc, opts = {}) {
 
   const figs = [
     ['Looms planned', fmt.int(t.looms), `${t.metres === null ? '—' : fmt.int(t.metres)} m/day`],
-    ['Spindles needed', t.required === null ? '—' : fmt.int(t.required), `net of ${fmt.n(t.outside, 0)} kg/day outside yarn`],
+    ['Spindles needed', t.required === null ? '—' : fmt.int(t.required), t.required === null ? '—' : `warp ${fmt.int(t.requiredWarp)} · weft ${fmt.int(t.requiredWeft)} · net of ${fmt.n(t.outside, 0)} kg/day outside`],
     ['Spindles given out', fmt.int(t.usedSpindles), t.capSpindles === null ? 'machine count not set' : `of ${fmt.int(t.capSpindles)} · ${t.idleSides} sides idle`],
     ['Deficit / surplus', t.shortYarns ? `−${fmt.int(t.deficit)}` : `+${fmt.int(t.surplus)}`, t.shortYarns ? `${t.shortYarns} yarns short · surplus elsewhere +${fmt.int(t.surplus)}` : 'spindles'],
   ];
@@ -151,17 +155,17 @@ export async function exportPlanPdf(plan, pc, opts = {}) {
     y = doc.lastAutoTable.finalY + 8;
   };
 
-  table('Running yarn requirement', ['Yarn', 'Used in', 'Warp kg/day', 'Weft kg/day', 'Total kg/day', 'Outside', 'Spindles needed'],
-    [...pc.runningRows.map((x) => [`${x.yarn.name}${x.tpm ? ' (TPM)' : ''}`, x.fabrics.join(', '), x.warp ? fmt.n(x.warp, 1) : '—', x.weft ? fmt.n(x.weft, 1) : '—', fmt.n(x.total, 1), x.tpm && x.outside ? fmt.n(x.outside, 1) : '—', x.tpm ? (x.spindles === null ? '—' : fmt.int(x.spindles)) : '—']),
-      ['Total', '', fmt.n(t.runningWarp, 1), fmt.n(t.runningWeft, 1), fmt.n(t.running, 1), t.outside ? fmt.n(t.outside, 1) : '—', t.required === null ? '—' : fmt.int(t.required)]],
-    { columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } } });
-  const right = Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map((i) => [i, { halign: 'right' }]));
-  table('Spindle balance by yarn', ['Yarn', 'Used in', 'Demand kg/day', 'Outside', 'Net kg/day', 'Needed', 'Given out', 'Balance', 'Balance kg/day'],
-    pc.yarnRows.map((x) => [x.yarn.name, x.fabrics.join(', '), fmt.n(x.demand, 1), x.outside ? fmt.n(x.outside, 1) : '—', fmt.n(x.net, 1), x.required === null ? '—' : fmt.int(x.required), `${fmt.int(x.allocSpindles)} (${x.allocSides} sides)`, x.balanceSpindles === null ? statusText.unknown : signed(x.balanceSpindles), x.balanceKg === null ? '—' : `${x.balanceKg >= 0 ? '+' : '−'}${fmt.n(Math.abs(x.balanceKg), 1)}`]),
+  table('Running yarn requirement', ['Yarn', 'Used in', 'Warp kg/day', 'Weft kg/day', 'Total kg/day', 'Outside', 'Spindles warp', 'Spindles weft', 'Spindles total'],
+    [...pc.runningRows.map((x) => [`${x.yarn.name}${x.tpm ? ' (TPM)' : ''}`, x.fabrics.join(', '), x.warp ? fmt.n(x.warp, 1) : '—', x.weft ? fmt.n(x.weft, 1) : '—', fmt.n(x.total, 1), x.tpm && x.outside ? fmt.n(x.outside, 1) : '—', x.tpm && x.spindlesWarp !== null ? fmt.int(x.spindlesWarp) : '—', x.tpm && x.spindlesWeft !== null ? fmt.int(x.spindlesWeft) : '—', x.tpm && x.spindles !== null ? fmt.int(x.spindles) : '—']),
+      ['Total', '', fmt.n(t.runningWarp, 1), fmt.n(t.runningWeft, 1), fmt.n(t.running, 1), t.outside ? fmt.n(t.outside, 1) : '—', t.requiredWarp === null ? '—' : fmt.int(t.requiredWarp), t.requiredWeft === null ? '—' : fmt.int(t.requiredWeft), t.required === null ? '—' : fmt.int(t.required)]],
+    { columnStyles: Object.fromEntries([2, 3, 4, 5, 6, 7, 8].map((i) => [i, { halign: 'right' }])) });
+  const right = Object.fromEntries([2, 3, 4, 5, 6, 7, 8, 9, 10].map((i) => [i, { halign: 'right' }]));
+  table('Spindle balance by yarn', ['Yarn', 'Used in', 'Demand kg/day', 'Outside', 'Net kg/day', 'Needed warp', 'Needed weft', 'Needed total', 'Given out', 'Balance', 'Balance kg/day'],
+    pc.yarnRows.map((x) => [x.yarn.name, x.fabrics.join(', '), fmt.n(x.demand, 1), x.outside ? fmt.n(x.outside, 1) : '—', fmt.n(x.net, 1), x.requiredWarp === null ? '—' : fmt.int(x.requiredWarp), x.requiredWeft === null ? '—' : fmt.int(x.requiredWeft), x.required === null ? '—' : fmt.int(x.required), `${fmt.int(x.allocSpindles)} (${x.allocSides} sides)`, x.balanceSpindles === null ? statusText.unknown : signed(x.balanceSpindles), x.balanceKg === null ? '—' : `${x.balanceKg >= 0 ? '+' : '−'}${fmt.n(Math.abs(x.balanceKg), 1)}`]),
     {
       columnStyles: right,
       didParseCell: (d) => {
-        if (d.section === 'body' && d.column.index === 7) {
+        if (d.section === 'body' && d.column.index === 9) {
           const row = pc.yarnRows[d.row.index];
           if (row && row.status === 'short') d.cell.styles.textColor = bad;
           if (row && row.status === 'surplus') d.cell.styles.textColor = accent;
