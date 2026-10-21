@@ -1,6 +1,6 @@
 // TFO planner: dated plans per unit. List → plan (spindle balance) → edit (looms, TFO sides, outside yarn).
 import { useMemo, useState } from 'preact/hooks';
-import { fmt, isTpm, num, truthy } from '../calc.js';
+import { fmt, isTpm, num } from '../calc.js';
 import { DEFAULT_SPINDLES_PER_SIDE, groupLabel, planCalc, planLines, planVerdict, plansOf, spindlesPerSide, unitHasPlanner } from '../planner.js';
 import { backendMode, copyPlan, deletePlan, getIndex, savePlan, toast, useStore } from '../store.js';
 import { back, go, replace } from '../router.js';
@@ -146,7 +146,7 @@ export function PlanDetail({ id }) {
   const t = pc.totals;
   const verdict = planVerdict(pc);
   const unitName = pc.unit ? pc.unit.name : 'Unit deleted';
-  const problems = [...pc.loomRows, ...pc.tfoRows, ...pc.outsideRows, ...pc.stockYarnRows, ...pc.beamRows.filter((b) => !pc.isRunning)].filter((r) => r.problems.length);
+  const problems = [...pc.loomRows, ...pc.tfoRows, ...pc.outsideRows, ...pc.stockYarnRows].filter((r) => r.problems.length);
 
   return (
     <div>
@@ -161,7 +161,7 @@ export function PlanDetail({ id }) {
       />
       <div class="title-block" style={{ paddingTop: '4px' }}>
         <h1>{dateText(plan.plan_date, true)}</h1>
-        <div class="title-sub">{[unitName, plan.name, plan.notes].filter(Boolean).join(' · ')}{pc.isRunning ? <> · <Badge kind="amber">Running · warp not needed</Badge></> : null}</div>
+        <div class="title-sub">{[unitName, plan.name, plan.notes].filter(Boolean).join(' · ')}</div>
       </div>
 
       <div class="tiles plan-tiles">
@@ -173,7 +173,7 @@ export function PlanDetail({ id }) {
         <div class="tile">
           <span class="t-label">Spindles needed</span>
           <span class="t-value">{t.required === null ? '—' : fmt.int(t.required)}</span>
-          <span class="t-sub">{t.required === null ? `${fmt.n(t.net, 0)} kg/day to twist` : `warp ${fmt.int(t.requiredWarp)} · weft ${fmt.int(t.requiredWeft)}`}{t.outside ? ` · ${fmt.n(t.outside, 0)} kg/day bought` : ''}{t.stock ? ` · ${fmt.n(t.stock, 0)} kg/day stock` : ''}</span>
+          <span class="t-sub">{t.required === null ? `${fmt.n(t.net, 0)} kg/day to twist` : `for weft · ${fmt.n(t.net, 0)} kg/day to twist`}{t.outside ? ` · ${fmt.n(t.outside, 0)} kg/day bought` : ''}{t.stock ? ` · ${fmt.n(t.stock, 0)} kg/day stock` : ''}</span>
         </div>
         <div class="tile">
           <span class="t-label">Given out</span>
@@ -195,8 +195,8 @@ export function PlanDetail({ id }) {
         </div>
       ) : null}
 
-      <Section header="Running yarn requirement" footer={pc.runningRows.length ? 'kg/day of every yarn on the planned looms, shortage included. Spindles are for the TPM yarns, split into warp and weft, after outside yarn and yarn stock (taken off the weft first).' : null}>
-        {pc.runningRows.length ? (wide ? <RunningTable rows={pc.runningRows} totals={t} /> : <>{pc.runningRows.map((r) => <RunningCard r={r} />)}<Row label="Total running" strong value={<span class="strong">{fmt.n(t.running, 1)} kg</span>} valueSub={`warp ${fmt.n(t.runningWarp, 1)} · weft ${fmt.n(t.runningWeft, 1)} per day`} /></>) : <Row label="Nothing running yet" sub="Add loom lines from Edit." />}
+      <Section header="Running yarn requirement" footer={pc.runningRows.length ? 'kg/day of every yarn on the planned looms, shortage included. Weft only. Spindles are for the TPM yarns, after outside yarn and yarn stock.' : null}>
+        {pc.runningRows.length ? (wide ? <RunningTable rows={pc.runningRows} totals={t} /> : <>{pc.runningRows.map((r) => <RunningCard r={r} />)}<Row label="Total running" strong value={<span class="strong">{fmt.n(t.running, 1)} kg</span>} valueSub="weft per day" /></>) : <Row label="Nothing running yet" sub="Add loom lines from Edit." />}
       </Section>
 
       <Section header="Spindle balance by yarn" footer="Needed = (loom demand − outside yarn) ÷ output per spindle-day, at the speed of the TFO types given out for that yarn (or the first TFO type with a speed). TFO RPM is already × 2. Loom efficiency is the unit's.">
@@ -207,11 +207,11 @@ export function PlanDetail({ id }) {
         <div class="col">
           {pc.groupUse.map((u) => (
             <Section header={`${groupLabel(u.group)} · ${u.planned}${u.have === null ? ' looms' : ` of ${u.have} looms`} · ${u.free === null ? 'count not set' : u.free >= 0 ? `${u.free} available` : `${-u.free} over`}`}>
-              {u.rows.map((r) => <LoomRow r={r} running={pc.isRunning} />)}
+              {u.rows.map((r) => <LoomRow r={r} />)}
               {!u.rows.length ? <Row label="Nothing planned" sub={u.have === null ? 'Set the loom count on the unit.' : `${u.have} looms available`} /> : null}
             </Section>
           ))}
-          {pc.loomRows.some((r) => !r.group) ? <Section header="No loom group">{pc.loomRows.filter((r) => !r.group).map((r) => <LoomRow r={r} running={pc.isRunning} />)}</Section> : null}
+          {pc.loomRows.some((r) => !r.group) ? <Section header="No loom group">{pc.loomRows.filter((r) => !r.group).map((r) => <LoomRow r={r} />)}</Section> : null}
           {!pc.groupUse.length && !pc.loomRows.length ? <Section header="Loom plan"><Row label="No loom lines" /></Section> : null}
         </div>
         <div class="col">
@@ -235,20 +235,10 @@ export function PlanDetail({ id }) {
             {pc.outsideRows.map((r) => <Row label={r.yarn ? r.yarn.name : 'Yarn deleted'} sub={r.line.source || null} value={<span class="strong">{r.kg === null ? '—' : `${fmt.n(r.kg, 1)} kg`}</span>} valueSub="per day" />)}
             {!pc.outsideRows.length ? <Row label="None" sub="Twisted yarn bought in, kg per day." /> : null}
           </Section>
-          <Section header="Yarn stock" footer="Twisted yarn used from stock, kg per day. Taken off the weft first, then the warp.">
+          <Section header="Yarn stock" footer="Twisted yarn used from stock, kg per day. Taken off the weft demand.">
             {pc.stockYarnRows.map((r) => <Row label={r.yarn ? r.yarn.name : 'Yarn deleted'} value={<span class="strong">{r.kg === null ? '—' : `${fmt.n(r.kg, 1)} kg`}</span>} valueSub="per day" />)}
             {!pc.stockYarnRows.length ? <Row label="None" /> : null}
           </Section>
-          {pc.isRunning ? null : (
-            <Section header="Beam stock" footer="One beam loads one loom, so those looms need no warp yarn.">
-              {pc.beamRows.map((r) => (
-                <Row label={r.fabric ? r.fabric.name : 'Fabric deleted'} sub={r.fabric ? `${fmt.int(r.planned)} looms planned` : null} value={<span class="strong">{r.beams === null ? '—' : `${fmt.int(r.beams)} ${r.beams === 1 ? 'beam' : 'beams'}`}</span>} valueSub={`covers ${fmt.int(r.covered)} ${r.covered === 1 ? 'loom' : 'looms'}`}>
-                  {r.problems.length ? <div class="row-sub bad">{r.problems.join(' · ')}</div> : null}
-                </Row>
-              ))}
-              {!pc.beamRows.length ? <Row label="None" /> : null}
-            </Section>
-          )}
         </div>
       </div>
 
@@ -271,11 +261,11 @@ export function PlanDetail({ id }) {
   );
 }
 
-function LoomRow({ r, running }) {
+function LoomRow({ r }) {
   return (
     <Row
       label={r.fabric ? r.fabric.name : 'Fabric deleted'}
-      sub={[`${fmt.int(r.looms)} looms`, r.panna === 2 ? 'double panna' : null, r.rpm ? `${fmt.int(r.rpm)} RPM${num(r.line.rpm) ? ' (set here)' : ''}` : null, running ? 'warp loaded' : r.beamCovered ? `${fmt.int(r.beamCovered)} on beam stock` : null].filter(Boolean).join(' · ')}
+      sub={[`${fmt.int(r.looms)} looms`, r.panna === 2 ? 'double panna' : null, r.rpm ? `${fmt.int(r.rpm)} RPM${num(r.line.rpm) ? ' (set here)' : ''}` : null].filter(Boolean).join(' · ')}
       value={<span class="strong">{r.mPerDay === null ? '—' : `${fmt.int(r.mPerDay)} m`}</span>}
       valueSub="per day"
       onClick={r.fabric ? () => go(`/fabric/${r.fabric.id}`) : undefined}
@@ -292,13 +282,10 @@ function RunningTable({ rows, totals }) {
         <thead>
           <tr>
             <th class="txt"><span class="th">Yarn</span></th>
-            <th><span class="th">Warp kg/day</span></th>
-            <th><span class="th">Weft kg/day</span></th>
-            <th class="key"><span class="th">Total kg/day</span></th>
+            <th class="key"><span class="th">Weft kg/day</span></th>
             <th><span class="th">Outside</span></th>
-            <th><span class="th">Spindles warp</span></th>
-            <th><span class="th">Spindles weft</span></th>
-            <th class="key"><span class="th">Spindles total</span></th>
+            <th><span class="th">Stock</span></th>
+            <th class="key"><span class="th">Spindles needed</span></th>
           </tr>
         </thead>
         <tbody>
@@ -309,23 +296,17 @@ function RunningTable({ rows, totals }) {
                 <div class="tmeta">{[r.tpm ? `TPM${r.base ? ` of ${r.base.name}` : ''}` : null, r.fabrics.join(', ')].filter(Boolean).join(' · ')}</div>
                 {!r.known ? <div class="tmeta bad">Incomplete: a loom line is missing data</div> : null}
               </td>
-              <td class={r.warp ? '' : 'muted'}>{r.warp ? fmt.n(r.warp, 1) : '—'}</td>
-              <td class={r.weft ? '' : 'muted'}>{r.weft ? fmt.n(r.weft, 1) : '—'}</td>
               <td class="key">{fmt.n(r.total, 1)}</td>
               <td class={r.outside ? '' : 'muted'}>{r.outside ? fmt.n(r.outside, 1) : '—'}</td>
-              <td class={r.tpm ? '' : 'muted'}>{r.tpm && r.spindlesWarp !== null ? fmt.int(r.spindlesWarp) : '—'}</td>
-              <td class={r.tpm ? '' : 'muted'}>{r.tpm && r.spindlesWeft !== null ? fmt.int(r.spindlesWeft) : '—'}</td>
+              <td class={r.stock ? '' : 'muted'}>{r.stock ? fmt.n(r.stock, 1) : '—'}</td>
               <td class="key">{r.tpm && r.spindles !== null ? fmt.int(r.spindles) : '—'}</td>
             </tr>
           ))}
           <tr>
             <td class="txt strong">Total</td>
-            <td class="strong">{fmt.n(totals.runningWarp, 1)}</td>
-            <td class="strong">{fmt.n(totals.runningWeft, 1)}</td>
             <td class="key">{fmt.n(totals.running, 1)}</td>
             <td class="muted">{totals.outside ? fmt.n(totals.outside, 1) : '—'}</td>
-            <td class="strong">{totals.requiredWarp === null ? '—' : fmt.int(totals.requiredWarp)}</td>
-            <td class="strong">{totals.requiredWeft === null ? '—' : fmt.int(totals.requiredWeft)}</td>
+            <td class="muted">{totals.stock ? fmt.n(totals.stock, 1) : '—'}</td>
             <td class="key">{totals.required === null ? '—' : fmt.int(totals.required)}</td>
           </tr>
         </tbody>
@@ -338,12 +319,10 @@ function RunningCard({ r }) {
   return (
     <Row
       label={r.yarn.name}
-      sub={[r.tpm ? `TPM${r.base ? ` of ${r.base.name}` : ''}` : null, r.warp ? `warp ${fmt.n(r.warp, 1)}` : null, r.weft ? `weft ${fmt.n(r.weft, 1)}` : null].filter(Boolean).join(' · ')}
+      sub={[r.tpm ? `TPM${r.base ? ` of ${r.base.name}` : ''}` : null, r.fabrics.length ? r.fabrics.join(', ') : null].filter(Boolean).join(' · ')}
       value={<span class="strong">{fmt.n(r.total, 1)} kg</span>}
       valueSub={r.tpm && r.spindles !== null ? `${fmt.int(r.spindles)} spindles` : 'per day'}
     >
-      {r.tpm && r.spindles !== null ? <div class="row-sub">Spindles: warp {fmt.int(r.spindlesWarp)} · weft {fmt.int(r.spindlesWeft)} · total {fmt.int(r.spindles)}</div> : null}
-      {r.fabrics.length ? <div class="row-sub">{r.fabrics.join(', ')}</div> : null}
       {!r.known ? <div class="row-sub bad">Incomplete: a loom line is missing data</div> : null}
     </Row>
   );
@@ -358,15 +337,14 @@ function BalanceTable({ rows }) {
             <th class="txt"><span class="th">Yarn</span></th>
             <th><span class="th">Demand kg/day</span></th>
             <th><span class="th">Outside</span></th>
+            <th><span class="th">Stock</span></th>
             <th><span class="th">Net kg/day</span></th>
             <th class="opt"><span class="th">kg / spindle-day</span></th>
-            <th><span class="th">Needed warp</span></th>
-            <th><span class="th">Needed weft</span></th>
-            <th><span class="th">Needed total</span></th>
+            <th><span class="th">Spindles needed</span></th>
             <th><span class="th">Given out</span></th>
             <th class="key"><span class="th">Balance spindles</span></th>
             <th><span class="th">Balance sides</span></th>
-            <th class="opt"><span class="th">Balance kg/day</span></th>
+            <th class="key"><span class="th">Balance kg/day</span></th>
           </tr>
         </thead>
         <tbody>
@@ -379,15 +357,14 @@ function BalanceTable({ rows }) {
               </td>
               <td>{fmt.n(y.demand, 1)}</td>
               <td class={y.outside ? '' : 'muted'}>{y.outside ? fmt.n(y.outside, 1) : '—'}</td>
+              <td class={y.stock ? '' : 'muted'}>{y.stock ? fmt.n(y.stock, 1) : '—'}</td>
               <td>{fmt.n(y.net, 1)}</td>
               <td class="opt muted">{y.qRef === null ? '—' : fmt.n(y.qRef, 4)}</td>
-              <td>{y.requiredWarp === null ? '—' : fmt.int(y.requiredWarp)}</td>
-              <td>{y.requiredWeft === null ? '—' : fmt.int(y.requiredWeft)}</td>
               <td class="strong">{y.required === null ? '—' : fmt.int(y.required)}</td>
               <td>{fmt.int(y.allocSpindles)}<div class="tmeta">{y.allocSides} {y.allocSides === 1 ? 'side' : 'sides'}</div></td>
               <td class={`key ${y.status === 'short' ? 'bad' : y.status === 'unknown' ? '' : 'good'}`}>{y.status === 'unknown' ? '—' : signed(y.balanceSpindles)}</td>
               <td class={y.status === 'short' ? 'bad' : ''}>{y.balanceSides === null ? '—' : `${y.balanceSides >= 0 ? '+' : '−'}${fmt.n(Math.abs(y.balanceSides), 1)}`}</td>
-              <td class="opt">{signedKg(y.balanceKg)}</td>
+              <td class={`key ${y.status === 'short' ? 'bad' : y.status === 'unknown' ? '' : 'good'}`}>{signedKg(y.balanceKg)}</td>
             </tr>
           ))}
         </tbody>
@@ -412,8 +389,7 @@ function BalanceCard({ y }) {
       <div class="kv">
         <span class="k">Demand</span><span class="v">{fmt.n(y.demand, 1)} kg/day</span>
         {y.outside ? <><span class="k">Outside</span><span class="v">− {fmt.n(y.outside, 1)} kg/day</span></> : null}
-        <span class="k">Spindles for warp</span><span class="v">{y.requiredWarp === null ? '—' : fmt.int(y.requiredWarp)}</span>
-        <span class="k">Spindles for weft</span><span class="v">{y.requiredWeft === null ? '—' : fmt.int(y.requiredWeft)}</span>
+        {y.stock ? <><span class="k">Stock</span><span class="v">− {fmt.n(y.stock, 1)} kg/day</span></> : null}
         <span class="k">Spindles needed</span><span class="v">{y.required === null ? '—' : fmt.int(y.required)}{y.sidesNeeded !== null ? ` (${fmt.n(y.sidesNeeded, 1)} sides)` : ''}</span>
         <span class="k">Given out</span><span class="v">{fmt.int(y.allocSpindles)} ({y.allocSides} {y.allocSides === 1 ? 'side' : 'sides'})</span>
         <span class="k">Balance</span><span class="v">{signedKg(y.balanceKg)} kg/day</span>
@@ -484,7 +460,7 @@ function PlanEditForm({ id, query, unitId }) {
   const wide = useWide();
   const existing = id ? (idx.tables.TfoPlans || []).find((p) => p.id === id) : null;
   const unit = idx.unitsById[unitId];
-  const [plan, setPlan] = useState(() => (existing ? strip(existing) : { unit_id: unitId, plan_date: query.date || today(), name: query.name || '', running: false, notes: '' }));
+  const [plan, setPlan] = useState(() => (existing ? strip(existing) : { unit_id: unitId, plan_date: query.date || today(), name: query.name || '', notes: '' }));
   const [lines, setLines] = useState(() => {
     if (!existing) return { looms: [], tfo: [], outside: [], stock: [] };
     const l = planLines(idx, id);
@@ -518,15 +494,15 @@ function PlanEditForm({ id, query, unitId }) {
       looms: lines.looms.filter((l) => l.fabric_id || l.loom_group_id || num(l.looms)).map((l) => ({ ...l, looms: num(l.looms) ?? '', panna: num(l.panna) === 2 ? 2 : 1, rpm: num(l.rpm) ?? '' })),
       tfo: lines.tfo.filter((l) => l.yarn_id || l.tfo_type_id || num(l.sides)).map((l) => ({ ...l, sides: num(l.sides) ?? '' })),
       outside: lines.outside.filter((l) => l.yarn_id || num(l.kg_per_day)).map((l) => ({ ...l, kg_per_day: num(l.kg_per_day) ?? '', source: String(l.source || '').trim() })),
-      stock: lines.stock.filter((l) => (l.kind === 'beam' ? l.fabric_id : l.yarn_id) || num(l.qty)).map((l) => ({ ...l, qty: num(l.qty) ?? '' })),
+      stock: lines.stock.filter((l) => l.yarn_id || num(l.qty)).map((l) => ({ ...l, qty: num(l.qty) ?? '' })),
     };
     if (clean.looms.some((l) => !l.fabric_id || !l.loom_group_id)) return toast('Each loom line needs a loom group and a fabric', 'error');
     if (clean.tfo.some((l) => !l.yarn_id || !l.tfo_type_id)) return toast('Each TFO line needs a TFO type and a yarn', 'error');
     if (clean.outside.some((l) => !l.yarn_id)) return toast('Each outside yarn line needs a yarn', 'error');
-    if (clean.stock.some((l) => (l.kind === 'beam' ? !l.fabric_id : !l.yarn_id))) return toast('Each stock line needs a yarn or a fabric', 'error');
+    if (clean.stock.some((l) => !l.yarn_id)) return toast('Each stock line needs a yarn', 'error');
     setBusy(true);
     try {
-      const pid = await savePlan({ ...plan, running: truthy(plan.running), name: String(plan.name || '').trim(), notes: String(plan.notes || '').trim() }, clean);
+      const pid = await savePlan({ ...plan, name: String(plan.name || '').trim(), notes: String(plan.notes || '').trim() }, clean);
       if (existing) back(`/plan/${pid}`);
       else replace(`/plan/${pid}`);
     } catch (e) {
@@ -652,10 +628,9 @@ function PlanEditForm({ id, query, unitId }) {
     </Section>
   );
 
-  const stockIdx = (kind) => lines.stock.map((l, i) => ({ l, i })).filter(({ l }) => (kind === 'beam' ? l.kind === 'beam' : l.kind !== 'beam'));
   const yarnStockSection = (
-    <Section header="Yarn stock" footer="Twisted yarn you will use from stock, kg per day. Taken off the weft first, then the warp.">
-      {stockIdx('yarn').map(({ l, i }) => (
+    <Section header="Yarn stock" footer="Twisted yarn you will use from stock, kg per day. Taken off the weft demand.">
+      {lines.stock.map((l, i) => (
         <div class="line">
           <div class="line-top">
             <select class="line-select" value={l.yarn_id || ''} aria-label="Stock yarn" onChange={(e) => setLine('stock', i, { yarn_id: e.currentTarget.value })}>
@@ -669,41 +644,16 @@ function PlanEditForm({ id, query, unitId }) {
           </div>
         </div>
       ))}
-      <button type="button" class="add-row" onClick={() => addLine('stock', { kind: 'yarn', yarn_id: '', fabric_id: '', qty: '' })}><Icon.plus size={20} />Add yarn stock</button>
+      <button type="button" class="add-row" onClick={() => addLine('stock', { yarn_id: '', qty: '' })}><Icon.plus size={20} />Add yarn stock</button>
     </Section>
   );
-  const beamStockSection = truthy(plan.running) ? null : (
-    <Section header="Beam stock" footer="Beams in stock per fabric. One beam loads one loom, so those looms need no warp yarn.">
-      {stockIdx('beam').map(({ l, i }) => {
-        const b = pc.beamRows.find((x) => x.line === lines.stock[i]);
-        return (
-          <div class="line">
-            <div class="line-top">
-              <select class="line-select" value={l.fabric_id || ''} aria-label="Beam fabric" onChange={(e) => setLine('stock', i, { fabric_id: e.currentTarget.value })}>
-                <option value="">Fabric</option>
-                {fabricOptions.map((g) => <optgroup label={g.group}>{g.options.map((o) => <option value={o.value}>{o.label}</option>)}</optgroup>)}
-              </select>
-              <IconButton label="Remove beam stock line" onClick={() => dropLine('stock', i)}><span class="bad"><Icon.trash size={20} /></span></IconButton>
-            </div>
-            <div class="line-bottom">
-              <label class="mini"><span>Beams</span><input inputmode="numeric" value={l.qty ?? ''} onInput={(e) => setLine('stock', i, { qty: e.currentTarget.value })} aria-label="Number of beams" /></label>
-              <div class="mini-out"><span class="strong">{b ? fmt.int(b.covered) : '—'}</span><span>looms covered</span></div>
-            </div>
-            {b && b.problems.length && l.fabric_id ? <div class="row-sub bad" style={{ marginTop: '4px' }}>{b.problems.join(' · ')}</div> : null}
-          </div>
-        );
-      })}
-      <button type="button" class="add-row" onClick={() => addLine('stock', { kind: 'beam', yarn_id: '', fabric_id: '', qty: '' })}><Icon.plus size={20} />Add beam stock</button>
-    </Section>
-  );
-
   // live balance while editing, so sides can be given out to match
   const liveSection = (
     <Section header="Balance as you edit" footer={pc.totals.idleSides !== null ? `${pc.totals.idleSides} ${pc.totals.idleSides === 1 ? 'side' : 'sides'} free across ${types.map((t) => t.name).join(' and ')}.` : null}>
       {pc.yarnRows.map((y) => (
         <Row
           label={y.yarn.name}
-          sub={`Needed ${y.required === null ? '—' : `${fmt.int(y.required)} (warp ${fmt.int(y.requiredWarp)} · weft ${fmt.int(y.requiredWeft)})`}${y.sidesNeeded !== null ? ` · ${fmt.n(y.sidesNeeded, 1)} sides` : ''} · given ${fmt.int(y.allocSpindles)}`}
+          sub={`Needed ${y.required === null ? '—' : fmt.int(y.required)}${y.sidesNeeded !== null ? ` · ${fmt.n(y.sidesNeeded, 1)} sides` : ''} · given ${fmt.int(y.allocSpindles)}`}
           value={<span class={`strong ${y.status === 'short' ? 'bad' : y.status === 'unknown' ? '' : 'good'}`}>{y.status === 'unknown' ? '—' : signed(y.balanceSpindles)}</span>}
           valueSub={y.balanceSides === null ? STATUS[y.status][1] : `${y.balanceSides >= 0 ? '+' : '−'}${fmt.n(Math.abs(y.balanceSides), 1)} sides`}
         />
@@ -712,7 +662,7 @@ function PlanEditForm({ id, query, unitId }) {
     </Section>
   );
   const runningLive = (
-    <Section header="Running yarn as you edit" footer={pc.runningRows.length ? `Total ${fmt.n(pc.totals.running, 1)} kg/day: warp ${fmt.n(pc.totals.runningWarp, 1)}, weft ${fmt.n(pc.totals.runningWeft, 1)}.` : null}>
+    <Section header="Running yarn as you edit" footer={pc.runningRows.length ? `Total weft ${fmt.n(pc.totals.running, 1)} kg/day.` : null}>
       {pc.runningRows.map((r) => <RunningCard r={r} />)}
       {!pc.runningRows.length ? <Row label="Add a loom line to see the yarn running" /> : null}
     </Section>
@@ -730,12 +680,9 @@ function PlanEditForm({ id, query, unitId }) {
         <Field label="Name" value={plan.name} onInput={up('name')} placeholder="e.g. Nov plan" />
         <Field label="Notes" value={plan.notes} onInput={up('notes')} placeholder="optional" />
       </Section>
-      <Section footer={truthy(plan.running) ? 'Running: beams are already loaded, so no warp is needed. Only weft counts.' : 'Not running: beam stock can cover the warp of some looms.'}>
-        <Toggle label="Currently running" value={truthy(plan.running)} onChange={up('running')} />
-      </Section>
       {wide ? (
         <div class="detail-cols">
-          <div class="col">{loomSection}{outsideSection}{yarnStockSection}{beamStockSection}</div>
+          <div class="col">{loomSection}{outsideSection}{yarnStockSection}</div>
           <div class="col">{liveSection}{runningLive}{tfoSection}</div>
         </div>
       ) : (
@@ -744,7 +691,6 @@ function PlanEditForm({ id, query, unitId }) {
           {tfoSection}
           {outsideSection}
           {yarnStockSection}
-          {beamStockSection}
           {liveSection}
           {runningLive}
         </>

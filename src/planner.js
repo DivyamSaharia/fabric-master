@@ -9,9 +9,8 @@
 //   spindles needed = net ÷ output per spindle-day
 //   balance = spindles given out − spindles needed (+ surplus, − deficit)
 //
-// A plan can be marked running: beams are already loaded, so no warp is needed and only weft counts.
-// Not running: beam stock (beams for a fabric, one beam per loom) takes those looms' warp out of the demand.
-// Yarn stock (twisted yarn, kg/day) is used like outside yarn: weft first, then warp.
+// The planner is for weft only: every TFO side runs weft yarn, so warp yarn is left out of the demand.
+// Yarn stock (twisted yarn, kg/day) is used like outside yarn: it comes off the weft demand.
 //
 // Conventions: TFO RPM is entered already × 2 (tfoOutput does not double it). Loom efficiency is the unit's.
 // TFO efficiency: the speed's own, else the TFO type's, else the unit default.
@@ -70,11 +69,7 @@ export function planCalc(plan, lines, idx) {
   const unitEff = num(unit && unit.loom_eff_pct);
   if (unit && unitEff === null) issues.push('Set loom efficiency on the unit to work out loom output.');
 
-  const isRunning = truthy(plan.running);
   const stockLines = lines.stock || [];
-  // beams left to hand out per fabric (not running only)
-  const beamPool = new Map();
-  if (!isRunning) for (const s of stockLines) if (s.kind === 'beam' && s.fabric_id) beamPool.set(s.fabric_id, (beamPool.get(s.fabric_id) || 0) + (num(s.qty) ?? 0));
 
   const calcCache = {};
   const calcOf = (f) => (calcCache[f.id] ||= fabricCalc(f, idx));
@@ -82,14 +77,14 @@ export function planCalc(plan, lines, idx) {
   // ---------- looms → yarn demand ----------
   const yarns = new Map();
   const yarnRow = (yarn) => {
-    if (!yarns.has(yarn.id)) yarns.set(yarn.id, { yarn, demand: 0, warp: 0, weft: 0, demandKnown: true, fabrics: [], outside: 0, stock: 0, allocSides: 0, allocSpindles: 0, allocKg: 0, allocKnown: true, allocTypes: [] });
+    if (!yarns.has(yarn.id)) yarns.set(yarn.id, { yarn, demand: 0, weft: 0, demandKnown: true, fabrics: [], outside: 0, stock: 0, allocSides: 0, allocSpindles: 0, allocKg: 0, allocKnown: true, allocTypes: [] });
     return yarns.get(yarn.id);
   };
 
-  // every yarn on the running looms (TPM or not), kg/day split warp and weft
+  // every weft yarn on the planned looms (TPM or not), kg/day
   const running = new Map();
   const runRow = (yarn) => {
-    if (!running.has(yarn.id)) running.set(yarn.id, { yarn, warp: 0, weft: 0, known: true, fabrics: [] });
+    if (!running.has(yarn.id)) running.set(yarn.id, { yarn, weft: 0, known: true, fabrics: [] });
     return running.get(yarn.id);
   };
 
@@ -98,19 +93,13 @@ export function planCalc(plan, lines, idx) {
     const group = groups.find((g) => g.id === line.loom_group_id) || null;
     const looms = num(line.looms) ?? 0;
     const panna = num(line.panna) === 2 ? 2 : 1;
-    const out = { line, fabric, group, looms, panna, beamCovered: 0, warpFactor: isRunning ? 0 : 1, rpm: null, mPerLoom: null, mPerDay: null, tpm: [], problems: [] };
+    const out = { line, fabric, group, looms, panna, rpm: null, mPerLoom: null, mPerDay: null, tpm: [], problems: [] };
     if (!fabric) {
       out.problems.push('Choose a fabric');
       return out;
     }
     const c = calcOf(fabric);
     out.calc = c;
-    if (!isRunning && looms) {
-      const covered = Math.min(beamPool.get(fabric.id) || 0, looms);
-      beamPool.set(fabric.id, (beamPool.get(fabric.id) || 0) - covered);
-      out.beamCovered = covered;
-      out.warpFactor = 1 - covered / looms;
-    }
     out.rpm = num(line.rpm) ?? num(panna === 2 ? fabric.loom_rpm_dp : fabric.loom_rpm);
     if (!group) out.problems.push('Choose a loom group');
     if (!looms) out.problems.push('Enter the number of looms');
@@ -123,26 +112,23 @@ export function planCalc(plan, lines, idx) {
     if (group && String(fabric.weave || '').toLowerCase() === 'dobby' && String(group.shedding || '').toLowerCase() !== 'dobby') out.problems.push('Dobby quality on a non-dobby loom');
     out.mPerLoom = out.rpm && unitEff && c.ppi ? ((out.rpm * MIN_PER_DAY * (unitEff / 100)) / (c.ppi * IN_PER_M)) * panna : null;
     out.mPerDay = out.mPerLoom !== null ? out.mPerLoom * looms : null;
-    const kgOf = (x) => {
-      if (out.mPerDay === null || x.gpm === null) return null;
-      return ((out.mPerDay * x.gpm) / 1000) * (x.line.side === 'warp' ? out.warpFactor : 1);
-    };
-    for (const x of [...c.warp, ...c.weft]) {
+    const kgOf = (x) => (out.mPerDay === null || x.gpm === null ? null : (out.mPerDay * x.gpm) / 1000);
+    for (const x of c.weft) {
       if (!x.yarn) continue;
       const kg = kgOf(x);
       const r = runRow(x.yarn);
       if (kg === null) r.known = false;
-      else r[x.line.side === 'warp' ? 'warp' : 'weft'] += kg;
+      else r.weft += kg;
       if (!r.fabrics.includes(fabric.name)) r.fabrics.push(fabric.name);
     }
-    for (const x of c.tpmLines) {
+    for (const x of c.tpmLines.filter((l) => l.line.side !== 'warp')) {
       const kg = kgOf(x);
       out.tpm.push({ yarn: x.yarn, side: x.line.side, kg });
       const y = yarnRow(x.yarn);
       if (kg === null) y.demandKnown = false;
       else {
         y.demand += kg;
-        y[x.line.side === 'warp' ? 'warp' : 'weft'] += kg;
+        y.weft += kg;
       }
       if (!y.fabrics.includes(fabric.name)) y.fabrics.push(fabric.name);
     }
@@ -166,23 +152,12 @@ export function planCalc(plan, lines, idx) {
   });
 
   // ---------- stock ----------
-  const stockYarnRows = stockLines.filter((s) => s.kind !== 'beam').map((line) => {
+  const stockYarnRows = stockLines.map((line) => {
     const yarn = idx.yarnsById[line.yarn_id] || null;
     const kg = num(line.qty);
     if (yarn && kg !== null) yarnRow(yarn).stock += kg;
     const problems = yarn ? (kg === null ? ['Enter kg per day'] : isTpm(yarn) ? [] : [`${yarn.name} is not a TPM yarn`]) : ['Choose a yarn'];
     return { line, yarn, kg, problems };
-  });
-  const beamRows = stockLines.filter((s) => s.kind === 'beam').map((line) => {
-    const fabric = idx.fabricsById[line.fabric_id] || null;
-    const beams = num(line.qty);
-    const planned = fabric ? loomRows.filter((r) => r.fabric && r.fabric.id === fabric.id).reduce((s, r) => s + r.looms, 0) : 0;
-    const problems = [];
-    if (!fabric) problems.push('Choose a fabric');
-    if (beams === null) problems.push('Enter the number of beams');
-    if (isRunning) problems.push('Ignored: the plan is running');
-    else if (fabric && !planned) problems.push(`${fabric.name} is not on any loom in this plan`);
-    return { line, fabric, beams, planned, covered: fabric && !isRunning ? Math.min(beams ?? 0, planned) : 0, problems };
   });
 
   // ---------- TFO sides given out ----------
@@ -249,12 +224,7 @@ export function planCalc(plan, lines, idx) {
         }
       }
     }
-    // outside yarn and stock come off the weft first (twisted yarn is usually bought for weft), then the warp
-    const netWeft = Math.max(y.weft - supply, 0);
-    const netWarp = Math.max(y.warp - Math.max(supply - y.weft, 0), 0);
     const required = qRef && y.demandKnown ? Math.max(net, 0) / qRef : null;
-    const requiredWarp = required === null ? null : netWarp / qRef;
-    const requiredWeft = required === null ? null : netWeft / qRef;
     const balanceKg = y.demandKnown && y.allocKnown ? y.allocKg - net : null;
     const balanceSpindles = balanceKg !== null && qRef ? balanceKg / qRef : null;
     const perSide = spindlesPerSide(types.find((t) => t.name === refType) || types[0]);
@@ -264,15 +234,15 @@ export function planCalc(plan, lines, idx) {
     if (!y.demandKnown) problems.push('Demand incomplete: a loom line is missing data');
     if (!y.allocKnown) problems.push('Output incomplete: a TFO line has no speed');
     if (!qRef && net > 0) problems.push(`No TFO speed for ${y.yarn.name} on this unit`);
-    return { ...y, net, netWarp, netWeft, qRef, refType, required, requiredWarp, requiredWeft, balanceKg, balanceSpindles, sidesNeeded: required === null ? null : required / perSide, balanceSides: balanceSpindles === null ? null : balanceSpindles / perSide, status, problems };
+    return { ...y, net, qRef, refType, required, balanceKg, balanceSpindles, sidesNeeded: required === null ? null : required / perSide, balanceSides: balanceSpindles === null ? null : balanceSpindles / perSide, status, problems };
   }).sort((a, b) => (a.balanceSpindles ?? Infinity) - (b.balanceSpindles ?? Infinity) || String(a.yarn.name).localeCompare(String(b.yarn.name)));
 
   const runningRows = [...running.values()].map((r) => {
-    const total = r.warp + r.weft;
+    const total = r.weft;
     const tpm = isTpm(r.yarn);
     const sp = tpm ? yarnRows.find((y) => y.yarn.id === r.yarn.id) : null;
     const base = tpm ? idx.yarnsById[r.yarn.base_yarn_id] || null : null;
-    return { ...r, total, tpm, base, outside: sp ? sp.outside : 0, stock: sp ? sp.stock : 0, net: sp ? sp.net : total, spindles: sp ? sp.required : null, spindlesWarp: sp ? sp.requiredWarp : null, spindlesWeft: sp ? sp.requiredWeft : null, spindleStatus: sp ? sp.status : null, balanceSpindles: sp ? sp.balanceSpindles : null };
+    return { ...r, total, tpm, base, outside: sp ? sp.outside : 0, stock: sp ? sp.stock : 0, net: sp ? sp.net : total, spindles: sp ? sp.required : null, spindleStatus: sp ? sp.status : null, balanceSpindles: sp ? sp.balanceSpindles : null };
   }).sort((a, b) => b.total - a.total || String(a.yarn.name).localeCompare(String(b.yarn.name)));
 
   const known = yarnRows.filter((y) => y.balanceSpindles !== null);
@@ -281,20 +251,14 @@ export function planCalc(plan, lines, idx) {
   const totals = {
     looms: loomRows.reduce((s, r) => s + r.looms, 0),
     running: runningRows.reduce((s, r) => s + r.total, 0),
-    runningWarp: runningRows.reduce((s, r) => s + r.warp, 0),
-    runningWeft: runningRows.reduce((s, r) => s + r.weft, 0),
     runningKnown: runningRows.every((r) => r.known),
     metres: loomRows.every((r) => r.mPerDay !== null || !r.looms) ? loomRows.reduce((s, r) => s + (r.mPerDay || 0), 0) : null,
     demand: yarnRows.reduce((s, y) => s + y.demand, 0),
     outside: yarnRows.reduce((s, y) => s + y.outside, 0),
     stock: yarnRows.reduce((s, y) => s + y.stock, 0),
-    beams: beamRows.reduce((s, r) => s + (r.beams ?? 0), 0),
-    beamLooms: loomRows.reduce((s, r) => s + r.beamCovered, 0),
     net: yarnRows.reduce((s, y) => s + y.net, 0),
     allocKg: yarnRows.reduce((s, y) => s + y.allocKg, 0),
     required: yarnRows.every((y) => y.required !== null) ? yarnRows.reduce((s, y) => s + y.required, 0) : null,
-    requiredWarp: yarnRows.every((y) => y.required !== null) ? yarnRows.reduce((s, y) => s + y.requiredWarp, 0) : null,
-    requiredWeft: yarnRows.every((y) => y.required !== null) ? yarnRows.reduce((s, y) => s + y.requiredWeft, 0) : null,
     deficit: known.filter((y) => y.balanceSpindles < -0.5).reduce((s, y) => s - y.balanceSpindles, 0),
     surplus: known.filter((y) => y.balanceSpindles > 0.5).reduce((s, y) => s + y.balanceSpindles, 0),
     shortYarns: known.filter((y) => y.status === 'short').length,
@@ -305,8 +269,8 @@ export function planCalc(plan, lines, idx) {
     idleSpindles: typeUse.every((u) => u.idle !== null) ? typeUse.reduce((s, u) => s + Math.max(u.idle, 0) * u.perSide, 0) : null,
   };
 
-  const lineProblems = [...loomRows, ...tfoRows, ...outsideRows, ...stockYarnRows, ...beamRows.filter(() => !isRunning)].filter((r) => r.problems.length).length;
-  return { unit, isRunning, types, groups, loomRows, tfoRows, outsideRows, stockYarnRows, beamRows, groupUse, typeUse, yarnRows, runningRows, totals, issues, lineProblems };
+  const lineProblems = [...loomRows, ...tfoRows, ...outsideRows, ...stockYarnRows].filter((r) => r.problems.length).length;
+  return { unit, types, groups, loomRows, tfoRows, outsideRows, stockYarnRows, groupUse, typeUse, yarnRows, runningRows, totals, issues, lineProblems };
 }
 
 // One-line verdict for lists: "Short 1,240 spindles" / "Surplus 300 spindles" / "Balanced".

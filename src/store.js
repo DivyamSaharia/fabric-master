@@ -266,7 +266,6 @@ export async function deleteFabric(fabricId) {
     { op: 'delete', table: 'FabricYarns', ids: (idx.linesByFabric[fabricId] || []).map((l) => l.id) },
     { op: 'delete', table: 'Assignments', ids: (idx.assignmentsByFabric[fabricId] || []).map((a) => a.id) },
     { op: 'delete', table: 'PlanLooms', ids: (idx.tables.PlanLooms || []).filter((l) => l.fabric_id === fabricId).map((l) => l.id) },
-    { op: 'delete', table: 'PlanStock', ids: (idx.tables.PlanStock || []).filter((l) => l.fabric_id === fabricId).map((l) => l.id) },
     { op: 'delete', table: 'Fabrics', ids: [fabricId] },
   ].filter((o) => o.ids.length);
   for (const p of idx.photosByFabric[fabricId] || []) await backend.deletePhoto(p);
@@ -299,7 +298,7 @@ export function yarnUsage(yarnId) {
 
 // TFO plans whose loom lines use this fabric.
 export function fabricPlanCount(fabricId) {
-  return new Set([...(getIndex().tables.PlanLooms || []), ...(getIndex().tables.PlanStock || [])].filter((l) => l.fabric_id === fabricId).map((l) => l.plan_id)).size;
+  return new Set((getIndex().tables.PlanLooms || []).filter((l) => l.fabric_id === fabricId).map((l) => l.plan_id)).size;
 }
 
 export async function deleteRates(ids) {
@@ -405,7 +404,7 @@ export async function copyPlan(planId, planDate, name) {
   for (const [key, [table]] of Object.entries(PLAN_TABLES)) {
     lines[key] = (idx.tables[table] || []).filter((l) => l.plan_id === planId).sort((a, b) => (num(a.sort) ?? 0) - (num(b.sort) ?? 0)).map(strip);
   }
-  return savePlan({ unit_id: src.unit_id, plan_date: planDate, name: name ?? src.name ?? '', running: src.running || '', notes: src.notes || '' }, lines);
+  return savePlan({ unit_id: src.unit_id, plan_date: planDate, name: name ?? src.name ?? '', notes: src.notes || '' }, lines);
 }
 
 export async function deletePlan(planId) {

@@ -11,12 +11,12 @@ export const TABLES = {
   Assignments: ['id', 'fabric_id', 'unit_id', 'updated_at', 'updated_by'],
   Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
   // Dated TFO plans: what each loom group runs, how TFO sides are given out, and twisted yarn bought in.
-  TfoPlans: ['id', 'unit_id', 'plan_date', 'name', 'running', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
+  TfoPlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
   PlanLooms: ['id', 'plan_id', 'loom_group_id', 'fabric_id', 'looms', 'panna', 'rpm', 'sort', 'updated_at', 'updated_by'],
   PlanTfo: ['id', 'plan_id', 'tfo_type_id', 'yarn_id', 'sides', 'sort', 'updated_at', 'updated_by'],
   PlanOutside: ['id', 'plan_id', 'yarn_id', 'kg_per_day', 'source', 'sort', 'updated_at', 'updated_by'],
-  // Stock: kind 'yarn' = twisted yarn in stock (yarn_id, qty kg/day to use); kind 'beam' = beams in stock (fabric_id, qty beams).
-  PlanStock: ['id', 'plan_id', 'kind', 'yarn_id', 'fabric_id', 'qty', 'sort', 'updated_at', 'updated_by'],
+  // Twisted yarn used from stock: yarn_id, qty = kg/day.
+  PlanStock: ['id', 'plan_id', 'yarn_id', 'qty', 'sort', 'updated_at', 'updated_by'],
 };
 
 export const TABLE_NAMES = Object.keys(TABLES);

@@ -23,9 +23,13 @@ it('plan Excel has running yarn and loom group tabs, named by the plan date', as
   const wb = XLSX.read(await blob.arrayBuffer(), { type: 'array' });
   expect(wb.SheetNames).toEqual(['Spindle balance', 'Running yarn', 'Loom groups', 'Loom plan', 'TFO sides', 'TFO machines', 'Outside yarn']);
   const running = XLSX.utils.sheet_to_json(wb.Sheets['Running yarn']);
-  expect(running).toHaveLength(6);
-  expect(running[0]).toMatchObject({ Yarn: '75D Polyester FDY', 'Total kg/day': 317.1 });
-  expect(running.at(-1)).toMatchObject({ Yarn: 'Total', 'Total kg/day': 1071.5 });
+  expect(running).toHaveLength(4); // 3 weft TPM yarns + total
+  expect(running[0]).toMatchObject({ 'Weft kg/day': expect.any(Number) });
+  expect(running.at(-1)).toMatchObject({ Yarn: 'Total', 'Weft kg/day': 533.6 });
+  expect(Object.keys(running[0]).join(' ')).not.toMatch(/warp/i);
+  const balance = XLSX.utils.sheet_to_json(wb.Sheets['Spindle balance']);
+  expect(Object.keys(balance[0])).toEqual(expect.arrayContaining(['Balance spindles', 'Balance kg/day', 'Spindles needed']));
+  expect(Object.keys(balance[0]).join(' ')).not.toMatch(/warp/i);
   const groups = XLSX.utils.sheet_to_json(wb.Sheets['Loom groups']);
   expect(groups.find((g) => g['Loom group'] === 'Toyota · 280 cm · Plain')).toMatchObject({ 'Looms planned': 32, 'Looms available': 8 });
 });

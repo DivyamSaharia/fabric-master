@@ -20,7 +20,6 @@ describe('planCalc', () => {
     expect(pc.loomRows[0].mPerDay).toBeCloseTo(crepeMPerLoom * 20, 6);
     expect(y.demand).toBeCloseTo((crepeMPerLoom * 20 * crepeWeftGpm) / 1000, 6);
     expect(y.weft).toBeCloseTo(y.demand, 9);
-    expect(y.warp).toBe(0);
     // nothing given out yet: needed at the first TFO type's speed, all of it short
     expect(y.refType).toBe('M/C 1–12');
     expect(y.required).toBeCloseTo(y.demand / q75, 6);
@@ -130,31 +129,31 @@ describe('planCalc', () => {
     expect(pc.totals.looms).toBe(42);
     expect(pc.totals.capSpindles).toBe(16 * 2 * 252);
     expect(pc.totals.idleSides).toBe(8);
-    expect(planVerdict(pc).kind).toBe('bad');
-    expect(pc.yarnRows[0].yarn.id).toBe('y_tpm60'); // most short first
+    // weft only: all three yarns have more spindles given out than needed
+    expect(planVerdict(pc).kind).toBe('good');
+    expect(planVerdict(pc).text).toBe('Surplus 1,077 spindles');
+    expect(pc.yarnRows[0].yarn.id).toBe('y_tpm75'); // smallest balance first
+    expect(pc.yarnRows[0].balanceSpindles).toBeCloseTo(115.76, 1);
+    expect(pc.yarnRows[0].balanceKg).toBeCloseTo(11.25, 1);
   });
 });
 
-describe('running yarn requirement', () => {
-  it('lists every yarn on the running looms, split warp and weft, TPM or not', () => {
+describe('running yarn requirement (weft only)', () => {
+  it('lists only the weft yarn on the planned looms, TPM or not', () => {
     const idx = idxOf();
     const pc = planCalc(plan, { looms: [{ loom_group_id: 'lg2', fabric_id: 'f_crepe', looms: 20, panna: 1 }], tfo: [], outside: [] }, idx);
-    const warpGpm = ((6000 * 75) / 9000) * 1.02; // 75D FDY, 6000 ends, 2% shortage
     const m = crepeMPerLoom * 20;
-    const warp = pc.runningRows.find((r) => r.yarn.id === 'y_fdy75');
     const weft = pc.runningRows.find((r) => r.yarn.id === 'y_tpm75');
-    expect(pc.runningRows).toHaveLength(2);
-    expect(warp.tpm).toBe(false);
-    expect(warp.warp).toBeCloseTo((m * warpGpm) / 1000, 6);
-    expect(warp.weft).toBe(0);
+    expect(pc.runningRows).toHaveLength(1); // the 75D FDY warp is left out
+    expect(pc.runningRows.find((r) => r.yarn.id === 'y_fdy75')).toBeUndefined();
     expect(weft.tpm).toBe(true);
     expect(weft.weft).toBeCloseTo((m * crepeWeftGpm) / 1000, 6);
     expect(weft.base.id).toBe('y_fdy75');
     expect(weft.spindles).toBeCloseTo(weft.total / q75, 6);
-    expect(pc.totals.running).toBeCloseTo(warp.total + weft.total, 6);
+    expect(pc.totals.running).toBeCloseTo(weft.total, 6);
   });
 
-  it('adds the same yarn from different fabrics and keeps outside yarn off the TPM net', () => {
+  it('adds the same weft yarn from different fabrics and keeps outside yarn off the TPM net', () => {
     const idx = idxOf();
     const pc = planCalc(plan, {
       looms: [{ loom_group_id: 'lg2', fabric_id: 'f_crepe', looms: 10 }, { loom_group_id: 'lg2', fabric_id: 'f_pv', looms: 10, rpm: 600 }],
@@ -162,102 +161,53 @@ describe('running yarn requirement', () => {
       outside: [{ yarn_id: 'y_tpm75', kg_per_day: 30 }],
     }, idx);
     const fdy = pc.runningRows.find((r) => r.yarn.id === 'y_fdy75');
-    expect(fdy.warp).toBeGreaterThan(0); // crepe warp
     expect(fdy.weft).toBeGreaterThan(0); // PV weft
-    expect(fdy.fabrics).toEqual(['Poly Crepe 60', 'PV Plain 60']);
+    expect(fdy.fabrics).toEqual(['PV Plain 60']);
     const tpm = pc.runningRows.find((r) => r.yarn.id === 'y_tpm75');
     expect(tpm.outside).toBe(30);
     expect(tpm.net).toBeCloseTo(tpm.total - 30, 9);
   });
 });
 
-describe('spindles needed, warp and weft', () => {
-  it('splits the requirement into warp and weft and they add up to the total', () => {
-    const idx = idxOf();
-    // Georgette: 60D TPM on both warp and weft
-    const pc = planCalc(plan, { looms: [{ loom_group_id: 'lg1', fabric_id: 'f_geo', looms: 10 }], tfo: [], outside: [] }, idx);
-    const y = pc.yarnRows.find((r) => r.yarn.id === 'y_tpm60');
-    expect(y.warp).toBeGreaterThan(0);
-    expect(y.weft).toBeGreaterThan(0);
-    expect(y.requiredWarp).toBeCloseTo(y.warp / y.qRef, 6);
-    expect(y.requiredWeft).toBeCloseTo(y.weft / y.qRef, 6);
-    expect(y.requiredWarp + y.requiredWeft).toBeCloseTo(y.required, 9);
-    expect(pc.totals.requiredWarp + pc.totals.requiredWeft).toBeCloseTo(pc.totals.required, 9);
-    const r = pc.runningRows.find((x) => x.yarn.id === 'y_tpm60');
-    expect(r.spindlesWarp).toBeCloseTo(y.requiredWarp, 9);
-  });
-
-  it('takes outside yarn off the weft first, then the warp', () => {
-    const idx = idxOf();
-    const looms = [{ loom_group_id: 'lg1', fabric_id: 'f_geo', looms: 10 }];
-    const base = planCalc(plan, { looms, tfo: [], outside: [] }, idx).yarnRows[0];
-    // less than the weft: only weft drops
-    let y = planCalc(plan, { looms, tfo: [], outside: [{ yarn_id: 'y_tpm60', kg_per_day: 40 }] }, idx).yarnRows[0];
-    expect(y.requiredWarp).toBeCloseTo(base.requiredWarp, 9);
-    expect(y.requiredWeft).toBeCloseTo((base.weft - 40) / base.qRef, 6);
-    // more than the weft: weft is nil and the rest comes off the warp
-    y = planCalc(plan, { looms, tfo: [], outside: [{ yarn_id: 'y_tpm60', kg_per_day: base.weft + 20 }] }, idx).yarnRows[0];
-    expect(y.requiredWeft).toBe(0);
-    expect(y.requiredWarp).toBeCloseTo((base.warp - 20) / base.qRef, 6);
-    expect(y.requiredWarp + y.requiredWeft).toBeCloseTo(y.required, 9);
-    // more than everything: nothing needed
-    y = planCalc(plan, { looms, tfo: [], outside: [{ yarn_id: 'y_tpm60', kg_per_day: 1000 }] }, idx).yarnRows[0];
-    expect(y.required).toBe(0);
-    expect(y.requiredWarp + y.requiredWeft).toBe(0);
-  });
-});
-
-describe('running plan and stock', () => {
+describe('weft only, with yarn stock', () => {
   const looms = [{ loom_group_id: 'lg1', fabric_id: 'f_geo', looms: 10 }];
-  const yarn60 = (pl, lines) => planCalc(pl, { outside: [], tfo: [], stock: [], looms, ...lines }, idxOf()).yarnRows.find((r) => r.yarn.id === 'y_tpm60');
+  const run = (lines) => planCalc(plan, { outside: [], tfo: [], stock: [], looms, ...lines }, idxOf());
+  const yarn60 = (lines) => run(lines).yarnRows.find((r) => r.yarn.id === 'y_tpm60');
 
-  it('needs no warp when the plan is running', () => {
-    const base = yarn60(plan, {});
-    const run = yarn60({ ...plan, running: true }, {});
-    expect(base.warp).toBeGreaterThan(0);
-    expect(run.warp).toBe(0);
-    expect(run.requiredWarp).toBe(0);
-    expect(run.weft).toBeCloseTo(base.weft, 9);
-    expect(run.requiredWeft).toBeCloseTo(base.requiredWeft, 9);
-    const pc = planCalc({ ...plan, running: true }, { looms, tfo: [], outside: [], stock: [] }, idxOf());
-    expect(pc.isRunning).toBe(true);
-    expect(pc.runningRows.every((r) => r.warp === 0)).toBe(true);
-  });
-
-  it('uses yarn stock on the weft only when running', () => {
-    const run = { ...plan, running: true };
-    const base = yarn60(run, {});
-    const y = yarn60(run, { stock: [{ kind: 'yarn', yarn_id: 'y_tpm60', qty: 20 }] });
-    expect(y.stock).toBe(20);
-    expect(y.requiredWeft).toBeCloseTo((base.weft - 20) / base.qRef, 6);
-    expect(y.requiredWarp).toBe(0);
-  });
-
-  it('uses yarn stock on the weft first, then the warp, when not running', () => {
-    const base = yarn60(plan, {});
-    const y = yarn60(plan, { stock: [{ kind: 'yarn', yarn_id: 'y_tpm60', qty: base.weft + 15 }] });
-    expect(y.requiredWeft).toBe(0);
-    expect(y.requiredWarp).toBeCloseTo((base.warp - 15) / base.qRef, 6);
-  });
-
-  it('takes the warp of looms on beam stock out of the demand', () => {
-    const base = yarn60(plan, {});
-    const pc = planCalc(plan, { looms, tfo: [], outside: [], stock: [{ kind: 'beam', fabric_id: 'f_geo', qty: 4 }] }, idxOf());
+  it('leaves warp yarn out: demand is the weft yarn only', () => {
+    const pc = run({});
     const y = pc.yarnRows.find((r) => r.yarn.id === 'y_tpm60');
-    expect(pc.loomRows[0].beamCovered).toBe(4);
-    expect(y.warp).toBeCloseTo(base.warp * 0.6, 9);
-    expect(y.weft).toBeCloseTo(base.weft, 9);
-    expect(pc.beamRows[0].covered).toBe(4);
-    // more beams than looms: all 10 looms covered
-    const all = yarn60(plan, { stock: [{ kind: 'beam', fabric_id: 'f_geo', qty: 25 }] });
-    expect(all.warp).toBe(0);
+    const c = pc.loomRows[0].calc;
+    const weftKg = c.tpmLines.filter((l) => l.line.side !== 'warp').reduce((sum, l) => sum + (pc.loomRows[0].mPerDay * l.gpm) / 1000, 0);
+    const allKg = c.tpmLines.reduce((sum, l) => sum + (pc.loomRows[0].mPerDay * l.gpm) / 1000, 0);
+    expect(allKg).toBeGreaterThan(weftKg); // Georgette has TPM warp too
+    expect(y.demand).toBeCloseTo(weftKg, 6);
+    expect(y.warp).toBeUndefined();
+    expect(y.requiredWarp).toBeUndefined();
   });
 
-  it('ignores beam stock when the plan is running', () => {
-    const base = yarn60({ ...plan, running: true }, {});
-    const y = yarn60({ ...plan, running: true }, { stock: [{ kind: 'beam', fabric_id: 'f_geo', qty: 4 }] });
-    expect(y.weft).toBeCloseTo(base.weft, 9);
-    expect(y.warp).toBe(0);
+  it('shows the balance in both spindles and kg/day', () => {
+    const base = yarn60({});
+    const y = yarn60({ tfo: [{ tfo_type_id: 'tt1', yarn_id: 'y_tpm60', sides: 2 }] });
+    expect(y.balanceSpindles).toBeCloseTo(2 * 252 - base.required, 6);
+    expect(y.balanceKg).toBeCloseTo(y.allocKg - y.net, 9);
+    expect(y.balanceKg / y.qRef).toBeCloseTo(y.balanceSpindles, 6);
+  });
+
+  it('takes yarn stock off the weft demand like outside yarn', () => {
+    const base = yarn60({});
+    const y = yarn60({ stock: [{ yarn_id: 'y_tpm60', qty: 20 }], outside: [{ yarn_id: 'y_tpm60', kg_per_day: 10 }] });
+    expect(y.stock).toBe(20);
+    expect(y.net).toBeCloseTo(base.demand - 30, 6);
+    expect(y.required).toBeCloseTo((base.demand - 30) / base.qRef, 6);
+    // more than the demand: nothing needed, surplus of kg
+    const none = yarn60({ stock: [{ yarn_id: 'y_tpm60', qty: base.demand + 50 }] });
+    expect(none.required).toBe(0);
+  });
+
+  it('flags a stock line that is not a TPM yarn', () => {
+    const pc = run({ stock: [{ yarn_id: 'y_fdy75', qty: 5 }] });
+    expect(pc.stockYarnRows[0].problems.join(' ')).toMatch(/not a TPM yarn/);
   });
 });
 

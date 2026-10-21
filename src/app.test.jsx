@@ -190,7 +190,7 @@ describe('TFO planner', () => {
   it('lists dated plans with their verdict, and the unit page links to them', async () => {
     await open('#/plans');
     await screen.findByText('Wed, 21 Oct 2026');
-    expect(screen.getByText('Short 786 spindles')).toBeTruthy();
+    expect(screen.getByText('Surplus 1,077 spindles')).toBeTruthy();
     expect(screen.getByText(/42 looms · 24 sides given out/)).toBeTruthy();
     cleanup();
     await open('#/unit/u_2');
@@ -202,9 +202,12 @@ describe('TFO planner', () => {
     await open('#/plan/p1');
     await screen.findByText('Spindle balance by yarn');
     const cards = [...document.querySelectorAll('.unit-card')].map((c) => c.textContent);
-    expect(cards[0]).toContain('60D TPM 2400 S/Z');
-    expect(cards[0]).toContain('−786');
-    expect(cards.some((t) => t.includes('75D TPM 2000 S/Z') && t.includes('+116'))).toBe(true);
+    // weft only, smallest balance first: balance shown in spindles and in kg/day
+    expect(cards[0]).toContain('75D TPM 2000 S/Z');
+    expect(cards[0]).toContain('+116');
+    expect(cards[0]).toContain('+11.3 kg/day');
+    expect(cards.some((t) => t.includes('60D TPM 2400 S/Z') && t.includes('+771'))).toBe(true);
+    expect(cards.join(' ')).not.toMatch(/warp/i);
     expect(screen.getByText('Job work')).toBeTruthy();
     expect(screen.getByText('16 of 24')).toBeTruthy();
   });
@@ -214,7 +217,7 @@ describe('TFO planner', () => {
     await screen.findByText('Balance as you edit');
     const sides = screen.getAllByLabelText('Number of sides');
     fireEvent.input(sides[2], { target: { value: '12' } });
-    await screen.findByText(/M\/C 13–16: 12 sides given out, only 8 on 4 machines|\+222/);
+    await screen.findByText(/\+1,779/);
     fireEvent.input(sides[2], { target: { value: '8' } });
     fireEvent.input(sides[0], { target: { value: '9' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
@@ -230,7 +233,7 @@ describe('TFO planner', () => {
     expect(screen.getByText('Toyota · 280 cm · Plain · 32 of 40 looms · 8 available')).toBeTruthy();
     expect(screen.getByText('Toyota · 190 cm · Dobby · 10 of 24 looms · 14 available')).toBeTruthy();
     expect(screen.getByText('Total running')).toBeTruthy();
-    expect(screen.getByText('317.1 kg')).toBeTruthy();
+    expect(screen.getByText('533.6 kg')).toBeTruthy();
   });
 
   it('editor shows every loom group, and the available count moves as looms change', async () => {
@@ -248,23 +251,27 @@ describe('TFO planner', () => {
     await waitFor(() => expect(screen.getAllByLabelText('Number of looms').length).toBe(4));
   });
 
-  it('running switch hides beam stock, and stock lines save', async () => {
+  it('has no running switch or beam stock, and a yarn stock line saves', async () => {
     await open('#/plan/p1/edit');
     await screen.findByText('Running yarn as you edit');
-    expect(screen.getByText('Add beam stock')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: 'Currently running' }));
-    await waitFor(() => expect(screen.queryByText('Add beam stock')).toBeNull());
-    expect(screen.getByText('Add yarn stock')).toBeTruthy();
+    expect(screen.queryByText('Currently running')).toBeNull();
+    expect(screen.queryByText('Add beam stock')).toBeNull();
+    fireEvent.click(screen.getByText('Add yarn stock'));
+    const yarnSel = screen.getByLabelText('Stock yarn');
+    fireEvent.change(yarnSel, { target: { value: 'y_tpm75' } });
+    fireEvent.input(screen.getByLabelText('Stock kg per day'), { target: { value: '5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText(/Running · warp not needed/);
+    await screen.findByText('Spindle balance by yarn');
+    await screen.findByText('Yarn stock');
     const t = JSON.parse(localStorage.getItem('fm.demo.v1'));
-    expect(t.TfoPlans.find((p) => p.id === 'p1').running).toBe(true);
+    expect(t.PlanStock).toHaveLength(1);
+    expect(t.PlanStock[0]).toMatchObject({ yarn_id: 'y_tpm75', qty: 5 });
     // put it back so later tests see the sample plan unchanged
     await open('#/plan/p1/edit');
     await screen.findByText('Running yarn as you edit');
-    fireEvent.click(screen.getByRole('button', { name: 'Currently running' }));
+    fireEvent.click(screen.getByLabelText('Remove yarn stock line'));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(screen.queryByText(/Running · warp not needed/)).toBeNull());
+    await screen.findByText('Spindle balance by yarn');
   });
 
   it('copies a plan to a new date', async () => {
@@ -349,12 +356,14 @@ describe('laptop layout', () => {
     await open('#/plan/p1');
     await waitFor(() => expect(document.querySelectorAll('.plan-table').length).toBe(2));
     const [running, balance] = [...document.querySelectorAll('.plan-table')];
-    // running yarn: 5 yarns + total; balance: 3 TPM yarns
-    expect(running.querySelectorAll('tbody tr').length).toBe(6);
-    expect(running.textContent).toContain('75D Polyester FDY');
-    expect(running.querySelector('tbody tr').textContent).toContain('317.1');
+    // weft only. running yarn: 3 TPM yarns + total; balance: 3 TPM yarns
+    expect(running.querySelectorAll('tbody tr').length).toBe(4);
+    expect(running.textContent).not.toMatch(/warp/i);
+    expect(running.querySelector('tbody tr').textContent).toContain('TPM');
     expect(balance.querySelectorAll('tbody tr').length).toBe(3);
-    expect(balance.querySelector('tbody tr').textContent).toContain('60D TPM 2400 S/Z');
+    expect(balance.querySelector('tbody tr').textContent).toContain('75D TPM 2000 S/Z');
+    expect(balance.textContent).toContain('Balance kg/day');
+    expect(balance.textContent).not.toMatch(/warp/i);
     expect(document.querySelector('.sidebar').textContent).toContain('Planner');
   });
 
