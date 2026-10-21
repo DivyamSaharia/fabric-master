@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, spindleRealisation, spindlesForUnit, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
+import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, spindleProfit, spindlesForUnit, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
 import { beamRowsOf, beamSlots, slotLabel } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
@@ -10,9 +10,9 @@ import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, 
 import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
 
 const WEAVES = ['Plain', 'Cam', 'Dobby'];
+const SPINDLE_SORT = { value: 'spindle', label: 'Spindle profit ↓' };
 const SORTS = [
   { value: 'realisation', label: 'Realisation ↓' },
-  { value: 'spindle', label: 'Spindle realisation ↓' },
   { value: 'name', label: 'Name A–Z' },
   { value: 'gsm', label: 'GSM ↑' },
   { value: 'recent', label: 'Recent' },
@@ -57,8 +57,8 @@ export function computeRows(idx, { search = '', unitId = 'all', filters = defaul
     if ((filters.tpmMin !== '' || filters.tpmMax !== '') && !(inRange(calc.tpmMin, filters.tpmMin, filters.tpmMax) || inRange(calc.tpmMax, filters.tpmMin, filters.tpmMax))) continue;
     if (!inRange(calc.gsm, filters.gsmMin, filters.gsmMax)) continue;
     if (!inRange(calc.realisationNetPerPick, filters.rMin, filters.rMax)) continue;
-    const spin = spindleRealisation(calc, f, idx);
-    // Sorting by spindle realisation lists TPM fabrics only.
+    // Spindle profitability needs a unit; sorting by it lists that unit's TPM fabrics only.
+    const spin = unit ? spindleProfit(calc, f, unit, idx) : null;
     if (filters.sort === 'spindle' && !spin) continue;
     rows.push({ fabric: f, calc, units, spin, profit: unit ? unitProfit(calc, unit) : null });
   }
@@ -99,10 +99,10 @@ export function FabricRow({ row, idx, unit, onClick, sort }) {
         <div class="fcon">{constructionLine(row.fabric, row.calc, idx)}</div>
         <FabricBadges fabric={row.fabric} calc={row.calc} />
       </div>
-      {sort === 'spindle' ? (
+      {sort === 'spindle' && unit ? (
       <div class="fval">
-        <div class="big">{fmt.spin(row.spin && row.spin.value)}</div>
-        <div class="small">{row.spin && row.spin.spindles ? `per pick · ${fmt.int(row.spin.spindles)} spindles` : 'per pick per spindle'}</div>
+        <div class={`big ${row.spin && row.spin.value !== null ? (row.spin.value >= 0 ? 'good' : 'bad') : ''}`}>{fmt.spin(row.spin && row.spin.value)}</div>
+        <div class="small">{row.spin && row.spin.spindles ? `profit/pick · ${fmt.int(row.spin.spindles)} spindles` : 'profit per pick per spindle'}</div>
       </div>
       ) : (
       <div class="fval">
@@ -131,14 +131,14 @@ const TABLE_COLS = [
   { key: 'price', label: 'Price ₹/m', get: (r) => r.calc.price, show: (r) => fmt.n(r.calc.price, 2) },
   { key: 'vatav', label: 'VATAV', get: (r) => r.calc.vatavPct, show: (r) => (r.calc.vatavPct ? `${fmt.n(r.calc.vatavPct, r.calc.vatavPct % 1 ? 1 : 0)}%` : '—') },
   { key: 'rw', label: '₹/pick without', title: 'Realisation per pick without VATAV', get: (r) => r.calc.realisationPerPick, show: (r) => fmt.pick(r.calc.realisationPerPick) },
-  { key: 'sr', label: '₹/pick/spindle', title: 'Spindle realisation: realisation per pick with VATAV ÷ spindles per loom per day (single panna, old TFO machines). TPM fabrics only; sorting by it hides the rest.', tpmOnly: true, get: (r) => (r.spin ? r.spin.value : null), show: (r) => (r.spin ? fmt.spin(r.spin.value) : '—') },
   { key: 'rn', label: '₹/pick with VATAV', title: 'Realisation per pick with VATAV', get: (r) => r.calc.realisationNetPerPick, show: (r) => fmt.pick(r.calc.realisationNetPerPick), strong: true },
 ];
+const SPINDLE_COL = { key: 'sr', label: 'Profit/spindle', title: 'Spindle profitability: profit per pick at this unit ÷ spindles per loom per day (single panna, old TFO machines). TPM fabrics only; sorting by it hides the rest.', tpmOnly: true, profit: true, get: (r) => (r.spin ? r.spin.value : null), show: (r) => (r.spin ? fmt.spin(r.spin.value) : '—') };
 const PROFIT_COL = { key: 'profit', label: 'Profit ₹/pick', get: (r) => (r.profit ? r.profit.profitPerPick : null), show: (r) => fmt.signedPick(r.profit ? r.profit.profitPerPick : null), profit: true };
 
 export function FabricTable({ rows, idx, unit }) {
   const [sort, setSort] = useState(null);
-  const cols = unit ? [...TABLE_COLS, PROFIT_COL] : TABLE_COLS;
+  const cols = unit ? [...TABLE_COLS, PROFIT_COL, SPINDLE_COL] : TABLE_COLS;
   const sorted = useMemo(() => {
     if (!sort) return rows;
     const col = cols.find((c) => c.key === sort.key);
@@ -191,7 +191,7 @@ export function FabricTable({ rows, idx, unit }) {
                       </div>
                     </td>
                   ) : (
-                    <td class={`${c.opt ? 'opt' : ''} ${c.strong ? 'key' : ''} ${c.profit && r.profit && r.profit.profitPerPick !== null ? (r.profit.profitPerPick >= 0 ? 'good strong' : 'bad strong') : ''}`}>{c.show(r)}</td>
+                    <td class={`${c.opt ? 'opt' : ''} ${c.strong ? 'key' : ''} ${c.profit && c.get(r) !== null && c.get(r) !== undefined ? (c.get(r) >= 0 ? 'good strong' : 'bad strong') : ''}`}>{c.show(r)}</td>
                   ),
                 )}
               </tr>
@@ -219,6 +219,10 @@ export function FabricList({ query }) {
   const units = (st.tables.Units || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
   const unit = unitId !== 'all' ? idx.unitsById[unitId] : null;
   const rows = useMemo(() => computeRows(idx, { search, unitId, filters }), [idx, search, unitId, filters]);
+  // Spindle profit sorts one unit at a time: back to realisation when All units is picked.
+  useEffect(() => {
+    if (!unit && filters.sort === 'spindle') setFilters((f) => ({ ...f, sort: 'realisation' }));
+  }, [unit, filters.sort]);
   const nActive = activeFilterCount(filters);
   const unitOptions = [{ value: 'all', label: 'All units' }, ...units.map((u) => ({ value: u.id, label: u.name }))];
 
@@ -260,7 +264,7 @@ export function FabricList({ query }) {
           )}
         </div>
         <div class="chips">
-          <Chip on onClick={() => setSheet(true)}>{(SORTS.find((s) => s.value === filters.sort) || SORTS[0]).label}</Chip>
+          <Chip on onClick={() => setSheet(true)}>{([...SORTS, SPINDLE_SORT].find((s) => s.value === filters.sort) || SORTS[0]).label}</Chip>
           <Chip on={nActive > 0} onClick={() => setSheet(true)}>{nActive ? `Filters · ${nActive}` : 'Filters'}</Chip>
           {WEAVES.map((w) => (
             <Chip on={filters.weaves.includes(w)} onClick={() => setFilters({ ...filters, weaves: toggleIn(filters.weaves, w) })}>{w}</Chip>
@@ -271,7 +275,7 @@ export function FabricList({ query }) {
       </div>
       <div class="list-meta">
         <span>{rows.length} {rows.length === 1 ? 'fabric' : 'fabrics'} · {unit ? unit.name : 'all units'}</span>
-        <span>{wide ? 'Click a heading to sort · press / to search' : filters.sort === 'spindle' ? '₹ / pick per spindle · TPM fabrics' : '₹ / pick with VATAV'}</span>
+        <span>{wide ? 'Click a heading to sort · press / to search' : filters.sort === 'spindle' ? 'Profit / pick per spindle · TPM fabrics' : '₹ / pick with VATAV'}</span>
       </div>
       {rows.length ? (
         wide ? (
@@ -290,7 +294,7 @@ export function FabricList({ query }) {
           action={Object.keys(idx.fabricsById).length ? null : <div style={{ width: '220px' }}><Button onClick={() => go('/fabric/new')}>Add fabric</Button></div>}
         />
       )}
-      <FilterSheet open={sheet} onClose={() => setSheet(false)} filters={filters} setFilters={setFilters} idx={idx} count={rows.length} />
+      <FilterSheet open={sheet} onClose={() => setSheet(false)} filters={filters} setFilters={setFilters} idx={idx} count={rows.length} unit={unit} />
     </div>
   );
 }
@@ -318,7 +322,7 @@ export function StatusBanner() {
 
 const toggleIn = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
-function FilterSheet({ open, onClose, filters, setFilters, idx, count }) {
+function FilterSheet({ open, onClose, filters, setFilters, idx, count, unit }) {
   const [saved, setSaved] = useState(savedFilters.list());
   const f = filters;
   const up = (patch) => setFilters({ ...f, ...patch });
@@ -348,7 +352,7 @@ function FilterSheet({ open, onClose, filters, setFilters, idx, count }) {
       ) : null}
       <Section header="Sort by">
         <div class="pad" style={{ padding: '10px 12px' }}>
-          <Segmented small options={SORTS.map((s) => ({ value: s.value, label: s.label.replace(' ↓', '').replace(' ↑', '') }))} value={f.sort} onChange={(v) => up({ sort: v })} />
+          <Segmented small options={(unit ? [...SORTS, SPINDLE_SORT] : SORTS).map((s) => ({ value: s.value, label: s.label.replace(' ↓', '').replace(' ↑', '') }))} value={f.sort} onChange={(v) => up({ sort: v })} />
         </div>
       </Section>
       <Section header="Weave">
@@ -427,9 +431,10 @@ export function FabricDetail({ id }) {
     );
   }
   const calc = fabricCalc(fabric, idx);
-  const spin = spindleRealisation(calc, fabric, idx);
   const photos = idx.photosByFabric[id] || [];
   const units = unitsOf(id, idx);
+  const spinUnit = units.find((u) => unitHasTfo(calc, u, idx)) || units[0] || null;
+  const spin = spinUnit ? spindleProfit(calc, fabric, spinUnit, idx) : null;
   const rfd = calc.finish === 'RFD';
 
   async function onFiles(e) {
@@ -521,9 +526,9 @@ export function FabricDetail({ id }) {
         </div>
         {spin ? (
           <div class="tile">
-            <div class="t-label">Spindle realisation</div>
-            <div class="t-value">{fmt.spin(spin.value)}</div>
-            <div class="t-sub">{spin.value !== null ? `per pick per spindle · ${fmt.int(spin.spindles)} spindles on ${spin.type.name}` : spin.reason}</div>
+            <div class="t-label">Spindle profitability · {spin.unit.name}</div>
+            <div class={`t-value ${spin.value === null ? '' : spin.value >= 0 ? 'good' : 'bad'}`}>{fmt.spin(spin.value)}</div>
+            <div class="t-sub">{spin.value !== null ? `profit per pick per spindle · ${fmt.int(spin.spindles)} spindles on ${spin.type.name}` : spin.reason}</div>
           </div>
         ) : null}
         <div class={`tile ${spin ? '' : 'span'}`}>
@@ -640,6 +645,7 @@ export function UnitCard({ unit, fabric, calc, idx }) {
       ? (idx.tfoTypesByUnit[unit.id] || []).length ? null : 'No TFO types set in this unit'
       : 'No TFO division'
     : null;
+  const sp = spindleProfit(calc, fabric, unit, idx);
   return (
     <div class="unit-card">
       <div class="unit-head">
@@ -652,6 +658,12 @@ export function UnitCard({ unit, fabric, calc, idx }) {
           <div class="row-sub tnum">{p.profitPerM === null ? '—' : `${fmt.rs(p.profitPerM)} / ${calc.finish === 'RFD' ? 'RFD m' : 'm'}`}</div>
         </div>
       </div>
+      {sp && sp.value !== null ? (
+        <div class="pan-head">
+          <span class="pan-label">Spindle profitability · {sp.type.name}</span>
+          <span class={`pan-note tnum ${sp.value >= 0 ? 'good' : 'bad'}`}>{fmt.spin(sp.value)} / pick / spindle</span>
+        </div>
+      ) : null}
       <PanBlocks calc={calc} fabric={fabric} unit={unit} idx={idx} />
     </div>
   );

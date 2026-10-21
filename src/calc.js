@@ -311,30 +311,29 @@ export function refTfoType(types) {
   return types.slice().sort((a, b) => (num(b.machines) ?? -1) - (num(a.machines) ?? -1))[0];
 }
 
-// Spindle realisation: realisation per pick (with VATAV) ÷ spindles a single-panna loom needs per day
-// for its TPM warp and weft, at the first assigned unit with a TFO division, on its old TFO machines.
-// Null for fabrics with no TPM yarn.
-export function spindleRealisation(calc, fabric, idx) {
-  if (!calc.tpmLines.length) return null;
-  const units = (idx.assignmentsByFabric[fabric.id] || []).map((a) => idx.unitsById[a.unit_id]).filter(Boolean);
-  const unit = units.find((u) => unitHasTfo(calc, u, idx)) || null;
-  if (!unit) return { value: null, spindles: null, unit: null, type: null, reason: 'Not assigned to a unit with TFO' };
+// Spindle profitability at one unit: profit per pick (realisation with VATAV − the unit's cost per pick)
+// ÷ spindles a single-panna loom needs per day for its TPM warp and weft, on the unit's reference TFO type.
+// Null for fabrics with no TPM yarn. Profit can be negative.
+export function spindleProfit(calc, fabric, unit, idx) {
+  if (!calc.tpmLines.length || !unit) return null;
+  if (!unitHasTfo(calc, unit, idx)) return { value: null, spindles: null, unit, type: null, reason: 'No TFO division in this unit' };
   const type = refTfoType(idx.tfoTypesByUnit[unit.id] || []);
   const s = spindlesForUnit(calc, fabric, unit, idx, 1).find((x) => x.type.id === type.id);
   const spindles = s ? s.total : null;
   const missingSpeed = s ? s.perYarn.filter((p) => !p.speed).map((p) => p.yarn.name) : [];
+  const profit = unitProfit(calc, unit).profitPerPick;
   let reason = null;
   if (spindles === null) reason = missingSpeed.length ? `No TFO speed for ${missingSpeed.join(', ')}` : (s && s.reason) || 'Spindles not available';
-  else if (calc.realisationNetPerPick === null) reason = 'Realisation not available';
-  const value = spindles && calc.realisationNetPerPick !== null ? calc.realisationNetPerPick / spindles : null;
+  else if (profit === null) reason = num(unit.cost_per_pick) === null ? 'Set cost per pick on the unit' : 'Realisation not available';
+  const value = spindles && profit !== null ? profit / spindles : null;
   return { value, spindles, unit, type, reason };
 }
 
 // ---------- formatting ----------
 export const fmt = {
   rs: (v, dp = 2) => (v === null || v === undefined ? '—' : `₹${Number(v).toLocaleString('en-IN', { minimumFractionDigits: dp, maximumFractionDigits: dp })}`),
-  // Rs per pick per spindle: small numbers, so five decimals.
-  spin: (v) => (v === null || v === undefined ? '—' : `₹${Number(v).toFixed(5)}`),
+  // Profit per pick per spindle: small numbers, so five decimals, signed.
+  spin: (v) => (v === null || v === undefined ? '—' : `${v >= 0 ? '+' : '−'}₹${Math.abs(v).toFixed(5)}`),
   pick: (v) => (v === null || v === undefined ? '—' : `₹${Number(v).toFixed(3)}`),
   signedPick: (v) => (v === null || v === undefined ? '—' : `${v >= 0 ? '+' : '−'}₹${Math.abs(v).toFixed(3)}`),
   n: (v, dp = 1) => (v === null || v === undefined ? '—' : Number(v).toLocaleString('en-IN', { minimumFractionDigits: dp, maximumFractionDigits: dp })),

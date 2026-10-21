@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { baseFabric, buildIndex, fabricCalc, fabricLabel, loomPerDay, stripRs, unitProfit, spindlesForUnit, spindleRealisation, refTfoType, tfoOutput, yarnDenier, yarnRate } from './calc.js';
+import { baseFabric, buildIndex, fabricCalc, fabricLabel, loomPerDay, stripRs, unitProfit, spindlesForUnit, spindleProfit, refTfoType, tfoOutput, yarnDenier, yarnRate } from './calc.js';
 import { sampleTables } from './sampleData.js';
 
 const idx = buildIndex(sampleTables());
@@ -184,13 +184,14 @@ describe('fmt.date', () => {
   });
 });
 
-describe('spindle realisation', () => {
-  it('realisation per pick with VATAV ÷ single-panna spindles on the old TFO machines', () => {
+describe('spindle profitability', () => {
+  it('profit per pick at the unit ÷ single-panna spindles on the old TFO machines', () => {
     const c = fabricCalc(crepe, idx);
-    const s = spindleRealisation(c, crepe, idx);
-    const old = spindlesForUnit(c, crepe, idx.unitsById.u_2, idx).find((x) => x.type.id === s.type.id);
+    const unit = idx.unitsById.u_2;
+    const s = spindleProfit(c, crepe, unit, idx);
+    const old = spindlesForUnit(c, crepe, unit, idx).find((x) => x.type.id === s.type.id);
     expect(s.spindles).toBeCloseTo(old.total, 6);
-    expect(s.value).toBeCloseTo(c.realisationNetPerPick / old.total, 9);
+    expect(s.value).toBeCloseTo(unitProfit(c, unit).profitPerPick / old.total, 9);
   });
   it('prefers the type named old, else the one with most machines', () => {
     expect(refTfoType([{ id: 'n', name: 'New machines (13-16)', machines: 12 }, { id: 'o', name: 'Old machines (1-12)', machines: 4 }]).id).toBe('o');
@@ -200,6 +201,6 @@ describe('spindle realisation', () => {
   it('is null for fabrics with no TPM yarn', () => {
     const plain = Object.values(idx.fabricsById).find((f) => fabricCalc(f, idx).tfoClass === 'Non-TPM');
     expect(plain).toBeTruthy();
-    expect(spindleRealisation(fabricCalc(plain, idx), plain, idx)).toBeNull();
+    expect(spindleProfit(fabricCalc(plain, idx), plain, idx.unitsById.u_2, idx)).toBeNull();
   });
 });

@@ -71,8 +71,8 @@ describe('every screen renders with demo data', () => {
     await screen.findByText('Sale rate');
     const tiles = [...document.querySelectorAll('.tiles .tile')];
     expect(tiles.length).toBe(8);
-    expect(tiles[6].textContent).toContain('Spindle realisation');
-    expect(tiles[6].textContent).toContain('per pick per spindle');
+    expect(tiles[6].textContent).toContain('Spindle profitability');
+    expect(tiles[6].textContent).toContain('profit per pick per spindle');
     expect(tiles[7].textContent).toContain('₹45.00');
     expect(tiles[7].textContent).toContain('per RFD metre');
     expect(screen.getByText('Transportation')).toBeTruthy();
@@ -336,20 +336,22 @@ function computeOrder() {
     .map((x) => x.name);
 }
 
-describe('spindle realisation sort', () => {
-  it('lists TPM fabrics only, highest first; a non-TPM fabric has no tile', async () => {
+describe('spindle profit sort', () => {
+  it('needs a unit; lists that unit\'s TPM fabrics only, highest first; a non-TPM fabric has no tile', async () => {
     const idx = buildIndex(sampleTables());
-    const all = computeRows(idx);
-    const rows = computeRows(idx, { filters: { ...defaultFilters(), sort: 'spindle' } });
+    const unitId = 'u_2';
+    const all = computeRows(idx, { unitId });
+    const rows = computeRows(idx, { unitId, filters: { ...defaultFilters(), sort: 'spindle' } });
     expect(rows.length).toBeGreaterThan(0);
     expect(rows.length).toBeLessThan(all.length);
     expect(rows.every((r) => r.calc.tfoClass !== 'Non-TPM')).toBe(true);
     const vals = rows.map((r) => r.spin.value).filter((v) => v !== null);
     expect(vals).toEqual([...vals].sort((a, b) => b - a));
+    expect(computeRows(idx, { filters: { ...defaultFilters(), sort: 'spindle' } })).toHaveLength(0);
     const plain = all.find((r) => r.calc.tfoClass === 'Non-TPM');
     await open(`#/fabric/${plain.fabric.id}`);
     await screen.findByText('Sale rate');
-    expect(screen.queryByText('Spindle realisation')).toBeNull();
+    expect(screen.queryByText(/Spindle profitability/)).toBeNull();
     expect(document.querySelectorAll('.tiles .tile').length).toBe(7);
     cleanup();
   });
