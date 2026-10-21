@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, spindlesForUnit, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
+import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, spindleRealisation, spindlesForUnit, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
 import { beamRowsOf, beamSlots, slotLabel } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
@@ -12,6 +12,7 @@ import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, pr
 const WEAVES = ['Plain', 'Cam', 'Dobby'];
 const SORTS = [
   { value: 'realisation', label: 'Realisation ↓' },
+  { value: 'spindle', label: 'Spindle realisation ↓' },
   { value: 'name', label: 'Name A–Z' },
   { value: 'gsm', label: 'GSM ↑' },
   { value: 'recent', label: 'Recent' },
@@ -56,11 +57,15 @@ export function computeRows(idx, { search = '', unitId = 'all', filters = defaul
     if ((filters.tpmMin !== '' || filters.tpmMax !== '') && !(inRange(calc.tpmMin, filters.tpmMin, filters.tpmMax) || inRange(calc.tpmMax, filters.tpmMin, filters.tpmMax))) continue;
     if (!inRange(calc.gsm, filters.gsmMin, filters.gsmMax)) continue;
     if (!inRange(calc.realisationNetPerPick, filters.rMin, filters.rMax)) continue;
-    rows.push({ fabric: f, calc, units, profit: unit ? unitProfit(calc, unit) : null });
+    const spin = spindleRealisation(calc, f, idx);
+    // Sorting by spindle realisation lists TPM fabrics only.
+    if (filters.sort === 'spindle' && !spin) continue;
+    rows.push({ fabric: f, calc, units, spin, profit: unit ? unitProfit(calc, unit) : null });
   }
   const byNull = (v) => (v === null || v === undefined ? -Infinity : v);
   const sorters = {
     realisation: (a, b) => byNull(b.calc.realisationNetPerPick) - byNull(a.calc.realisationNetPerPick),
+    spindle: (a, b) => byNull(b.spin && b.spin.value) - byNull(a.spin && a.spin.value),
     name: (a, b) => String(a.fabric.name).localeCompare(String(b.fabric.name)),
     gsm: (a, b) => (a.calc.gsm ?? Infinity) - (b.calc.gsm ?? Infinity),
     recent: (a, b) => String(b.fabric.updated_at || '').localeCompare(String(a.fabric.updated_at || '')),
@@ -84,7 +89,7 @@ function FabricBadges({ fabric, calc }) {
   );
 }
 
-export function FabricRow({ row, idx, unit, onClick }) {
+export function FabricRow({ row, idx, unit, onClick, sort }) {
   const cover = coverOf(row.fabric.id, idx);
   return (
     <button type="button" class="frow" onClick={onClick}>
@@ -94,6 +99,12 @@ export function FabricRow({ row, idx, unit, onClick }) {
         <div class="fcon">{constructionLine(row.fabric, row.calc, idx)}</div>
         <FabricBadges fabric={row.fabric} calc={row.calc} />
       </div>
+      {sort === 'spindle' ? (
+      <div class="fval">
+        <div class="big">{fmt.spin(row.spin && row.spin.value)}</div>
+        <div class="small">{row.spin && row.spin.spindles ? `per pick · ${fmt.int(row.spin.spindles)} spindles` : 'per pick per spindle'}</div>
+      </div>
+      ) : (
       <div class="fval">
         <div class="big">{fmt.pick(row.calc.realisationNetPerPick)}</div>
         {unit && row.profit ? (
@@ -104,6 +115,7 @@ export function FabricRow({ row, idx, unit, onClick }) {
           <div class="small">per pick</div>
         )}
       </div>
+      )}
     </button>
   );
 }
@@ -119,6 +131,7 @@ const TABLE_COLS = [
   { key: 'price', label: 'Price ₹/m', get: (r) => r.calc.price, show: (r) => fmt.n(r.calc.price, 2) },
   { key: 'vatav', label: 'VATAV', get: (r) => r.calc.vatavPct, show: (r) => (r.calc.vatavPct ? `${fmt.n(r.calc.vatavPct, r.calc.vatavPct % 1 ? 1 : 0)}%` : '—') },
   { key: 'rw', label: '₹/pick without', title: 'Realisation per pick without VATAV', get: (r) => r.calc.realisationPerPick, show: (r) => fmt.pick(r.calc.realisationPerPick) },
+  { key: 'sr', label: '₹/pick/spindle', title: 'Spindle realisation: realisation per pick with VATAV ÷ spindles per loom per day (single panna, old TFO machines). TPM fabrics only; sorting by it hides the rest.', tpmOnly: true, get: (r) => (r.spin ? r.spin.value : null), show: (r) => (r.spin ? fmt.spin(r.spin.value) : '—') },
   { key: 'rn', label: '₹/pick with VATAV', title: 'Realisation per pick with VATAV', get: (r) => r.calc.realisationNetPerPick, show: (r) => fmt.pick(r.calc.realisationNetPerPick), strong: true },
 ];
 const PROFIT_COL = { key: 'profit', label: 'Profit ₹/pick', get: (r) => (r.profit ? r.profit.profitPerPick : null), show: (r) => fmt.signedPick(r.profit ? r.profit.profitPerPick : null), profit: true };
@@ -131,7 +144,7 @@ export function FabricTable({ rows, idx, unit }) {
     const col = cols.find((c) => c.key === sort.key);
     if (!col) return rows;
     const dir = sort.dir === 'asc' ? 1 : -1;
-    return rows.slice().sort((a, b) => {
+    return (col.tpmOnly ? rows.filter((r) => r.spin) : rows.slice()).sort((a, b) => {
       const x = col.get(a), y = col.get(b);
       if (col.text) return dir * String(x).localeCompare(String(y));
       if (x === null || x === undefined) return 1;
@@ -258,14 +271,14 @@ export function FabricList({ query }) {
       </div>
       <div class="list-meta">
         <span>{rows.length} {rows.length === 1 ? 'fabric' : 'fabrics'} · {unit ? unit.name : 'all units'}</span>
-        <span>{wide ? 'Click a heading to sort · press / to search' : '₹ / pick with VATAV'}</span>
+        <span>{wide ? 'Click a heading to sort · press / to search' : filters.sort === 'spindle' ? '₹ / pick per spindle · TPM fabrics' : '₹ / pick with VATAV'}</span>
       </div>
       {rows.length ? (
         wide ? (
           <FabricTable rows={rows} idx={idx} unit={unit} />
         ) : (
           <div class="group">
-            {rows.map((r) => <FabricRow row={r} idx={idx} unit={unit} onClick={() => go(`/fabric/${r.fabric.id}`)} />)}
+            {rows.map((r) => <FabricRow row={r} idx={idx} unit={unit} sort={filters.sort} onClick={() => go(`/fabric/${r.fabric.id}`)} />)}
           </div>
         )
       ) : st.status.loading ? (
@@ -414,6 +427,7 @@ export function FabricDetail({ id }) {
     );
   }
   const calc = fabricCalc(fabric, idx);
+  const spin = spindleRealisation(calc, fabric, idx);
   const photos = idx.photosByFabric[id] || [];
   const units = unitsOf(id, idx);
   const rfd = calc.finish === 'RFD';
@@ -505,7 +519,14 @@ export function FabricDetail({ id }) {
           <div class="t-value">{calc.totalGpm === null ? '—' : `${fmt.n(calc.totalGpm, 1)} g/m`}</div>
           <div class="t-sub">{calc.kgPer100 === null ? '—' : `${fmt.n(calc.kgPer100, 2)} kg per 100 m`}</div>
         </div>
-        <div class="tile span">
+        {spin ? (
+          <div class="tile">
+            <div class="t-label">Spindle realisation</div>
+            <div class="t-value">{fmt.spin(spin.value)}</div>
+            <div class="t-sub">{spin.value !== null ? `per pick per spindle · ${fmt.int(spin.spindles)} spindles on ${spin.type.name}` : spin.reason}</div>
+          </div>
+        ) : null}
+        <div class={`tile ${spin ? '' : 'span'}`}>
           <div class="t-label">Sale rate</div>
           <div class="t-value">{calc.price === null ? 'Not set' : fmt.rs(calc.price)}</div>
           <div class="t-sub">{calc.price === null ? 'add a selling price' : `${rfd ? 'per RFD metre' : 'per metre'}${fmt.date(fabric.sale_date) ? ` · ${fmt.date(fabric.sale_date)}` : ''}`}</div>

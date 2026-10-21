@@ -4,6 +4,7 @@ import { App } from './app.jsx';
 import { sampleTables } from './sampleData.js';
 import { whatsappText, fileName } from './export/exports.js';
 import { buildIndex, fabricCalc } from './calc.js';
+import { computeRows, defaultFilters } from './screens/fabrics.jsx';
 
 beforeAll(() => {
   window.scrollTo = () => {};
@@ -65,13 +66,15 @@ describe('every screen renders with demo data', () => {
     expect(screen.getByText('3% · −₹1.35 / m')).toBeTruthy();
   });
 
-  it('sale rate is the 7th tile, and RFD fabrics show transportation', async () => {
+  it('a TPM fabric has 8 tiles: spindle realisation 7th, sale rate 8th; RFD fabrics show transportation', async () => {
     await open('#/fabric/f_crepe');
     await screen.findByText('Sale rate');
     const tiles = [...document.querySelectorAll('.tiles .tile')];
-    expect(tiles.length).toBe(7);
-    expect(tiles[6].textContent).toContain('₹45.00');
-    expect(tiles[6].textContent).toContain('per RFD metre');
+    expect(tiles.length).toBe(8);
+    expect(tiles[6].textContent).toContain('Spindle realisation');
+    expect(tiles[6].textContent).toContain('per pick per spindle');
+    expect(tiles[7].textContent).toContain('₹45.00');
+    expect(tiles[7].textContent).toContain('per RFD metre');
     expect(screen.getByText('Transportation')).toBeTruthy();
     cleanup();
     await open('#/fabric/f_crepe/edit');
@@ -82,7 +85,7 @@ describe('every screen renders with demo data', () => {
     await open('#/fabric/f_crepe');
     await screen.findByText('Sale rate');
     const tiles = [...document.querySelectorAll('.tiles .tile')];
-    expect(tiles[6].textContent).toContain('per RFD metre · 2 Oct 2026');
+    expect(tiles[7].textContent).toContain('per RFD metre · 2 Oct 2026');
     expect(screen.getByText('Sale date')).toBeTruthy();
     cleanup();
     await open('#/fabric/f_crepe/edit');
@@ -332,3 +335,22 @@ function computeOrder() {
     .sort((a, b) => (b.v ?? -Infinity) - (a.v ?? -Infinity))
     .map((x) => x.name);
 }
+
+describe('spindle realisation sort', () => {
+  it('lists TPM fabrics only, highest first; a non-TPM fabric has no tile', async () => {
+    const idx = buildIndex(sampleTables());
+    const all = computeRows(idx);
+    const rows = computeRows(idx, { filters: { ...defaultFilters(), sort: 'spindle' } });
+    expect(rows.length).toBeGreaterThan(0);
+    expect(rows.length).toBeLessThan(all.length);
+    expect(rows.every((r) => r.calc.tfoClass !== 'Non-TPM')).toBe(true);
+    const vals = rows.map((r) => r.spin.value).filter((v) => v !== null);
+    expect(vals).toEqual([...vals].sort((a, b) => b - a));
+    const plain = all.find((r) => r.calc.tfoClass === 'Non-TPM');
+    await open(`#/fabric/${plain.fabric.id}`);
+    await screen.findByText('Sale rate');
+    expect(screen.queryByText('Spindle realisation')).toBeNull();
+    expect(document.querySelectorAll('.tiles .tile').length).toBe(7);
+    cleanup();
+  });
+});
