@@ -5,6 +5,7 @@ import { sampleTables } from './sampleData.js';
 import { whatsappText, fileName } from './export/exports.js';
 import { buildIndex, fabricCalc } from './calc.js';
 import { computeRows, defaultFilters } from './screens/fabrics.jsx';
+import { resetListState } from './listState.js';
 
 beforeAll(() => {
   window.scrollTo = () => {};
@@ -14,6 +15,7 @@ beforeAll(() => {
 beforeEach(() => {
   cleanup();
   localStorage.clear();
+  resetListState();
 });
 
 async function open(hash) {
@@ -354,5 +356,22 @@ describe('spindle profit sort', () => {
     expect(screen.queryByText(/Spindle profitability/)).toBeNull();
     expect(document.querySelectorAll('.tiles .tile').length).toBe(7);
     cleanup();
+  });
+});
+
+describe('fabric list state sticks', () => {
+  it('keeps sort, filters and search after the list is left and reopened', async () => {
+    const { loadListState, saveListState, resetListState } = await import('./listState.js');
+    resetListState();
+    const base = loadListState(defaultFilters());
+    saveListState({ ...base, search: 'crape', unitId: 'u1', filters: { ...base.filters, sort: 'gsm', weaves: ['Plain'] } });
+    // new module state (as after a reload) reads it back from storage
+    const again = loadListState(defaultFilters());
+    expect(again.search).toBe('crape');
+    expect(again.filters.sort).toBe('gsm');
+    expect(again.filters.weaves).toEqual(['Plain']);
+    saveListState({ search: '', unitId: 'all', filters: defaultFilters() });
+    expect(loadListState(defaultFilters()).filters.sort).toBe('realisation');
+    resetListState();
   });
 });

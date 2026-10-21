@@ -6,6 +6,7 @@ import {
   addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, toast, useStore,
 } from '../store.js';
 import { back, go, replace } from '../router.js';
+import { loadListState, saveListState, savedScroll, saveScroll } from '../listState.js';
 import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, SearchPicker, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
 import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
 
@@ -208,16 +209,30 @@ export function FabricList({ query }) {
   const st = useStore();
   const idx = getIndex();
   const wide = useWide();
-  const [search, setSearch] = useState('');
-  const [unitId, setUnitId] = useState(query.unit || 'all');
-  const [filters, setFilters] = useState(defaultFilters());
+  const saved = loadListState(defaultFilters());
+  const [search, setSearch] = useState(saved.search);
+  const [unitId, setUnitId] = useState(query.unit || saved.unitId);
+  const [filters, setFilters] = useState(saved.filters);
+  useEffect(() => { saveListState({ search, unitId, filters }); }, [search, unitId, filters]);
+  // Back from a fabric: return to the same place in the list.
+  useEffect(() => {
+    const y = savedScroll();
+    if (y) requestAnimationFrame(() => window.scrollTo(0, y));
+    return () => saveScroll(window.scrollY);
+  }, []);
   const [sheet, setSheet] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
     if (query.unit) setUnitId(query.unit);
   }, [query.unit]);
   const units = (st.tables.Units || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
-  const unit = unitId !== 'all' ? idx.unitsById[unitId] : null;
+  const unit = unitId !== 'all' ? idx.unitsById[unitId] || null : null;
+  // A saved unit or yarn that was deleted since: fall back instead of showing an empty list.
+  useEffect(() => {
+    if (st.status.loading || !Object.keys(idx.fabricsById).length) return;
+    if (unitId !== 'all' && !idx.unitsById[unitId]) setUnitId('all');
+    if (filters.yarnId && !(st.tables.Yarns || []).some((y) => y.id === filters.yarnId)) setFilters((f) => ({ ...f, yarnId: '' }));
+  }, [st.tables, st.status.loading]);
   const rows = useMemo(() => computeRows(idx, { search, unitId, filters }), [idx, search, unitId, filters]);
   // Spindle profit sorts one unit at a time: back to realisation when All units is picked.
   useEffect(() => {
@@ -351,9 +366,14 @@ function FilterSheet({ open, onClose, filters, setFilters, idx, count, unit }) {
         </Section>
       ) : null}
       <Section header="Sort by">
-        <div class="pad" style={{ padding: '10px 12px' }}>
-          <Segmented small options={(unit ? [...SORTS, SPINDLE_SORT] : SORTS).map((s) => ({ value: s.value, label: s.label.replace(' ↓', '').replace(' ↑', '') }))} value={f.sort} onChange={(v) => up({ sort: v })} />
-        </div>
+        <label class="row field">
+          <span class="row-label">Order</span>
+          <span class="field-input select">
+            <select value={f.sort} onChange={(e) => up({ sort: e.currentTarget.value })} aria-label="Sort by">
+              {(unit ? [...SORTS, SPINDLE_SORT] : SORTS).map((o) => <option value={o.value}>{o.label}</option>)}
+            </select>
+          </span>
+        </label>
       </Section>
       <Section header="Weave">
         <div class="chips" style={{ padding: '10px 12px' }}>{WEAVES.map((w) => <Chip on={f.weaves.includes(w)} onClick={() => up({ weaves: toggleIn(f.weaves, w) })}>{w}</Chip>)}</div>
