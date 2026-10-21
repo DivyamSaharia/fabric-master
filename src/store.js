@@ -153,7 +153,7 @@ export async function commit(ops) {
       applied = await backend.batch(ops);
     } catch (e) {
       // TFO plans need backend v6; an older script in the Sheet doesn't know their tabs.
-      if (/Unknown table (TfoPlans|PlanLooms|PlanTfo|PlanOutside)/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save TFO plans.');
+      if (/Unknown table (TfoPlans|PlanLooms|PlanTfo|PlanOutside|PlanStock)/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save TFO plans.');
       throw e;
     }
     const tables = applyOps(state.tables, applied || ops);
@@ -266,6 +266,7 @@ export async function deleteFabric(fabricId) {
     { op: 'delete', table: 'FabricYarns', ids: (idx.linesByFabric[fabricId] || []).map((l) => l.id) },
     { op: 'delete', table: 'Assignments', ids: (idx.assignmentsByFabric[fabricId] || []).map((a) => a.id) },
     { op: 'delete', table: 'PlanLooms', ids: (idx.tables.PlanLooms || []).filter((l) => l.fabric_id === fabricId).map((l) => l.id) },
+    { op: 'delete', table: 'PlanStock', ids: (idx.tables.PlanStock || []).filter((l) => l.fabric_id === fabricId).map((l) => l.id) },
     { op: 'delete', table: 'Fabrics', ids: [fabricId] },
   ].filter((o) => o.ids.length);
   for (const p of idx.photosByFabric[fabricId] || []) await backend.deletePhoto(p);
@@ -292,13 +293,13 @@ export function yarnUsage(yarnId) {
   const idx = getIndex();
   const fabrics = new Set((idx.tables.FabricYarns || []).filter((l) => l.yarn_id === yarnId).map((l) => l.fabric_id));
   const tpmChildren = (idx.tables.Yarns || []).filter((y) => y.base_yarn_id === yarnId);
-  const plans = new Set([...(idx.tables.PlanTfo || []), ...(idx.tables.PlanOutside || [])].filter((l) => l.yarn_id === yarnId).map((l) => l.plan_id));
+  const plans = new Set([...(idx.tables.PlanTfo || []), ...(idx.tables.PlanOutside || []), ...(idx.tables.PlanStock || [])].filter((l) => l.yarn_id === yarnId).map((l) => l.plan_id));
   return { fabrics: fabrics.size, tpmChildren: tpmChildren.length, plans: plans.size };
 }
 
 // TFO plans whose loom lines use this fabric.
 export function fabricPlanCount(fabricId) {
-  return new Set((getIndex().tables.PlanLooms || []).filter((l) => l.fabric_id === fabricId).map((l) => l.plan_id)).size;
+  return new Set([...(getIndex().tables.PlanLooms || []), ...(getIndex().tables.PlanStock || [])].filter((l) => l.fabric_id === fabricId).map((l) => l.plan_id)).size;
 }
 
 export async function deleteRates(ids) {
@@ -348,6 +349,7 @@ export async function deleteUnit(unitId) {
     { op: 'delete', table: 'PlanLooms', ids: inPlans('PlanLooms') },
     { op: 'delete', table: 'PlanTfo', ids: inPlans('PlanTfo') },
     { op: 'delete', table: 'PlanOutside', ids: inPlans('PlanOutside') },
+    { op: 'delete', table: 'PlanStock', ids: inPlans('PlanStock') },
     { op: 'delete', table: 'TfoPlans', ids: planIds },
     { op: 'delete', table: 'Assignments', ids: (idx.assignmentsByUnit[unitId] || []).map((a) => a.id) },
     { op: 'delete', table: 'TfoSpeeds', ids: (idx.speedsByUnit[unitId] || []).map((s) => s.id) },
@@ -373,7 +375,7 @@ export async function deleteSpeed(id) {
 
 // ---------- TFO plans ----------
 
-const PLAN_TABLES = { looms: ['PlanLooms', 'pl'], tfo: ['PlanTfo', 'pt'], outside: ['PlanOutside', 'po'] };
+const PLAN_TABLES = { looms: ['PlanLooms', 'pl'], tfo: ['PlanTfo', 'pt'], outside: ['PlanOutside', 'po'], stock: ['PlanStock', 'ps'] };
 
 // Saves a plan and its three lists of lines. Lines left out of a list are deleted.
 export async function savePlan(plan, lines) {
@@ -403,7 +405,7 @@ export async function copyPlan(planId, planDate, name) {
   for (const [key, [table]] of Object.entries(PLAN_TABLES)) {
     lines[key] = (idx.tables[table] || []).filter((l) => l.plan_id === planId).sort((a, b) => (num(a.sort) ?? 0) - (num(b.sort) ?? 0)).map(strip);
   }
-  return savePlan({ unit_id: src.unit_id, plan_date: planDate, name: name ?? src.name ?? '', notes: src.notes || '' }, lines);
+  return savePlan({ unit_id: src.unit_id, plan_date: planDate, name: name ?? src.name ?? '', running: src.running || '', notes: src.notes || '' }, lines);
 }
 
 export async function deletePlan(planId) {

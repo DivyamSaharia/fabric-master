@@ -77,6 +77,12 @@ export async function exportPlanXlsx(plan, pc, opts = {}) {
   if (pc.outsideRows.length) {
     XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, pc.outsideRows.map((x) => ({ Yarn: x.yarn ? x.yarn.name : '', 'kg/day': x.kg ?? '', From: x.line.source || '' }))), 'Outside yarn');
   }
+  if (pc.stockYarnRows.length) {
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, pc.stockYarnRows.map((x) => ({ Yarn: x.yarn ? x.yarn.name : '', 'kg/day from stock': x.kg ?? '' }))), 'Yarn stock');
+  }
+  if (pc.beamRows.length && !pc.isRunning) {
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, pc.beamRows.map((x) => ({ Fabric: x.fabric ? x.fabric.name : '', Beams: x.beams ?? '', 'Looms planned': x.planned, 'Looms covered': x.covered }))), 'Beam stock');
+  }
   const title = planTitle(plan, pc.unit);
   await deliver(writeBook(XLSX, wb), planFile(plan, pc.unit, 'xlsx'), title, opts);
 }
@@ -107,7 +113,7 @@ export async function exportPlanPdf(plan, pc, opts = {}) {
   doc.setFont('DejaVu', 'normal');
   doc.setFontSize(10);
   doc.setTextColor(...grey);
-  doc.text([plan.name, plan.notes].filter(Boolean).join(' · ') || ' ', M, 26);
+  doc.text([plan.name, plan.notes, pc.isRunning ? 'Running: warp not needed' : null].filter(Boolean).join(' · ') || ' ', M, 26);
 
   const figs = [
     ['Looms planned', fmt.int(t.looms), `${t.metres === null ? '—' : fmt.int(t.metres)} m/day`],
@@ -184,6 +190,12 @@ export async function exportPlanPdf(plan, pc, opts = {}) {
     { columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' } } });
   if (pc.outsideRows.length) {
     table('Yarn from outside', ['Yarn', 'kg/day', 'From'], pc.outsideRows.map((x) => [x.yarn ? x.yarn.name : '—', x.kg === null ? '—' : fmt.n(x.kg, 1), x.line.source || '']), { columnStyles: { 1: { halign: 'right' } } });
+  }
+  if (pc.stockYarnRows.length) {
+    table('Yarn stock', ['Yarn', 'kg/day from stock'], pc.stockYarnRows.map((x) => [x.yarn ? x.yarn.name : '—', x.kg === null ? '—' : fmt.n(x.kg, 1)]), { columnStyles: { 1: { halign: 'right' } } });
+  }
+  if (pc.beamRows.length && !pc.isRunning) {
+    table('Beam stock', ['Fabric', 'Beams', 'Looms planned', 'Looms covered'], pc.beamRows.map((x) => [x.fabric ? x.fabric.name : '—', x.beams === null ? '—' : fmt.int(x.beams), fmt.int(x.planned), fmt.int(x.covered)]), { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } } });
   }
   const notes = [...pc.issues, ...[...pc.loomRows, ...pc.tfoRows, ...pc.outsideRows].flatMap((x) => x.problems)];
   if (notes.length) {

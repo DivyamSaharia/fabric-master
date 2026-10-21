@@ -248,6 +248,25 @@ describe('TFO planner', () => {
     await waitFor(() => expect(screen.getAllByLabelText('Number of looms').length).toBe(4));
   });
 
+  it('running switch hides beam stock, and stock lines save', async () => {
+    await open('#/plan/p1/edit');
+    await screen.findByText('Running yarn as you edit');
+    expect(screen.getByText('Add beam stock')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Currently running' }));
+    await waitFor(() => expect(screen.queryByText('Add beam stock')).toBeNull());
+    expect(screen.getByText('Add yarn stock')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await screen.findByText(/Running · warp not needed/);
+    const t = JSON.parse(localStorage.getItem('fm.demo.v1'));
+    expect(t.TfoPlans.find((p) => p.id === 'p1').running).toBe(true);
+    // put it back so later tests see the sample plan unchanged
+    await open('#/plan/p1/edit');
+    await screen.findByText('Running yarn as you edit');
+    fireEvent.click(screen.getByRole('button', { name: 'Currently running' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(screen.queryByText(/Running · warp not needed/)).toBeNull());
+  });
+
   it('copies a plan to a new date', async () => {
     await open('#/plan/p1');
     await screen.findByText('Spindle balance by yarn');

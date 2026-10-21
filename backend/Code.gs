@@ -8,6 +8,7 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
+ * Backend v7: TFO plans can be marked running, and hold yarn and beam stock (PlanStock).
  * Backend v6: dated TFO plans (TfoPlans, PlanLooms, PlanTfo, PlanOutside), TFO machine counts and an efficiency per TFO type.
  */
 
@@ -22,10 +23,11 @@ var TABLES = {
   FabricYarns: ['id', 'fabric_id', 'side', 'yarn_id', 'ends', 'parts', 'pattern', 'sort', 'updated_at', 'updated_by'],
   Assignments: ['id', 'fabric_id', 'unit_id', 'updated_at', 'updated_by'],
   Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
-  TfoPlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
+  TfoPlans: ['id', 'unit_id', 'plan_date', 'name', 'running', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
   PlanLooms: ['id', 'plan_id', 'loom_group_id', 'fabric_id', 'looms', 'panna', 'rpm', 'sort', 'updated_at', 'updated_by'],
   PlanTfo: ['id', 'plan_id', 'tfo_type_id', 'yarn_id', 'sides', 'sort', 'updated_at', 'updated_by'],
-  PlanOutside: ['id', 'plan_id', 'yarn_id', 'kg_per_day', 'source', 'sort', 'updated_at', 'updated_by']
+  PlanOutside: ['id', 'plan_id', 'yarn_id', 'kg_per_day', 'source', 'sort', 'updated_at', 'updated_by'],
+  PlanStock: ['id', 'plan_id', 'kind', 'yarn_id', 'fabric_id', 'qty', 'sort', 'updated_at', 'updated_by']
 };
 
 // Columns stored as numbers or TRUE/FALSE. Everything else is kept as plain text,
@@ -34,9 +36,9 @@ var NUMERIC = {
   count: 1, filaments: 1, tpm: 1, tpm_delta: 1, rate: 1, cost_per_pick: 1, tfo_default_eff: 1, reed_width_cm: 1, looms: 1, rpm: 1, efficiency: 1,
   reed: 1, ppi: 1, reed_space_in: 1, greige_width_in: 1, warp_shortage_pct: 1, weft_shortage_pct: 1, price: 1, vatav_pct: 1, rfd_shortage_pct: 1,
   processing_charge: 1, brokering_pct: 1, loom_rpm: 1, loom_rpm_dp: 1, loom_eff_pct: 1, ends: 1, parts: 1, sort: 1,
-  machines: 1, spindles_per_side: 1, panna: 1, sides: 1, kg_per_day: 1
+  machines: 1, spindles_per_side: 1, panna: 1, sides: 1, kg_per_day: 1, qty: 1
 };
-var BOOLEAN = { has_tfo: 1, is_cover: 1 };
+var BOOLEAN = { has_tfo: 1, is_cover: 1, running: 1 };
 var DATE_ONLY = { effective_date: 1, plan_date: 1 };
 
 // ---------- menu and one-time setup ----------
@@ -105,7 +107,7 @@ function ensureSheets_() {
   if (first && first.getName() === 'Sheet1' && first.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(first);
 }
 
-var SCHEMA_VERSION = '6';
+var SCHEMA_VERSION = '7';
 
 // Cheap check on every load; the full tab and format setup runs only when something is missing.
 function ensureReady_() {
@@ -518,7 +520,8 @@ var ROOT_OF = {
   TfoSpeeds: ['Units', 'unit_id'],
   PlanLooms: ['TfoPlans', 'plan_id'],
   PlanTfo: ['TfoPlans', 'plan_id'],
-  PlanOutside: ['TfoPlans', 'plan_id']
+  PlanOutside: ['TfoPlans', 'plan_id'],
+  PlanStock: ['TfoPlans', 'plan_id']
 };
 var KIND = { Fabrics: 'Fabric', Yarns: 'Yarn', Units: 'Unit', TfoPlans: 'TFO plan' };
 var ID_REF = { yarn_id: 'Yarns', base_yarn_id: 'Yarns', unit_id: 'Units', tfo_type_id: 'TfoTypes', fabric_id: 'Fabrics', loom_group_id: 'LoomGroups', plan_id: 'TfoPlans' };
@@ -529,7 +532,7 @@ var LABELS = {
   brokering_pct: 'Brokering %', loom_rpm: 'Loom RPM', loom_rpm_dp: 'Loom RPM double panna', loom_eff_pct: 'Loom efficiency %',
   notes: 'Notes', kind: 'Kind', base_yarn_id: 'Base yarn', material: 'Material', form: 'Form', count: 'Count',
   count_unit: 'Count unit', filaments: 'Filaments', lustre: 'Lustre', tpm: 'TPM', twist: 'Twist', tpm_delta: 'TPM delta',
-  type: 'Type', cost_per_pick: 'Cost per pick', has_tfo: 'TFO', tfo_default_eff: 'TFO efficiency', side: 'Side',
+  running: 'Running', qty: 'Quantity', type: 'Type', cost_per_pick: 'Cost per pick', has_tfo: 'TFO', tfo_default_eff: 'TFO efficiency', side: 'Side',
   yarn_id: 'Yarn', ends: 'Ends', parts: 'Pick share', pattern: 'Pattern', rate: 'Rate', effective_date: 'From',
   make: 'Make', reed_width_cm: 'Reed width cm', shedding: 'Shedding', looms: 'Looms', rpm: 'RPM', efficiency: 'Efficiency',
   tfo_type_id: 'TFO type', unit_id: 'Unit', caption: 'Caption', is_cover: 'Cover',
@@ -695,6 +698,13 @@ function describe_(ev) {
       if (a === 'added') return 'TFO: ' + (r.sides !== '' ? r.sides + ' sides of ' : '') + pt;
       if (a === 'deleted') return 'TFO removed: ' + pt;
       return fieldDiffs_(ev, 'TFO ' + pt);
+    }
+    case 'PlanStock': {
+      var ps = r.kind === 'beam' ? 'beam stock ' + (nameOf_('Fabrics', r.fabric_id) || 'fabric') : 'yarn stock ' + (nameOf_('Yarns', r.yarn_id) || 'yarn');
+      var unitTxt = r.kind === 'beam' ? ' beams' : ' kg/day';
+      if (a === 'added') return ps + (r.qty !== '' ? ' ' + r.qty + unitTxt : '');
+      if (a === 'deleted') return ps + ' removed';
+      return fieldDiffs_(ev, ps);
     }
     case 'PlanOutside': {
       var po = 'outside ' + (nameOf_('Yarns', r.yarn_id) || 'yarn');

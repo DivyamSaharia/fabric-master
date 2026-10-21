@@ -207,6 +207,60 @@ describe('spindles needed, warp and weft', () => {
   });
 });
 
+describe('running plan and stock', () => {
+  const looms = [{ loom_group_id: 'lg1', fabric_id: 'f_geo', looms: 10 }];
+  const yarn60 = (pl, lines) => planCalc(pl, { outside: [], tfo: [], stock: [], looms, ...lines }, idxOf()).yarnRows.find((r) => r.yarn.id === 'y_tpm60');
+
+  it('needs no warp when the plan is running', () => {
+    const base = yarn60(plan, {});
+    const run = yarn60({ ...plan, running: true }, {});
+    expect(base.warp).toBeGreaterThan(0);
+    expect(run.warp).toBe(0);
+    expect(run.requiredWarp).toBe(0);
+    expect(run.weft).toBeCloseTo(base.weft, 9);
+    expect(run.requiredWeft).toBeCloseTo(base.requiredWeft, 9);
+    const pc = planCalc({ ...plan, running: true }, { looms, tfo: [], outside: [], stock: [] }, idxOf());
+    expect(pc.isRunning).toBe(true);
+    expect(pc.runningRows.every((r) => r.warp === 0)).toBe(true);
+  });
+
+  it('uses yarn stock on the weft only when running', () => {
+    const run = { ...plan, running: true };
+    const base = yarn60(run, {});
+    const y = yarn60(run, { stock: [{ kind: 'yarn', yarn_id: 'y_tpm60', qty: 20 }] });
+    expect(y.stock).toBe(20);
+    expect(y.requiredWeft).toBeCloseTo((base.weft - 20) / base.qRef, 6);
+    expect(y.requiredWarp).toBe(0);
+  });
+
+  it('uses yarn stock on the weft first, then the warp, when not running', () => {
+    const base = yarn60(plan, {});
+    const y = yarn60(plan, { stock: [{ kind: 'yarn', yarn_id: 'y_tpm60', qty: base.weft + 15 }] });
+    expect(y.requiredWeft).toBe(0);
+    expect(y.requiredWarp).toBeCloseTo((base.warp - 15) / base.qRef, 6);
+  });
+
+  it('takes the warp of looms on beam stock out of the demand', () => {
+    const base = yarn60(plan, {});
+    const pc = planCalc(plan, { looms, tfo: [], outside: [], stock: [{ kind: 'beam', fabric_id: 'f_geo', qty: 4 }] }, idxOf());
+    const y = pc.yarnRows.find((r) => r.yarn.id === 'y_tpm60');
+    expect(pc.loomRows[0].beamCovered).toBe(4);
+    expect(y.warp).toBeCloseTo(base.warp * 0.6, 9);
+    expect(y.weft).toBeCloseTo(base.weft, 9);
+    expect(pc.beamRows[0].covered).toBe(4);
+    // more beams than looms: all 10 looms covered
+    const all = yarn60(plan, { stock: [{ kind: 'beam', fabric_id: 'f_geo', qty: 25 }] });
+    expect(all.warp).toBe(0);
+  });
+
+  it('ignores beam stock when the plan is running', () => {
+    const base = yarn60({ ...plan, running: true }, {});
+    const y = yarn60({ ...plan, running: true }, { stock: [{ kind: 'beam', fabric_id: 'f_geo', qty: 4 }] });
+    expect(y.weft).toBeCloseTo(base.weft, 9);
+    expect(y.warp).toBe(0);
+  });
+});
+
 describe('looms available per group', () => {
   it('counts looms planned against looms in the group', () => {
     const idx = idxOf();
