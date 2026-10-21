@@ -15,7 +15,7 @@ export const TABLES = {
   PlanLooms: ['id', 'plan_id', 'loom_group_id', 'fabric_id', 'looms', 'panna', 'rpm', 'sort', 'updated_at', 'updated_by'],
   PlanTfo: ['id', 'plan_id', 'tfo_type_id', 'yarn_id', 'sides', 'sort', 'updated_at', 'updated_by'],
   PlanOutside: ['id', 'plan_id', 'yarn_id', 'kg_per_day', 'source', 'sort', 'updated_at', 'updated_by'],
-  // Twisted yarn used from stock: yarn_id, qty = kg/day.
+  // Twisted yarn used from stock: yarn_id, qty = total kg on hand.
   PlanStock: ['id', 'plan_id', 'yarn_id', 'qty', 'sort', 'updated_at', 'updated_by'],
 };
 

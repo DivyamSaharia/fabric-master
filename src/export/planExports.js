@@ -1,6 +1,6 @@
 // PDF and Excel for a dated TFO plan.
 import { fmt } from '../calc.js';
-import { groupLabel } from '../planner.js';
+import { daysText, groupLabel } from '../planner.js';
 import { deliver, preloadExports, sheetFromRows, slug, writeBook } from './exports.js';
 import { today } from '../schema.js';
 
@@ -22,8 +22,9 @@ export async function exportPlanXlsx(plan, pc, opts = {}) {
     'Used in': y.fabrics.join(', '),
     'Demand kg/day': r(y.demand, 1),
     'Outside kg/day': r(y.outside, 1),
-    'Stock kg/day': r(y.stock, 1),
     'Net kg/day': r(y.net, 1),
+    'Stock kg': r(y.stock, 1),
+    'Stock lasts (days)': y.stock ? (y.stockDays === Infinity ? 'no demand' : r(y.stockDays, 1)) : '',
     'Output kg/spindle-day': r(y.qRef, 4),
     'At speed of': y.refType || '',
     'Spindles needed': r(y.required),
@@ -40,7 +41,7 @@ export async function exportPlanXlsx(plan, pc, opts = {}) {
     'Used in': x.fabrics.join(', '),
     'Weft kg/day': r(x.total, 1),
     'Outside kg/day': x.tpm ? r(x.outside, 1) : '',
-    'Stock kg/day': x.tpm ? r(x.stock, 1) : '',
+    'Stock kg': x.tpm ? r(x.stock, 1) : '',
     'Spindles needed': x.tpm ? r(x.spindles) : '',
   }));
   if (runningX.length) runningX.push({ Yarn: 'Total', 'Weft kg/day': r(pc.totals.running, 1), 'Spindles needed': r(pc.totals.required) });
@@ -74,7 +75,7 @@ export async function exportPlanXlsx(plan, pc, opts = {}) {
     XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, pc.outsideRows.map((x) => ({ Yarn: x.yarn ? x.yarn.name : '', 'kg/day': x.kg ?? '', From: x.line.source || '' }))), 'Outside yarn');
   }
   if (pc.stockYarnRows.length) {
-    XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, pc.stockYarnRows.map((x) => ({ Yarn: x.yarn ? x.yarn.name : '', 'kg/day from stock': x.kg ?? '' }))), 'Yarn stock');
+    XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, pc.stockYarnRows.map((x) => ({ Yarn: x.yarn ? x.yarn.name : '', 'kg in stock': x.kg ?? '', 'Lasts (days)': x.days === null || x.days === undefined ? '' : x.days === Infinity ? 'no demand' : r(x.days, 1) }))), 'Yarn stock');
   }
   const title = planTitle(plan, pc.unit);
   await deliver(writeBook(XLSX, wb), planFile(plan, pc.unit, 'xlsx'), title, opts);
@@ -154,13 +155,13 @@ export async function exportPlanPdf(plan, pc, opts = {}) {
     y = doc.lastAutoTable.finalY + 8;
   };
 
-  table('Running yarn requirement (weft)', ['Yarn', 'Used in', 'Weft kg/day', 'Outside', 'Stock', 'Spindles needed'],
+  table('Running yarn requirement (weft)', ['Yarn', 'Used in', 'Weft kg/day', 'Outside', 'Stock kg', 'Spindles needed'],
     [...pc.runningRows.map((x) => [`${x.yarn.name}${x.tpm ? ' (TPM)' : ''}`, x.fabrics.join(', '), fmt.n(x.total, 1), x.tpm && x.outside ? fmt.n(x.outside, 1) : '—', x.tpm && x.stock ? fmt.n(x.stock, 1) : '—', x.tpm && x.spindles !== null ? fmt.int(x.spindles) : '—']),
       ['Total', '', fmt.n(t.running, 1), t.outside ? fmt.n(t.outside, 1) : '—', t.stock ? fmt.n(t.stock, 1) : '—', t.required === null ? '—' : fmt.int(t.required)]],
     { columnStyles: Object.fromEntries([2, 3, 4, 5].map((i) => [i, { halign: 'right' }])) });
   const right = Object.fromEntries([2, 3, 4, 5, 6, 7, 8, 9].map((i) => [i, { halign: 'right' }]));
-  table('Spindle balance by yarn', ['Yarn', 'Used in', 'Demand kg/day', 'Outside', 'Stock', 'Net kg/day', 'Spindles needed', 'Given out', 'Balance spindles', 'Balance kg/day'],
-    pc.yarnRows.map((x) => [x.yarn.name, x.fabrics.join(', '), fmt.n(x.demand, 1), x.outside ? fmt.n(x.outside, 1) : '—', x.stock ? fmt.n(x.stock, 1) : '—', fmt.n(x.net, 1), x.required === null ? '—' : fmt.int(x.required), `${fmt.int(x.allocSpindles)} (${x.allocSides} sides)`, x.balanceSpindles === null ? statusText.unknown : signed(x.balanceSpindles), x.balanceKg === null ? '—' : `${x.balanceKg >= 0 ? '+' : '−'}${fmt.n(Math.abs(x.balanceKg), 1)}`]),
+  table('Spindle balance by yarn', ['Yarn', 'Used in', 'Demand kg/day', 'Outside', 'Net kg/day', 'Stock kg · lasts', 'Spindles needed', 'Given out', 'Balance spindles', 'Balance kg/day'],
+    pc.yarnRows.map((x) => [x.yarn.name, x.fabrics.join(', '), fmt.n(x.demand, 1), x.outside ? fmt.n(x.outside, 1) : '—', fmt.n(x.net, 1), x.stock ? `${fmt.n(x.stock, 1)} · ${daysText(x.stockDays)}` : '—', x.required === null ? '—' : fmt.int(x.required), `${fmt.int(x.allocSpindles)} (${x.allocSides} sides)`, x.balanceSpindles === null ? statusText.unknown : signed(x.balanceSpindles), x.balanceKg === null ? '—' : `${x.balanceKg >= 0 ? '+' : '−'}${fmt.n(Math.abs(x.balanceKg), 1)}`]),
     {
       columnStyles: right,
       didParseCell: (d) => {
@@ -185,7 +186,7 @@ export async function exportPlanPdf(plan, pc, opts = {}) {
     table('Yarn from outside', ['Yarn', 'kg/day', 'From'], pc.outsideRows.map((x) => [x.yarn ? x.yarn.name : '—', x.kg === null ? '—' : fmt.n(x.kg, 1), x.line.source || '']), { columnStyles: { 1: { halign: 'right' } } });
   }
   if (pc.stockYarnRows.length) {
-    table('Yarn stock', ['Yarn', 'kg/day from stock'], pc.stockYarnRows.map((x) => [x.yarn ? x.yarn.name : '—', x.kg === null ? '—' : fmt.n(x.kg, 1)]), { columnStyles: { 1: { halign: 'right' } } });
+    table('Yarn stock', ['Yarn', 'kg in stock', 'Lasts'], pc.stockYarnRows.map((x) => [x.yarn ? x.yarn.name : '—', x.kg === null ? '—' : fmt.n(x.kg, 1), daysText(x.days)]), { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } } });
   }
   const notes = [...pc.issues, ...[...pc.loomRows, ...pc.tfoRows, ...pc.outsideRows].flatMap((x) => x.problems)];
   if (notes.length) {

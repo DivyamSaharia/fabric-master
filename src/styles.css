@@ -389,6 +389,16 @@ button.row:active { background: var(--fill-2); }
   .plan-tiles .tile:first-child { grid-column: 1 / -1; }
 }
 .plan-bal { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+.pick-btn { flex: 1; min-width: 0; height: 40px; border: 0; border-radius: 8px; background: var(--bg); padding: 0 10px; font-size: 16px; color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
+.pick-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pick-btn.empty { color: var(--text-3); }
+.pick-search { padding: 0 0 8px; position: sticky; top: 0; background: var(--sheet); }
+.pick-list { max-height: 55vh; overflow-y: auto; }
+.pick-group { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--text-3); padding: 10px 4px 4px; }
+.pick-opt { display: block; width: 100%; text-align: left; border: 0; background: transparent; padding: 12px 8px; font-size: 16px; color: var(--text); border-radius: 8px; cursor: pointer; }
+.pick-opt:hover { background: var(--bg); }
+.pick-opt.on { font-weight: 600; }
+.pick-none { padding: 20px 8px; color: var(--text-3); text-align: center; }
 .line-select { flex: 1; min-width: 0; height: 40px; border: 0; border-radius: 8px; background: var(--bg); padding: 0 10px; font-size: 16px; color: var(--text); appearance: none; -webkit-appearance: none; }
 .mini-out .strong { color: var(--text); font-weight: 600; font-size: 15px; }
 .ftable.plan-table td.key.bad { color: var(--bad); }

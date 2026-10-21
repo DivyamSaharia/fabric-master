@@ -192,6 +192,55 @@ export function SelectField({ label, value, onChange, options, placeholder = 'Ch
   );
 }
 
+// A yarn (or any long list) picker you can search: tap to open, type to filter, tap a result.
+// options: [{ group, options: [{ value, label }] }] or a flat [{ value, label }].
+export function SearchPicker({ value, onChange, options, label, placeholder = 'Choose', title, searchHint = 'Search' }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const groups = options.map((o) => (o.group ? o : { group: '', options: [o] }));
+  const all = groups.flatMap((g) => g.options);
+  const current = all.find((o) => o.value === value);
+  const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const hit = (o) => terms.every((t) => String(o.label).toLowerCase().includes(t));
+  const shown = groups.map((g) => ({ ...g, options: g.options.filter(hit) })).filter((g) => g.options.length);
+  const count = shown.reduce((s, g) => s + g.options.length, 0);
+  const close = () => {
+    setOpen(false);
+    setQ('');
+  };
+  const pick = (v) => {
+    onChange(v);
+    close();
+  };
+  return (
+    <>
+      <button type="button" class={`pick-btn ${current ? '' : 'empty'}`} aria-label={label} onClick={() => setOpen(true)}>
+        <span>{current ? current.label : placeholder}</span>
+        <Icon.chevron size={12} />
+      </button>
+      <Sheet open={open} onClose={close} title={title || label}>
+        <div class="pick-search">
+          <label class="search">
+            <Icon.search size={16} />
+            <input type="search" value={q} autofocus placeholder={searchHint} aria-label={`Search ${label}`} onInput={(e) => setQ(e.currentTarget.value)} />
+          </label>
+        </div>
+        <div class="pick-list">
+          {shown.map((g) => (
+            <div>
+              {g.group ? <div class="pick-group">{g.group}</div> : null}
+              {g.options.map((o) => (
+                <button type="button" class={`pick-opt ${o.value === value ? 'on' : ''}`} onClick={() => pick(o.value)}>{o.label}</button>
+              ))}
+            </div>
+          ))}
+          {!count ? <div class="pick-none">No match for “{q}”</div> : null}
+        </div>
+      </Sheet>
+    </>
+  );
+}
+
 export function Segmented({ options, value, onChange, small, label }) {
   return (
     <div class={`segmented ${small ? 'small' : ''}`} role="group" aria-label={label}>

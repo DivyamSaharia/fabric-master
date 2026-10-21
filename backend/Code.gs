@@ -8,7 +8,7 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
- * Backend v7: TFO plans can hold twisted yarn used from stock (PlanStock). The planner is weft-only.
+ * Backend v7: TFO plans can hold twisted yarn on hand, total kg (PlanStock). The planner is weft-only.
  * Backend v6: dated TFO plans (TfoPlans, PlanLooms, PlanTfo, PlanOutside), TFO machine counts and an efficiency per TFO type.
  */
 
@@ -701,7 +701,7 @@ function describe_(ev) {
     }
     case 'PlanStock': {
       var ps = 'yarn stock ' + (nameOf_('Yarns', r.yarn_id) || 'yarn');
-      if (a === 'added') return ps + (r.qty !== '' ? ' ' + r.qty + ' kg/day' : '');
+      if (a === 'added') return ps + (r.qty !== '' ? ' ' + r.qty + ' kg' : '');
       if (a === 'deleted') return ps + ' removed';
       return fieldDiffs_(ev, ps);
     }

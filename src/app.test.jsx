@@ -103,6 +103,24 @@ describe('every screen renders with demo data', () => {
     expect(screen.getByText('Add warp yarn')).toBeTruthy();
   });
 
+  it('yarn lines are picked from a searchable list', async () => {
+    await open('#/fabric/new');
+    await screen.findByText('New fabric');
+    fireEvent.click(screen.getAllByRole('button', { name: 'warp yarn' })[0]);
+    const search = await screen.findByLabelText('Search warp yarn');
+    const before = document.querySelectorAll('.pick-opt').length;
+    expect(before).toBeGreaterThan(3);
+    fireEvent.input(search, { target: { value: 'tpm 2000' } });
+    await waitFor(() => expect(document.querySelectorAll('.pick-opt').length).toBeLessThan(before));
+    expect([...document.querySelectorAll('.pick-opt')].every((b) => /tpm/i.test(b.textContent) && /2000/.test(b.textContent))).toBe(true);
+    fireEvent.input(search, { target: { value: 'zzzz' } });
+    await screen.findByText(/No match for/);
+    fireEvent.input(search, { target: { value: '75D TPM 2000' } });
+    await waitFor(() => expect(document.querySelectorAll('.pick-opt').length).toBe(1));
+    fireEvent.click(document.querySelector('.pick-opt'));
+    await waitFor(() => expect(screen.getAllByRole('button', { name: 'warp yarn' })[0].textContent).toContain('75D TPM 2000'));
+  });
+
   it('yarn list and TPM yarn form', async () => {
     await open('#/yarns');
     await screen.findByText('75D TPM 2000 S/Z');
@@ -259,13 +277,14 @@ describe('TFO planner', () => {
     fireEvent.click(screen.getByText('Add yarn stock'));
     const yarnSel = screen.getByLabelText('Stock yarn');
     fireEvent.change(yarnSel, { target: { value: 'y_tpm75' } });
-    fireEvent.input(screen.getByLabelText('Stock kg per day'), { target: { value: '5' } });
+    fireEvent.input(screen.getByLabelText('Stock kg'), { target: { value: '5' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await screen.findByText('Spindle balance by yarn');
     await screen.findByText('Yarn stock');
     const t = JSON.parse(localStorage.getItem('fm.demo.v1'));
     expect(t.PlanStock).toHaveLength(1);
     expect(t.PlanStock[0]).toMatchObject({ yarn_id: 'y_tpm75', qty: 5 });
+    expect(screen.getAllByText(/lasts \d/).length).toBeGreaterThan(0); // total kg on hand shows how many days it lasts
     // put it back so later tests see the sample plan unchanged
     await open('#/plan/p1/edit');
     await screen.findByText('Running yarn as you edit');

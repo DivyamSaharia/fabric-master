@@ -1,7 +1,7 @@
 // TFO planner: dated plans per unit. List → plan (spindle balance) → edit (looms, TFO sides, outside yarn).
 import { useMemo, useState } from 'preact/hooks';
 import { fmt, isTpm, num } from '../calc.js';
-import { DEFAULT_SPINDLES_PER_SIDE, groupLabel, planCalc, planLines, planVerdict, plansOf, spindlesPerSide, unitHasPlanner } from '../planner.js';
+import { DEFAULT_SPINDLES_PER_SIDE, daysText, groupLabel, planCalc, planLines, planVerdict, plansOf, spindlesPerSide, unitHasPlanner } from '../planner.js';
 import { backendMode, copyPlan, deletePlan, getIndex, savePlan, toast, useStore } from '../store.js';
 import { back, go, replace } from '../router.js';
 import { today } from '../schema.js';
@@ -173,7 +173,7 @@ export function PlanDetail({ id }) {
         <div class="tile">
           <span class="t-label">Spindles needed</span>
           <span class="t-value">{t.required === null ? '—' : fmt.int(t.required)}</span>
-          <span class="t-sub">{t.required === null ? `${fmt.n(t.net, 0)} kg/day to twist` : `for weft · ${fmt.n(t.net, 0)} kg/day to twist`}{t.outside ? ` · ${fmt.n(t.outside, 0)} kg/day bought` : ''}{t.stock ? ` · ${fmt.n(t.stock, 0)} kg/day stock` : ''}</span>
+          <span class="t-sub">{t.required === null ? `${fmt.n(t.net, 0)} kg/day to twist` : `for weft · ${fmt.n(t.net, 0)} kg/day to twist`}{t.outside ? ` · ${fmt.n(t.outside, 0)} kg/day bought` : ''}</span>
         </div>
         <div class="tile">
           <span class="t-label">Given out</span>
@@ -235,8 +235,8 @@ export function PlanDetail({ id }) {
             {pc.outsideRows.map((r) => <Row label={r.yarn ? r.yarn.name : 'Yarn deleted'} sub={r.line.source || null} value={<span class="strong">{r.kg === null ? '—' : `${fmt.n(r.kg, 1)} kg`}</span>} valueSub="per day" />)}
             {!pc.outsideRows.length ? <Row label="None" sub="Twisted yarn bought in, kg per day." /> : null}
           </Section>
-          <Section header="Yarn stock" footer="Twisted yarn used from stock, kg per day. Taken off the weft demand.">
-            {pc.stockYarnRows.map((r) => <Row label={r.yarn ? r.yarn.name : 'Yarn deleted'} value={<span class="strong">{r.kg === null ? '—' : `${fmt.n(r.kg, 1)} kg`}</span>} valueSub="per day" />)}
+          <Section header="Yarn stock" footer="Twisted yarn on hand, total kg. It does not change the spindles needed; it shows how long it lasts at the planned weft usage.">
+            {pc.stockYarnRows.map((r) => <Row label={r.yarn ? r.yarn.name : 'Yarn deleted'} value={<span class="strong">{r.kg === null ? '—' : `${fmt.n(r.kg, 1)} kg`}</span>} valueSub={daysText(r.days) === '—' ? null : `lasts ${daysText(r.days)}`} />)}
             {!pc.stockYarnRows.length ? <Row label="None" /> : null}
           </Section>
         </div>
@@ -284,7 +284,7 @@ function RunningTable({ rows, totals }) {
             <th class="txt"><span class="th">Yarn</span></th>
             <th class="key"><span class="th">Weft kg/day</span></th>
             <th><span class="th">Outside</span></th>
-            <th><span class="th">Stock</span></th>
+            <th><span class="th">Stock kg</span></th>
             <th class="key"><span class="th">Spindles needed</span></th>
           </tr>
         </thead>
@@ -337,8 +337,9 @@ function BalanceTable({ rows }) {
             <th class="txt"><span class="th">Yarn</span></th>
             <th><span class="th">Demand kg/day</span></th>
             <th><span class="th">Outside</span></th>
-            <th><span class="th">Stock</span></th>
             <th><span class="th">Net kg/day</span></th>
+            <th><span class="th">Stock kg</span></th>
+            <th><span class="th">Stock lasts</span></th>
             <th class="opt"><span class="th">kg / spindle-day</span></th>
             <th><span class="th">Spindles needed</span></th>
             <th><span class="th">Given out</span></th>
@@ -357,8 +358,9 @@ function BalanceTable({ rows }) {
               </td>
               <td>{fmt.n(y.demand, 1)}</td>
               <td class={y.outside ? '' : 'muted'}>{y.outside ? fmt.n(y.outside, 1) : '—'}</td>
-              <td class={y.stock ? '' : 'muted'}>{y.stock ? fmt.n(y.stock, 1) : '—'}</td>
               <td>{fmt.n(y.net, 1)}</td>
+              <td class={y.stock ? '' : 'muted'}>{y.stock ? fmt.n(y.stock, 1) : '—'}</td>
+              <td class={y.stock ? '' : 'muted'}>{y.stock ? daysText(y.stockDays) : '—'}</td>
               <td class="opt muted">{y.qRef === null ? '—' : fmt.n(y.qRef, 4)}</td>
               <td class="strong">{y.required === null ? '—' : fmt.int(y.required)}</td>
               <td>{fmt.int(y.allocSpindles)}<div class="tmeta">{y.allocSides} {y.allocSides === 1 ? 'side' : 'sides'}</div></td>
@@ -389,7 +391,7 @@ function BalanceCard({ y }) {
       <div class="kv">
         <span class="k">Demand</span><span class="v">{fmt.n(y.demand, 1)} kg/day</span>
         {y.outside ? <><span class="k">Outside</span><span class="v">− {fmt.n(y.outside, 1)} kg/day</span></> : null}
-        {y.stock ? <><span class="k">Stock</span><span class="v">− {fmt.n(y.stock, 1)} kg/day</span></> : null}
+        {y.stock ? <><span class="k">Stock on hand</span><span class="v">{fmt.n(y.stock, 1)} kg · lasts {daysText(y.stockDays)}</span></> : null}
         <span class="k">Spindles needed</span><span class="v">{y.required === null ? '—' : fmt.int(y.required)}{y.sidesNeeded !== null ? ` (${fmt.n(y.sidesNeeded, 1)} sides)` : ''}</span>
         <span class="k">Given out</span><span class="v">{fmt.int(y.allocSpindles)} ({y.allocSides} {y.allocSides === 1 ? 'side' : 'sides'})</span>
         <span class="k">Balance</span><span class="v">{signedKg(y.balanceKg)} kg/day</span>
@@ -629,7 +631,7 @@ function PlanEditForm({ id, query, unitId }) {
   );
 
   const yarnStockSection = (
-    <Section header="Yarn stock" footer="Twisted yarn you will use from stock, kg per day. Taken off the weft demand.">
+    <Section header="Yarn stock" footer="Twisted yarn on hand, total kg. It does not change the spindles needed; it shows how long it lasts at the planned weft usage.">
       {lines.stock.map((l, i) => (
         <div class="line">
           <div class="line-top">
@@ -640,7 +642,7 @@ function PlanEditForm({ id, query, unitId }) {
             <IconButton label="Remove yarn stock line" onClick={() => dropLine('stock', i)}><span class="bad"><Icon.trash size={20} /></span></IconButton>
           </div>
           <div class="line-bottom">
-            <label class="mini"><span>kg/day from stock</span><input inputmode="decimal" value={l.qty ?? ''} onInput={(e) => setLine('stock', i, { qty: e.currentTarget.value })} aria-label="Stock kg per day" /></label>
+            <label class="mini"><span>kg in stock</span><input inputmode="decimal" value={l.qty ?? ''} onInput={(e) => setLine('stock', i, { qty: e.currentTarget.value })} aria-label="Stock kg" /></label>
           </div>
         </div>
       ))}

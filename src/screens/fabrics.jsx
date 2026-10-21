@@ -5,7 +5,7 @@ import {
   addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, fabricPlanCount, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, toast, useStore,
 } from '../store.js';
 import { back, go, replace } from '../router.js';
-import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
+import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, SearchPicker, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
 import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
 
 const WEAVES = ['Plain', 'Cam', 'Dobby'];
@@ -897,10 +897,7 @@ function FabricEditForm({ id }) {
       l.side !== side ? null : (
         <div class="line">
           <div class="line-top">
-            <select value={l.yarn_id} onChange={(e) => setLine(i, { yarn_id: e.currentTarget.value })} aria-label={`${side} yarn`}>
-              <option value="">Choose {side} yarn</option>
-              {opts.map((g) => <optgroup label={g.group}>{g.options.map((o) => <option value={o.value}>{o.label}</option>)}</optgroup>)}
-            </select>
+            <SearchPicker value={l.yarn_id} onChange={(v) => setLine(i, { yarn_id: v })} options={opts} label={`${side} yarn`} placeholder={`Choose ${side} yarn`} title={`Choose ${side} yarn`} searchHint="Search yarns, e.g. 75D or TPM 2000" />
             <IconButton label={`Remove ${side} yarn`} onClick={() => removeLine(i)}><span class="bad"><Icon.trash size={20} /></span></IconButton>
           </div>
           <div class="line-bottom">

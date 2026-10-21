@@ -10,7 +10,8 @@
 //   balance = spindles given out − spindles needed (+ surplus, − deficit)
 //
 // The planner is for weft only: every TFO side runs weft yarn, so warp yarn is left out of the demand.
-// Yarn stock (twisted yarn, kg/day) is used like outside yarn: it comes off the weft demand.
+// Yarn stock is twisted yarn on hand, total kg. It does not change the spindles needed; the plan shows
+// how many days it lasts at the planned weft usage (stock ÷ net kg/day).
 //
 // Conventions: TFO RPM is entered already × 2 (tfoOutput does not double it). Loom efficiency is the unit's.
 // TFO efficiency: the speed's own, else the TFO type's, else the unit default.
@@ -44,6 +45,9 @@ export function plansOf(idx, unitId) {
     .slice()
     .sort((a, b) => String(b.plan_date || '').localeCompare(String(a.plan_date || '')) || String(b.created_at || '').localeCompare(String(a.created_at || '')));
 }
+
+// "4.2 days", or "not needed" when there is no weft to twist
+export const daysText = (d) => (d === null || d === undefined ? '—' : d === Infinity ? 'no demand' : `${Math.round(d * 10) / 10} ${Math.round(d * 10) / 10 === 1 ? 'day' : 'days'}`);
 
 const bySort = (a, b) => (num(a.sort) ?? 0) - (num(b.sort) ?? 0);
 
@@ -156,7 +160,7 @@ export function planCalc(plan, lines, idx) {
     const yarn = idx.yarnsById[line.yarn_id] || null;
     const kg = num(line.qty);
     if (yarn && kg !== null) yarnRow(yarn).stock += kg;
-    const problems = yarn ? (kg === null ? ['Enter kg per day'] : isTpm(yarn) ? [] : [`${yarn.name} is not a TPM yarn`]) : ['Choose a yarn'];
+    const problems = yarn ? (kg === null ? ['Enter kg in stock'] : isTpm(yarn) ? [] : [`${yarn.name} is not a TPM yarn`]) : ['Choose a yarn'];
     return { line, yarn, kg, problems };
   });
 
@@ -206,8 +210,8 @@ export function planCalc(plan, lines, idx) {
 
   // ---------- balance per yarn ----------
   const yarnRows = [...yarns.values()].filter((y) => isTpm(y.yarn)).map((y) => {
-    const supply = y.outside + y.stock;
-    const net = y.demand - supply;
+    const net = y.demand - y.outside;
+    const stockDays = y.stock > 0 ? (net > 0 ? y.stock / net : Infinity) : null;
     // output per spindle used for "spindles needed": the mix actually given out, else the first TFO type with a speed
     let qRef = null;
     let refType = null;
@@ -234,7 +238,7 @@ export function planCalc(plan, lines, idx) {
     if (!y.demandKnown) problems.push('Demand incomplete: a loom line is missing data');
     if (!y.allocKnown) problems.push('Output incomplete: a TFO line has no speed');
     if (!qRef && net > 0) problems.push(`No TFO speed for ${y.yarn.name} on this unit`);
-    return { ...y, net, qRef, refType, required, balanceKg, balanceSpindles, sidesNeeded: required === null ? null : required / perSide, balanceSides: balanceSpindles === null ? null : balanceSpindles / perSide, status, problems };
+    return { ...y, net, stockDays, qRef, refType, required, balanceKg, balanceSpindles, sidesNeeded: required === null ? null : required / perSide, balanceSides: balanceSpindles === null ? null : balanceSpindles / perSide, status, problems };
   }).sort((a, b) => (a.balanceSpindles ?? Infinity) - (b.balanceSpindles ?? Infinity) || String(a.yarn.name).localeCompare(String(b.yarn.name)));
 
   const runningRows = [...running.values()].map((r) => {
@@ -242,7 +246,7 @@ export function planCalc(plan, lines, idx) {
     const tpm = isTpm(r.yarn);
     const sp = tpm ? yarnRows.find((y) => y.yarn.id === r.yarn.id) : null;
     const base = tpm ? idx.yarnsById[r.yarn.base_yarn_id] || null : null;
-    return { ...r, total, tpm, base, outside: sp ? sp.outside : 0, stock: sp ? sp.stock : 0, net: sp ? sp.net : total, spindles: sp ? sp.required : null, spindleStatus: sp ? sp.status : null, balanceSpindles: sp ? sp.balanceSpindles : null };
+    return { ...r, total, tpm, base, outside: sp ? sp.outside : 0, stock: sp ? sp.stock : 0, stockDays: sp ? sp.stockDays : null, net: sp ? sp.net : total, spindles: sp ? sp.required : null, spindleStatus: sp ? sp.status : null, balanceSpindles: sp ? sp.balanceSpindles : null };
   }).sort((a, b) => b.total - a.total || String(a.yarn.name).localeCompare(String(b.yarn.name)));
 
   const known = yarnRows.filter((y) => y.balanceSpindles !== null);
@@ -268,6 +272,11 @@ export function planCalc(plan, lines, idx) {
     idleSides: typeUse.every((u) => u.idle !== null) ? typeUse.reduce((s, u) => s + Math.max(u.idle, 0), 0) : null,
     idleSpindles: typeUse.every((u) => u.idle !== null) ? typeUse.reduce((s, u) => s + Math.max(u.idle, 0) * u.perSide, 0) : null,
   };
+
+  for (const r of stockYarnRows) {
+    const yr = r.yarn ? yarnRows.find((y) => y.yarn.id === r.yarn.id) : null;
+    r.days = yr ? yr.stockDays : null;
+  }
 
   const lineProblems = [...loomRows, ...tfoRows, ...outsideRows, ...stockYarnRows].filter((r) => r.problems.length).length;
   return { unit, types, groups, loomRows, tfoRows, outsideRows, stockYarnRows, groupUse, typeUse, yarnRows, runningRows, totals, issues, lineProblems };

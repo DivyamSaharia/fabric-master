@@ -169,7 +169,7 @@ describe('running yarn requirement (weft only)', () => {
   });
 });
 
-describe('weft only, with yarn stock', () => {
+describe('weft only, with yarn stock on hand', () => {
   const looms = [{ loom_group_id: 'lg1', fabric_id: 'f_geo', looms: 10 }];
   const run = (lines) => planCalc(plan, { outside: [], tfo: [], stock: [], looms, ...lines }, idxOf());
   const yarn60 = (lines) => run(lines).yarnRows.find((r) => r.yarn.id === 'y_tpm60');
@@ -194,15 +194,19 @@ describe('weft only, with yarn stock', () => {
     expect(y.balanceKg / y.qRef).toBeCloseTo(y.balanceSpindles, 6);
   });
 
-  it('takes yarn stock off the weft demand like outside yarn', () => {
+  it('keeps stock out of the spindles needed and shows how many days it lasts', () => {
     const base = yarn60({});
-    const y = yarn60({ stock: [{ yarn_id: 'y_tpm60', qty: 20 }], outside: [{ yarn_id: 'y_tpm60', kg_per_day: 10 }] });
-    expect(y.stock).toBe(20);
-    expect(y.net).toBeCloseTo(base.demand - 30, 6);
-    expect(y.required).toBeCloseTo((base.demand - 30) / base.qRef, 6);
-    // more than the demand: nothing needed, surplus of kg
-    const none = yarn60({ stock: [{ yarn_id: 'y_tpm60', qty: base.demand + 50 }] });
-    expect(none.required).toBe(0);
+    const y = yarn60({ stock: [{ yarn_id: 'y_tpm60', qty: 100 }], outside: [{ yarn_id: 'y_tpm60', kg_per_day: 10 }] });
+    expect(y.stock).toBe(100);
+    expect(y.net).toBeCloseTo(base.demand - 10, 6);
+    expect(y.required).toBeCloseTo((base.demand - 10) / base.qRef, 6); // stock does not change it
+    expect(y.stockDays).toBeCloseTo(100 / (base.demand - 10), 9);
+    const pc = run({ stock: [{ yarn_id: 'y_tpm60', qty: 100 }] });
+    expect(pc.stockYarnRows[0].days).toBeCloseTo(100 / base.demand, 9);
+    // no stock: no days
+    expect(base.stockDays).toBeNull();
+    // outside yarn covers all the demand: the stock is not needed
+    expect(yarn60({ stock: [{ yarn_id: 'y_tpm60', qty: 5 }], outside: [{ yarn_id: 'y_tpm60', kg_per_day: base.demand + 5 }] }).stockDays).toBe(Infinity);
   });
 
   it('flags a stock line that is not a TPM yarn', () => {
