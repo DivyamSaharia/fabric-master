@@ -12,13 +12,6 @@ export const TABLES = {
   // Beam length (metres) of a fabric on one loom group of a unit it is assigned to.
   FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
   Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
-  // Dated TFO plans: what each loom group runs, how TFO sides are given out, and twisted yarn bought in.
-  TfoPlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
-  PlanLooms: ['id', 'plan_id', 'loom_group_id', 'fabric_id', 'looms', 'panna', 'rpm', 'sort', 'updated_at', 'updated_by'],
-  PlanTfo: ['id', 'plan_id', 'tfo_type_id', 'yarn_id', 'sides', 'sort', 'updated_at', 'updated_by'],
-  PlanOutside: ['id', 'plan_id', 'yarn_id', 'kg_per_day', 'source', 'sort', 'updated_at', 'updated_by'],
-  // Twisted yarn used from stock: yarn_id, qty = total kg on hand.
-  PlanStock: ['id', 'plan_id', 'yarn_id', 'qty', 'sort', 'updated_at', 'updated_by'],
 };
 
 export const TABLE_NAMES = Object.keys(TABLES);

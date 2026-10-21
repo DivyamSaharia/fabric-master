@@ -8,6 +8,7 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
+ * Backend v9: the old TFO planner is gone (TfoPlans and Plan* tabs removed); planning is the separate TFO Planner app.
  * Backend v8: beam length per fabric and loom group (FabricBeams).
  * Backend v7: TFO plans can hold twisted yarn on hand, total kg (PlanStock). The planner is weft-only.
  * Backend v6: dated TFO plans (TfoPlans, PlanLooms, PlanTfo, PlanOutside), TFO machine counts and an efficiency per TFO type.
@@ -24,12 +25,7 @@ var TABLES = {
   FabricYarns: ['id', 'fabric_id', 'side', 'yarn_id', 'ends', 'parts', 'pattern', 'sort', 'updated_at', 'updated_by'],
   Assignments: ['id', 'fabric_id', 'unit_id', 'updated_at', 'updated_by'],
   FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
-  Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
-  TfoPlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'created_at', 'updated_at', 'updated_by', 'created_by'],
-  PlanLooms: ['id', 'plan_id', 'loom_group_id', 'fabric_id', 'looms', 'panna', 'rpm', 'sort', 'updated_at', 'updated_by'],
-  PlanTfo: ['id', 'plan_id', 'tfo_type_id', 'yarn_id', 'sides', 'sort', 'updated_at', 'updated_by'],
-  PlanOutside: ['id', 'plan_id', 'yarn_id', 'kg_per_day', 'source', 'sort', 'updated_at', 'updated_by'],
-  PlanStock: ['id', 'plan_id', 'yarn_id', 'qty', 'sort', 'updated_at', 'updated_by']
+  Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by']
 };
 
 // Columns stored as numbers or TRUE/FALSE. Everything else is kept as plain text,
@@ -38,10 +34,10 @@ var NUMERIC = {
   count: 1, filaments: 1, tpm: 1, tpm_delta: 1, rate: 1, cost_per_pick: 1, tfo_default_eff: 1, reed_width_cm: 1, looms: 1, rpm: 1, efficiency: 1,
   reed: 1, ppi: 1, reed_space_in: 1, greige_width_in: 1, warp_shortage_pct: 1, weft_shortage_pct: 1, price: 1, vatav_pct: 1, rfd_shortage_pct: 1,
   processing_charge: 1, brokering_pct: 1, loom_rpm: 1, loom_rpm_dp: 1, loom_eff_pct: 1, ends: 1, parts: 1, sort: 1,
-  machines: 1, spindles_per_side: 1, panna: 1, sides: 1, kg_per_day: 1, qty: 1, beam_length_m: 1
+  machines: 1, spindles_per_side: 1, beam_length_m: 1
 };
 var BOOLEAN = { has_tfo: 1, is_cover: 1 };
-var DATE_ONLY = { effective_date: 1, plan_date: 1 };
+var DATE_ONLY = { effective_date: 1 };
 
 // ---------- menu and one-time setup ----------
 
@@ -109,7 +105,7 @@ function ensureSheets_() {
   if (first && first.getName() === 'Sheet1' && first.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(first);
 }
 
-var SCHEMA_VERSION = '8';
+var SCHEMA_VERSION = '9';
 
 // Cheap check on every load; the full tab and format setup runs only when something is missing.
 function ensureReady_() {
@@ -520,14 +516,10 @@ var ROOT_OF = {
   YarnRates: ['Yarns', 'yarn_id'],
   LoomGroups: ['Units', 'unit_id'],
   TfoTypes: ['Units', 'unit_id'],
-  TfoSpeeds: ['Units', 'unit_id'],
-  PlanLooms: ['TfoPlans', 'plan_id'],
-  PlanTfo: ['TfoPlans', 'plan_id'],
-  PlanOutside: ['TfoPlans', 'plan_id'],
-  PlanStock: ['TfoPlans', 'plan_id']
+  TfoSpeeds: ['Units', 'unit_id']
 };
-var KIND = { Fabrics: 'Fabric', Yarns: 'Yarn', Units: 'Unit', TfoPlans: 'TFO plan' };
-var ID_REF = { yarn_id: 'Yarns', base_yarn_id: 'Yarns', unit_id: 'Units', tfo_type_id: 'TfoTypes', fabric_id: 'Fabrics', loom_group_id: 'LoomGroups', plan_id: 'TfoPlans' };
+var KIND = { Fabrics: 'Fabric', Yarns: 'Yarn', Units: 'Unit' };
+var ID_REF = { yarn_id: 'Yarns', base_yarn_id: 'Yarns', unit_id: 'Units', tfo_type_id: 'TfoTypes', fabric_id: 'Fabrics', loom_group_id: 'LoomGroups' };
 var LABELS = {
   name: 'Name', weave: 'Weave', design_note: 'Design', end_use: 'End use', reed: 'Reed', ppi: 'PPI', reed_space_in: 'RS',
   greige_width_in: 'Greige width', warp_shortage_pct: 'Warp shortage %', weft_shortage_pct: 'Weft shortage %', price: 'Price',
@@ -535,12 +527,11 @@ var LABELS = {
   brokering_pct: 'Brokering %', loom_rpm: 'Loom RPM', loom_rpm_dp: 'Loom RPM double panna', loom_eff_pct: 'Loom efficiency %',
   notes: 'Notes', kind: 'Kind', base_yarn_id: 'Base yarn', material: 'Material', form: 'Form', count: 'Count',
   count_unit: 'Count unit', filaments: 'Filaments', lustre: 'Lustre', tpm: 'TPM', twist: 'Twist', tpm_delta: 'TPM delta',
-  qty: 'Quantity', beam_length_m: 'Beam length (m)', type: 'Type', cost_per_pick: 'Cost per pick', has_tfo: 'TFO', tfo_default_eff: 'TFO efficiency', side: 'Side',
+  beam_length_m: 'Beam length (m)', type: 'Type', cost_per_pick: 'Cost per pick', has_tfo: 'TFO', tfo_default_eff: 'TFO efficiency', side: 'Side',
   yarn_id: 'Yarn', ends: 'Ends', parts: 'Pick share', pattern: 'Pattern', rate: 'Rate', effective_date: 'From',
   make: 'Make', reed_width_cm: 'Reed width cm', shedding: 'Shedding', looms: 'Looms', rpm: 'RPM', efficiency: 'Efficiency',
   tfo_type_id: 'TFO type', unit_id: 'Unit', caption: 'Caption', is_cover: 'Cover',
-  machines: 'Machines', spindles_per_side: 'Spindles per side', plan_date: 'Date', loom_group_id: 'Loom group',
-  panna: 'Panna', sides: 'Sides', kg_per_day: 'kg/day', source: 'From'
+  machines: 'Machines', spindles_per_side: 'Spindles per side', loom_group_id: 'Loom group'
 };
 
 function note_(table, action, row, diffs) {
@@ -601,19 +592,9 @@ function fabricLabel_(f) {
   return (head + ' ' + r + m[2]).trim();
 }
 
-function dateText_(v) {
-  var m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (!m) return String(v || '');
-  return Number(m[3]) + ' ' + ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][Number(m[2]) - 1] + ' ' + m[1];
-}
-
 function label_(table, row) {
   if (!row) return '';
   if (table === 'Fabrics') return fabricLabel_(row);
-  if (table === 'TfoPlans') {
-    var unit = row.unit_id ? nameOf_('Units', row.unit_id) : '';
-    return [unit, dateText_(row.plan_date), row.name].filter(function (x) { return x; }).join(' · ') || 'TFO plan';
-  }
   if (table === 'LoomGroups') return [row.make, row.reed_width_cm ? row.reed_width_cm + ' cm' : '', row.shedding].filter(function (x) { return x; }).join(' ') || 'loom group';
   return String(row.name || row.id || '');
 }
@@ -696,30 +677,6 @@ function describe_(ev) {
       if (a === 'deleted') return 'loom group removed: ' + lg;
       return fieldDiffs_(ev, 'loom group ' + lg);
     }
-    case 'PlanLooms': {
-      var pl = (nameOf_('Fabrics', r.fabric_id) || 'fabric') + ' on ' + (nameOf_('LoomGroups', r.loom_group_id) || 'looms');
-      if (a === 'added') return 'loom plan: ' + (r.looms !== '' ? r.looms + ' × ' : '') + pl + (Number(r.panna) === 2 ? ' double panna' : '');
-      if (a === 'deleted') return 'loom plan removed: ' + pl;
-      return fieldDiffs_(ev, 'loom plan ' + pl);
-    }
-    case 'PlanTfo': {
-      var pt = (nameOf_('Yarns', r.yarn_id) || 'yarn') + ' on ' + (nameOf_('TfoTypes', r.tfo_type_id) || 'TFO');
-      if (a === 'added') return 'TFO: ' + (r.sides !== '' ? r.sides + ' sides of ' : '') + pt;
-      if (a === 'deleted') return 'TFO removed: ' + pt;
-      return fieldDiffs_(ev, 'TFO ' + pt);
-    }
-    case 'PlanStock': {
-      var ps = 'yarn stock ' + (nameOf_('Yarns', r.yarn_id) || 'yarn');
-      if (a === 'added') return ps + (r.qty !== '' ? ' ' + r.qty + ' kg' : '');
-      if (a === 'deleted') return ps + ' removed';
-      return fieldDiffs_(ev, ps);
-    }
-    case 'PlanOutside': {
-      var po = 'outside ' + (nameOf_('Yarns', r.yarn_id) || 'yarn');
-      if (a === 'added') return po + (r.kg_per_day !== '' ? ' ' + r.kg_per_day + ' kg/day' : '');
-      if (a === 'deleted') return po + ' removed';
-      return fieldDiffs_(ev, po);
-    }
     default:
       return '';
   }
@@ -789,7 +746,6 @@ function finish_() {
     }
     if (self && self.action === 'added') {
       var with_ = g.kids.filter(function (k) { return k.table === 'Assignments' || k.table === 'YarnRates'; }).map(describe_);
-      if (g.root.table === 'TfoPlans' && g.kids.length) with_ = [g.kids.length + ' plan lines'];
       lines.push([when, who, 'added', kind, label_(g.root.table, self.row), uniq_(with_).join('; '), g.root.id]);
       return;
     }

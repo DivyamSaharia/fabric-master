@@ -1,6 +1,6 @@
 import { fmt, loomPerDay, num, spindlesForUnit, truthy, unitHasTfo, unitProfit } from '../calc.js';
 import { constructionLine, unitsOf } from '../describe.js';
-import { beamRowsOf, slotLabel } from '../planner.js';
+import { beamRowsOf, slotLabel } from '../machines.js';
 import { getPhoto, saveExportToDrive, setPendingShare, toast } from '../store.js';
 import { today } from '../schema.js';
 

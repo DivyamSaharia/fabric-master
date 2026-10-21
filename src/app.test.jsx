@@ -218,112 +218,6 @@ describe('every screen renders with demo data', () => {
   });
 });
 
-describe('TFO planner', () => {
-  it('lists dated plans with their verdict, and the unit page links to them', async () => {
-    await open('#/plans');
-    await screen.findByText('Wed, 21 Oct 2026');
-    expect(screen.getByText('Surplus 1,077 spindles')).toBeTruthy();
-    expect(screen.getByText(/42 looms · 24 sides given out/)).toBeTruthy();
-    cleanup();
-    await open('#/unit/u_2');
-    await screen.findByText('Latest · 21 Oct 2026');
-    expect(screen.getByText('12 machines · 24 sides · 6,048 spindles · 90% efficiency (unit default)')).toBeTruthy();
-  });
-
-  it('plan page shows the spindle balance per yarn', async () => {
-    await open('#/plan/p1');
-    await screen.findByText('Spindle balance by yarn');
-    const cards = [...document.querySelectorAll('.unit-card')].map((c) => c.textContent);
-    // weft only, smallest balance first: balance shown in spindles and in kg/day
-    expect(cards[0]).toContain('75D TPM 2000 S/Z');
-    expect(cards[0]).toContain('+116');
-    expect(cards[0]).toContain('+11.3 kg/day');
-    expect(cards.some((t) => t.includes('60D TPM 2400 S/Z') && t.includes('+771'))).toBe(true);
-    expect(cards.join(' ')).not.toMatch(/warp/i);
-    expect(screen.getByText('Job work')).toBeTruthy();
-    expect(screen.getByText('16 of 24')).toBeTruthy();
-  });
-
-  it('editing sides updates the balance live and saves', async () => {
-    await open('#/plan/p1/edit');
-    await screen.findByText('Balance as you edit');
-    const sides = screen.getAllByLabelText('Number of sides');
-    fireEvent.input(sides[2], { target: { value: '12' } });
-    await screen.findByText(/\+1,779/);
-    fireEvent.input(sides[2], { target: { value: '8' } });
-    fireEvent.input(sides[0], { target: { value: '9' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Spindle balance by yarn');
-    const t = JSON.parse(localStorage.getItem('fm.demo.v1'));
-    expect(t.PlanTfo.find((l) => l.id === 'pt1').sides).toBe(9);
-    expect(t.PlanTfo).toHaveLength(3);
-  });
-
-  it('plan page has a section per loom group with looms available, and the running yarn', async () => {
-    await open('#/plan/p1');
-    await screen.findByText('Running yarn requirement');
-    expect(screen.getByText('Toyota · 280 cm · Plain · 32 of 40 looms · 8 available')).toBeTruthy();
-    expect(screen.getByText('Toyota · 190 cm · Dobby · 10 of 24 looms · 14 available')).toBeTruthy();
-    expect(screen.getByText('Total running')).toBeTruthy();
-    expect(screen.getByText('533.6 kg')).toBeTruthy();
-  });
-
-  it('editor shows every loom group, and the available count moves as looms change', async () => {
-    await open('#/plan/p1/edit');
-    await screen.findByText('Running yarn as you edit');
-    expect(screen.getByText('14 available')).toBeTruthy(); // 190 cm: 10 of 24
-    expect(screen.getByText('8 available')).toBeTruthy(); // 280 cm: 32 of 40
-    const looms = screen.getAllByLabelText('Number of looms');
-    fireEvent.input(looms[1], { target: { value: '25' } }); // 280 cm group: Poly Crepe 20 → 25, so 37 of 40
-    await screen.findByText('3 available');
-    fireEvent.input(looms[1], { target: { value: '33' } });
-    await screen.findByText('5 over');
-    // a group with nothing planned still has its section; add a fabric to it
-    fireEvent.click(screen.getAllByText('Add fabric to these looms')[0]);
-    await waitFor(() => expect(screen.getAllByLabelText('Number of looms').length).toBe(4));
-  });
-
-  it('has no running switch or beam stock, and a yarn stock line saves', async () => {
-    await open('#/plan/p1/edit');
-    await screen.findByText('Running yarn as you edit');
-    expect(screen.queryByText('Currently running')).toBeNull();
-    expect(screen.queryByText('Add beam stock')).toBeNull();
-    fireEvent.click(screen.getByText('Add yarn stock'));
-    const yarnSel = screen.getByLabelText('Stock yarn');
-    fireEvent.change(yarnSel, { target: { value: 'y_tpm75' } });
-    fireEvent.input(screen.getByLabelText('Stock kg'), { target: { value: '5' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Spindle balance by yarn');
-    await screen.findByText('Yarn stock');
-    const t = JSON.parse(localStorage.getItem('fm.demo.v1'));
-    expect(t.PlanStock).toHaveLength(1);
-    expect(t.PlanStock[0]).toMatchObject({ yarn_id: 'y_tpm75', qty: 5 });
-    expect(screen.getAllByText(/lasts \d/).length).toBeGreaterThan(0); // total kg on hand shows how many days it lasts
-    // put it back so later tests see the sample plan unchanged
-    await open('#/plan/p1/edit');
-    await screen.findByText('Running yarn as you edit');
-    fireEvent.click(screen.getByLabelText('Remove yarn stock line'));
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Spindle balance by yarn');
-  });
-
-  it('copies a plan to a new date', async () => {
-    await open('#/plan/p1');
-    await screen.findByText('Spindle balance by yarn');
-    fireEvent.click(screen.getByText('Copy to a new date'));
-    fireEvent.input(screen.getByLabelText('Date'), { target: { value: '2026-11-01' } });
-    fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Nov plan' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Create copy' }));
-    await screen.findByText('Sun, 1 Nov 2026');
-    const t = JSON.parse(localStorage.getItem('fm.demo.v1'));
-    const copy = t.TfoPlans.find((p) => p.plan_date === '2026-11-01');
-    expect(copy.name).toBe('Nov plan');
-    expect(t.PlanLooms.filter((l) => l.plan_id === copy.id)).toHaveLength(3);
-    expect(t.PlanTfo.filter((l) => l.plan_id === copy.id)).toHaveLength(3);
-    expect(t.PlanOutside.filter((l) => l.plan_id === copy.id)).toHaveLength(1);
-  });
-});
-
 describe('exports', () => {
   it('WhatsApp text carries spec and price, not costs', () => {
     const idx = buildIndex(sampleTables());
@@ -385,19 +279,11 @@ describe('laptop layout', () => {
     expect(row.textContent).toContain('base ₹118 + ₹50');
   });
 
-  it('plan page shows the balance as a table', async () => {
-    await open('#/plan/p1');
-    await waitFor(() => expect(document.querySelectorAll('.plan-table').length).toBe(2));
-    const [running, balance] = [...document.querySelectorAll('.plan-table')];
-    // weft only. running yarn: 3 TPM yarns + total; balance: 3 TPM yarns
-    expect(running.querySelectorAll('tbody tr').length).toBe(4);
-    expect(running.textContent).not.toMatch(/warp/i);
-    expect(running.querySelector('tbody tr').textContent).toContain('TPM');
-    expect(balance.querySelectorAll('tbody tr').length).toBe(3);
-    expect(balance.querySelector('tbody tr').textContent).toContain('75D TPM 2000 S/Z');
-    expect(balance.textContent).toContain('Balance kg/day');
-    expect(balance.textContent).not.toMatch(/warp/i);
-    expect(document.querySelector('.sidebar').textContent).toContain('Planner');
+  it('has no Planner tab: TFO planning is the separate TFO Planner app', async () => {
+    await open('#/fabrics');
+    await screen.findByText('Fabric Database');
+    expect(document.querySelector('.sidebar').textContent).not.toContain('Planner');
+    expect(document.querySelector('.sidebar').textContent).toContain('Units');
   });
 
   it('"/" jumps to the search box', async () => {

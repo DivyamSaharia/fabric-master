@@ -133,7 +133,7 @@ function YarnEditForm({ id, query }) {
   const baseDenier = base ? yarnDenier(base, idx) : null;
   const baseRate = base ? yarnRate(base, idx) : null;
   const history = existing ? idx.ratesByYarn[existing.id] || [] : [];
-  const usage = existing ? yarnUsage(existing.id) : { fabrics: 0, tpmChildren: 0, plans: 0 };
+  const usage = existing ? yarnUsage(existing.id) : { fabrics: 0, tpmChildren: 0 };
   const baseOptions = Object.values(idx.yarnsById).filter((x) => !isTpm(x)).sort((a, b) => String(a.name).localeCompare(String(b.name))).map((x) => ({ value: x.id, label: x.name }));
   const rateChanged = !tpm && rate !== '' && (!current || num(rate) !== current.rate);
   const delta = num(y.tpm_delta) ?? DEFAULT_TPM_DELTA;
@@ -277,13 +277,12 @@ function YarnEditForm({ id, query }) {
       {existing ? (
         <>
           <History row={existing} what="yarn" />
-          <Section footer={usage.fabrics || usage.tpmChildren || usage.plans ? 'A yarn in use cannot be deleted. Remove it from those fabrics, TPM yarns or TFO plans first.' : null}>
+          <Section footer={usage.fabrics || usage.tpmChildren ? 'A yarn in use cannot be deleted. Remove it from those fabrics or TPM yarns first.' : null}>
             <Row label="Used in fabrics" value={String(usage.fabrics)} />
             {!tpm ? <Row label="TPM yarns made from it" value={String(usage.tpmChildren)} /> : null}
-            {usage.plans ? <Row label="Used in TFO plans" value={String(usage.plans)} /> : null}
           </Section>
           <div class="actions">
-            <Button kind="danger" disabled={!!(usage.fabrics || usage.tpmChildren || usage.plans)} onClick={async () => {
+            <Button kind="danger" disabled={!!(usage.fabrics || usage.tpmChildren)} onClick={async () => {
               if (!window.confirm(`Delete ${existing.name} and its rate history?`)) return;
               try {
                 await deleteYarn(existing.id);

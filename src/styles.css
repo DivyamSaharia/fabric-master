@@ -378,17 +378,7 @@ button.row:active { background: var(--fill-2); }
 /* access keys */
 .key-text { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 14px; line-height: 20px; color: var(--text); word-break: break-all; user-select: all; -webkit-user-select: all; }
 
-/* TFO planner */
-.badge.red { background: var(--bad-bg, rgba(255, 59, 48, 0.12)); color: var(--bad); }
-.tile.bad-tile { background: var(--bad-bg, rgba(255, 59, 48, 0.12)); }
-.tile.bad-tile .t-label, .tile.bad-tile .t-value, .tile.bad-tile .t-sub { color: var(--bad); }
-.plan-tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.shell.wide .plan-tiles { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-@media (max-width: 420px) {
-  .plan-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .plan-tiles .tile:first-child { grid-column: 1 / -1; }
-}
-.plan-bal { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 2px; }
+/* searchable yarn picker */
 .pick-btn { flex: 1; min-width: 0; height: 40px; border: 0; border-radius: 8px; background: var(--bg); padding: 0 10px; font-size: 16px; color: var(--text); display: flex; align-items: center; justify-content: space-between; gap: 8px; text-align: left; cursor: pointer; }
 .pick-btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pick-btn.empty { color: var(--text-3); }
@@ -399,9 +389,5 @@ button.row:active { background: var(--fill-2); }
 .pick-opt:hover { background: var(--bg); }
 .pick-opt.on { font-weight: 600; }
 .pick-none { padding: 20px 8px; color: var(--text-3); text-align: center; }
-.line-select { flex: 1; min-width: 0; height: 40px; border: 0; border-radius: 8px; background: var(--bg); padding: 0 10px; font-size: 16px; color: var(--text); appearance: none; -webkit-appearance: none; }
 .mini-out .strong { color: var(--text); font-weight: 600; font-size: 15px; }
-.ftable.plan-table td.key.bad { color: var(--bad); }
-.ftable.plan-table td.key.good { color: var(--good); }
-.ftable.plan-table td.bad { color: var(--bad); }
 .tmeta.bad { color: var(--bad); }

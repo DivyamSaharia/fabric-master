@@ -82,21 +82,5 @@ export function sampleTables() {
       { id: 'fb2', fabric_id: 'f_moss', loom_group_id: 'lg2', beam_length_m: 6000 },
     ],
     Photos: [],
-    TfoPlans: [
-      { id: 'p1', unit_id: 'u_2', plan_date: '2026-10-21', name: 'Current running', notes: '', created_at: now },
-    ],
-    PlanLooms: [
-      { id: 'pl1', plan_id: 'p1', loom_group_id: 'lg2', fabric_id: 'f_crepe', looms: 20, panna: 1, rpm: '', sort: 1 },
-      { id: 'pl2', plan_id: 'p1', loom_group_id: 'lg2', fabric_id: 'f_moss', looms: 12, panna: 1, rpm: '', sort: 2 },
-      { id: 'pl3', plan_id: 'p1', loom_group_id: 'lg1', fabric_id: 'f_geo', looms: 10, panna: 1, rpm: '', sort: 3 },
-    ],
-    PlanTfo: [
-      { id: 'pt1', plan_id: 'p1', tfo_type_id: 'tt1', yarn_id: 'y_tpm75', sides: 10, sort: 1 },
-      { id: 'pt2', plan_id: 'p1', tfo_type_id: 'tt1', yarn_id: 'y_tpm100', sides: 6, sort: 2 },
-      { id: 'pt3', plan_id: 'p1', tfo_type_id: 'tt2', yarn_id: 'y_tpm60', sides: 8, sort: 3 },
-    ],
-    PlanOutside: [
-      { id: 'po1', plan_id: 'p1', yarn_id: 'y_tpm75', kg_per_day: 20, source: 'Job work', sort: 1 },
-    ],
   };
 }

@@ -3,8 +3,7 @@ import { fabricCalc, fmt, isTpm, num, spindlesForUnit, tfoEff, tfoOutput, truthy
 import { deleteSpeed, deleteUnit, getIndex, saveSpeed, saveUnit, toast, useStore } from '../store.js';
 import { back, go, replace } from '../router.js';
 import { PanBlocks } from './fabrics.jsx';
-import { DEFAULT_SPINDLES_PER_SIDE, planCalc, planLines, planVerdict, plansOf, typeCapacity } from '../planner.js';
-import { dateText } from './plans.jsx';
+import { DEFAULT_SPINDLES_PER_SIDE, typeCapacity } from '../machines.js';
 import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, Section, Segmented, SelectField, Sheet, TextButton, Toggle, classBadge, History } from '../ui.jsx';
 
 export function UnitList() {
@@ -56,9 +55,6 @@ export function UnitDetail({ id }) {
   const speeds = idx.speedsByUnit[id] || [];
   const groups = idx.loomGroupsByUnit[id] || [];
   const hasTfo = truthy(unit.has_tfo);
-  const plans = plansOf(idx, id);
-  const latest = plans[0] || null;
-  const verdict = latest ? planVerdict(planCalc(latest, planLines(idx, latest.id), idx)) : null;
   const tpmFabrics = fabrics.map((f) => ({ f, c: fabricCalc(f, idx) })).filter((x) => x.c.tpmLines.length).sort((a, b) => String(a.f.name).localeCompare(String(b.f.name)));
 
   // speed table grouped by TPM yarn
@@ -103,10 +99,6 @@ export function UnitDetail({ id }) {
             {!types.length ? <Row label="No TFO types yet" /> : null}
           </Section>
 
-          <Section header="TFO planner" footer="Dated plans: what each loom group runs, how TFO sides are given out, and yarn bought in. Shows the surplus or deficit of spindles for each TPM yarn.">
-            {latest ? <Row label={`Latest · ${dateText(latest.plan_date)}`} sub={latest.name || null} value={<span class={verdict.kind === 'bad' ? 'bad' : verdict.kind === 'good' ? 'good' : ''}>{verdict.text}</span>} onClick={() => go(`/plan/${latest.id}`)} chevron /> : null}
-            <Row label="All plans" value={String(plans.length)} onClick={() => go(`/plans?unit=${id}`)} chevron />
-          </Section>
 
           <Section header="TFO speed table" footer={<><strong class="note-strong">Enter RPM already multiplied by 2. The app does not double it.</strong> Output per spindle = RPM ÷ TPM × 1,440 minutes × efficiency × denier ÷ 9,000,000.</>}>
             {yarnIds.map((yid) =>
@@ -279,11 +271,7 @@ function UnitEditForm({ id }) {
     }
     const keptTypes = u.has_tfo ? types : [];
     const dropping = (idx.tfoTypesByUnit[id] || []).filter((t) => !keptTypes.some((x) => x.id === t.id));
-    const droppingGroups = (idx.loomGroupsByUnit[id] || []).filter((g) => !groups.some((x) => x.id === g.id));
-    const planHits = (idx.tables.PlanTfo || []).filter((l) => dropping.some((t) => t.id === l.tfo_type_id)).length + (idx.tables.PlanLooms || []).filter((l) => droppingGroups.some((g) => g.id === l.loom_group_id)).length;
-    const planNote = planHits ? ` ${planHits} TFO plan ${planHits === 1 ? 'line goes' : 'lines go'} too.` : '';
-    if (dropping.length && !window.confirm(`Removing ${dropping.map((t) => t.name).join(', ')} also removes its speeds.${planNote} Continue?`)) return;
-    if (!dropping.length && planHits && !window.confirm(`Removing that loom group also removes it from TFO plans.${planNote} Continue?`)) return;
+    if (dropping.length && !window.confirm(`Removing ${dropping.map((t) => t.name).join(', ')} also removes its speeds. Continue?`)) return;
     setBusy(true);
     try {
       const uid = await saveUnit(

@@ -328,7 +328,6 @@ const TABS = [
   { id: 'fabrics', label: 'Fabrics', icon: Icon.fabrics },
   { id: 'yarns', label: 'Yarns', icon: Icon.yarns },
   { id: 'units', label: 'Units', icon: Icon.units },
-  { id: 'plans', label: 'Planner', icon: Icon.spindle },
   { id: 'ranking', label: 'Ranking', icon: Icon.ranking },
 ];
 
