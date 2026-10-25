@@ -464,8 +464,17 @@ export function FabricDetail({ id }) {
   const spinUnit = units.find((u) => unitHasTfo(calc, u, idx)) || units[0] || null;
   const spin = spinUnit ? spindleProfit(calc, fabric, spinUnit, idx) : null;
   const rfd = calc.finish === 'RFD';
-  const dayUnit = units.find((u) => num(u.loom_eff_pct)) || units[0] || null;
-  const day = dayUnit ? loomPerDay(calc, fabric, dayUnit, 1) : null;
+  const dayUnit = units.find((u) => num(u.loom_eff_pct) && (idx.loomGroupsByUnit[u.id] || []).length) || units.find((u) => num(u.loom_eff_pct)) || units[0] || null;
+  // One daily consumption tile per loom width of that unit (plain and dobby of a width share it),
+  // at the panna that width weaves; a unit with no loom groups gets one single panna tile.
+  const dayTiles = [];
+  if (dayUnit) {
+    for (const g of productionForUnit(calc, fabric, dayUnit, idx)) {
+      const w = num(g.group.reed_width_cm);
+      if (!dayTiles.some((d) => d.width === w)) dayTiles.push({ width: w, panna: g.panna, loom: g.loom, reason: g.reason });
+    }
+    if (!dayTiles.length) dayTiles.push({ width: null, panna: 1, loom: loomPerDay(calc, fabric, dayUnit, 1), reason: null });
+  }
   const tfoUnit = units.find((u) => unitHasTfo(calc, u, idx)) || null;
   const tfoTiles = tfoUnit ? tfoPerSide(calc, tfoUnit, idx) : [];
   const spinRow = spin ? (
@@ -561,14 +570,26 @@ export function FabricDetail({ id }) {
           <div class="t-value">{calc.price === null ? 'Not set' : fmt.rs(calc.price)}</div>
           <div class="t-sub">{calc.price === null ? 'add a selling price' : `${rfd ? 'per RFD metre' : 'per metre'}${fmt.date(fabric.sale_date) ? ` · ${fmt.date(fabric.sale_date)}` : ''}`}</div>
         </div>
-        <div class="tile span daily">
-          <div class="t-label">Daily consumption{dayUnit ? ` · ${dayUnit.name}` : ''}</div>
-          <div class="t-split">
-            <div><span class="t-k">Warp</span><span class="t-v">{day && day.warpKg !== null ? `${fmt.n(day.warpKg, 1)} kg` : '—'}</span></div>
-            <div><span class="t-k">Weft</span><span class="t-v">{day && day.weftKg !== null ? `${fmt.n(day.weftKg, 1)} kg` : '—'}</span></div>
+        {dayTiles.length ? dayTiles.map((d) => {
+          const l = d.loom;
+          const ok = l && l.mPerDay !== null;
+          return (
+            <div class="tile span daily">
+              <div class="t-label">Daily consumption{d.width ? ` · ${fmt.int(d.width)} cm` : ''}</div>
+              <div class="t-split">
+                <div><span class="t-k">Warp</span><span class="t-v">{ok && l.warpKg !== null ? `${fmt.n(l.warpKg, 1)} kg` : '—'}</span></div>
+                <div><span class="t-k">Weft</span><span class="t-v">{ok && l.weftKg !== null ? `${fmt.n(l.weftKg, 1)} kg` : '—'}</span></div>
+              </div>
+              <div class="t-sub">{ok ? `per loom per day (${fmt.int(l.mPerDay)} m) · ${d.panna === 2 ? 'double' : 'single'} panna · ${fmt.int(l.rpm)} RPM · ${fmt.n(l.eff, l.eff % 1 ? 1 : 0)}% eff. · ${dayUnit.name}` : `${l ? l.reason : d.reason} · ${dayUnit.name}`}</div>
+            </div>
+          );
+        }) : (
+          <div class="tile span daily">
+            <div class="t-label">Daily consumption</div>
+            <div class="t-split"><div><span class="t-k">Warp</span><span class="t-v">—</span></div><div><span class="t-k">Weft</span><span class="t-v">—</span></div></div>
+            <div class="t-sub">assign a unit to see it</div>
           </div>
-          <div class="t-sub">{!dayUnit ? 'assign a unit to see it' : day.mPerDay === null ? day.reason : `per loom per day (${fmt.int(day.mPerDay)} m) · single panna · ${fmt.int(day.rpm)} RPM · ${fmt.n(day.eff, day.eff % 1 ? 1 : 0)}% eff.`}</div>
-        </div>
+        )}
         {tfoTiles.map((t) => (
           <div class="tile span tfo">
             <div class="t-label">TFO per side · {t.type.name}</div>

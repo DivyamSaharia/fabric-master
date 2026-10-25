@@ -340,7 +340,7 @@ button.row:active { background: var(--fill-2); }
 .shell.wide .hero { height: 320px; }
 .shell.wide .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .shell.wide .tile.span { grid-column: auto; }
-.shell.wide .tile.daily { grid-column: span 2; }
+.shell.wide .tile.daily { grid-column: auto; }
 .shell.wide .tile.tfo { grid-column: 1 / -1; }
 
 /* tables (laptop lists) */

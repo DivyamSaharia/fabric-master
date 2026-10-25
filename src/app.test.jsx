@@ -68,24 +68,25 @@ describe('every screen renders with demo data', () => {
     expect(screen.getByText('3% · −₹1.35 / m')).toBeTruthy();
   });
 
-  it('a TPM fabric has 7 tiles: sale rate 4th, daily consumption 5th, TFO per side for each type; no GSM, consumption or cost tile', async () => {
+  it('a TPM fabric: sale rate 4th, daily consumption per loom width, TFO per side for each type; no GSM, consumption or cost tile', async () => {
     await open('#/fabric/f_crepe');
     await screen.findByText('Sale rate');
     const tiles = [...document.querySelectorAll('.tiles .tile')];
-    expect(tiles.length).toBe(7);
+    expect(tiles.length).toBe(8);
     expect(tiles.map((t) => t.querySelector('.t-label').textContent).join('|')).not.toMatch(/GSM|^Consumption|RM cost|RFD cost|Spindle/);
     expect(tiles[3].textContent).toContain('₹45.00');
     expect(tiles[3].textContent).toContain('per RFD metre');
-    expect(tiles[4].textContent).toContain('Daily consumption');
-    expect(tiles[4].textContent).toContain('15.9 kg');
-    expect(tiles[4].textContent).toContain('12.7 kg');
-    expect(tiles[4].textContent).toContain('(311 m) · single panna · 800 RPM · 85% eff.');
-    expect(tiles[5].textContent).toContain('TFO per side · M/C 1–12');
-    expect(tiles[5].textContent).toContain('Weft · 75D TPM 2000 S/Z');
-    expect(tiles[5].textContent).toContain('24.5 kg');
-    expect(tiles[5].textContent).toContain('90% eff. assumed');
-    expect(tiles[6].textContent).toContain('M/C 13–16');
-    expect(tiles[6].textContent).toContain('28.6 kg');
+    const daily = tiles.filter((t) => /Daily consumption/.test(t.textContent));
+    expect(daily.map((t) => t.querySelector('.t-label').textContent)).toEqual(['Daily consumption · 190 cm', 'Daily consumption · 280 cm']);
+    expect(daily[0].textContent).toContain('15.9 kg');
+    expect(daily[0].textContent).toContain('12.7 kg');
+    expect(daily[0].textContent).toContain('(311 m) · single panna · 800 RPM · 85% eff. · Unit 2');
+    expect(tiles[6].textContent).toContain('TFO per side · M/C 1–12');
+    expect(tiles[6].textContent).toContain('Weft · 75D TPM 2000 S/Z');
+    expect(tiles[6].textContent).toContain('24.5 kg');
+    expect(tiles[6].textContent).toContain('90% eff. assumed');
+    expect(tiles[7].textContent).toContain('M/C 13–16');
+    expect(tiles[7].textContent).toContain('28.6 kg');
     expect(screen.getByText('Transportation')).toBeTruthy();
     // spindle profitability is a row in the realisation section now
     expect(screen.getByText('Spindle profitability')).toBeTruthy();
