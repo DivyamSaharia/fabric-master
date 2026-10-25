@@ -6,6 +6,8 @@ import { whatsappText, fileName } from './export/exports.js';
 import { buildIndex, fabricCalc, fmt, loomRealisationForUnit } from './calc.js';
 import { computeRows, defaultFilters, sortOptions } from './screens/fabrics.jsx';
 import { resetListState } from './listState.js';
+import { resetDemo } from './store.js';
+import { local } from './storage.js';
 
 beforeAll(() => {
   window.scrollTo = () => {};
@@ -558,5 +560,33 @@ describe('TFO planner', () => {
     expect(box('Looms Poly Crepe 60 (RFD) 190 cm Dobby').value).toBe('10');
     expect(box('RPM Poly Crepe 60 (RFD) 280 cm Plain').value).toBe('650');
     expect(box('Sides 75D TPM 2000 S/Z M/C 1–12').value).toBe('4');
+  });
+
+  it('hides every rupee figure when "Show revenue and ₹ figures" is off, and remembers the choice', async () => {
+    await resetDemo();
+    local.remove('fm.planner.v1');
+    await open('#/planner');
+    await screen.findByRole('heading', { name: 'TFO planner' });
+    await addQuality('190 cm Dobby', 'Poly Crepe 60 (RFD)');
+    fireEvent.input(box('Looms Poly Crepe 60 (RFD) 190 cm Dobby'), { target: { value: '10' } });
+    await screen.findByText(/311 m\/day per loom/);
+    const toggle = screen.getByRole('button', { name: 'Show revenue and ₹ figures' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByText('Plant realisation')).toBeTruthy();
+    expect(screen.getByText('Average per pick')).toBeTruthy();
+    expect(document.body.textContent).toMatch(/loom\/day/);
+    fireEvent.click(toggle);
+    await waitFor(() => expect(screen.queryByText('Plant realisation')).toBeNull());
+    expect(screen.queryByText('Average loom')).toBeNull();
+    expect(screen.queryByText('Average per pick')).toBeNull();
+    expect(document.body.textContent).not.toContain('₹ / loom / day');
+    expect(document.body.textContent).not.toMatch(/\/loom\/day/);
+    // production and balance stay
+    expect(screen.getByText('Production')).toBeTruthy();
+    expect(screen.getByText('Net balance')).toBeTruthy();
+    // the choice is kept on this device
+    expect(local.get('fm.planner.v1').showMoney).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Show revenue and ₹ figures' }));
+    await screen.findByText('Plant realisation');
   });
 });

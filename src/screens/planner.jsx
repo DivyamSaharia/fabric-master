@@ -17,7 +17,7 @@ const KEY = 'fm.planner.v1';
 // ---------- the working draft, per unit, on this device ----------
 function readStore() {
   const s = local.get(KEY, null);
-  return s && typeof s === 'object' ? { unitId: s.unitId || '', drafts: s.drafts && typeof s.drafts === 'object' ? s.drafts : {}, assignedOnly: !!s.assignedOnly } : { unitId: '', drafts: {}, assignedOnly: false };
+  return s && typeof s === 'object' ? { unitId: s.unitId || '', drafts: s.drafts && typeof s.drafts === 'object' ? s.drafts : {}, assignedOnly: !!s.assignedOnly, showMoney: s.showMoney !== false } : { unitId: '', drafts: {}, assignedOnly: false, showMoney: true };
 }
 
 const blankDraft = (unitId) => {
@@ -208,6 +208,7 @@ export function Planner() {
   const nSettings = Object.keys(plan.settings || {}).length;
   const hasInputs = plan.looms.length || plan.sides.length || plan.receipts.length || nSettings;
   const t = model.totals;
+  const showMoney = store.showMoney !== false;
   const tpmList = tpmYarns(idx);
   const yarnOptions = (exclude) => [
     { group: 'TPM yarns', options: tpmList.filter((y) => !exclude.includes(y.yarn.id)).map((y) => ({ value: y.yarn.id, label: y.yarn.name })) },
@@ -247,6 +248,9 @@ export function Planner() {
             <button type="button" class="chip" disabled={!hasInputs && !planRow} onClick={() => setSheet('clear')}>Clear plan</button>
           </div>
         </div>
+        <div class="group">
+          <Toggle label="Show revenue and ₹ figures" value={showMoney} onChange={(v) => setStore((x) => ({ ...x, showMoney: v }))} />
+        </div>
       </div>
 
       <div class="ptiles">
@@ -256,12 +260,12 @@ export function Planner() {
         <Tile label="Net balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} accent />
         <Tile label="Yarns short" value={String(t.short)} sub={`of ${model.balance.length} TPM ${model.balance.length === 1 ? 'yarn' : 'yarns'}`} tone={t.short ? 'bad' : ''} />
         <Tile label="Production" value={mtr(t.metresPerDay)} sub={`per day · ${fmt.int(t.looms)} looms`} />
-        <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={t.realLooms ? `per day · ${fmt.int(t.realLooms)} looms` : 'enter looms with a price'} accent />
-        <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub="per loom per day" />
-        <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="with VATAV, weighted by output" />
+        {showMoney ? <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={t.realLooms ? `per day · ${fmt.int(t.realLooms)} looms` : 'enter looms with a price'} accent /> : null}
+        {showMoney ? <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub="per loom per day" /> : null}
+        {showMoney ? <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="with VATAV, weighted by output" /> : null}
       </div>
 
-      <Notes model={model} />
+      <Notes model={model} showMoney={showMoney} />
 
       <section class="section">
         <h2 class="section-header">Balance by TPM yarn</h2>
@@ -302,6 +306,7 @@ export function Planner() {
             list={model.qualities}
             unitId={unitId}
             assignedOnly={store.assignedOnly}
+            showMoney={showMoney}
             pendingFocus={pendingFocus}
             onAdd={(fid) => addLoom(b.group.id, fid)}
             onLooms={setLooms}
@@ -403,8 +408,8 @@ export function Planner() {
       </section>
 
       <SaveSheet open={sheet === 'save'} onClose={() => setSheet(null)} draft={draft} planRow={planRow} unitId={unitId} model={model} onSaved={(d) => setDraft(d)} />
-      <PlansSheet open={sheet === 'plans'} onClose={() => setSheet(null)} idx={idx} unitId={unitId} plans={savedPlans} currentId={planRow ? planRow.id : null} unsaved={!!(unsaved && hasInputs)} onOpen={openSaved} onDeleted={(id) => { if (id === draft.planId) setDraft((d) => ({ ...d, planId: null, savedSig: '' })); }} />
-      <ExportSheet open={sheet === 'export'} onClose={() => setSheet(null)} model={model} planRow={planRow} unsaved={unsaved} />
+      <PlansSheet open={sheet === 'plans'} onClose={() => setSheet(null)} idx={idx} unitId={unitId} plans={savedPlans} currentId={planRow ? planRow.id : null} unsaved={!!(unsaved && hasInputs)} showMoney={showMoney} onOpen={openSaved} onDeleted={(id) => { if (id === draft.planId) setDraft((d) => ({ ...d, planId: null, savedSig: '' })); }} />
+      <ExportSheet open={sheet === 'export'} onClose={() => setSheet(null)} model={model} planRow={planRow} unsaved={unsaved} showMoney={showMoney} />
       <SheetImport
         open={sheet === 'import'}
         onClose={() => setSheet(null)}
@@ -435,14 +440,14 @@ function Tile({ label, value, sub, tone, accent }) {
   );
 }
 
-function Notes({ model }) {
+function Notes({ model, showMoney }) {
   const n = model.notes;
   const where = (r) => `${r.q.label} on ${groupLabel(r.group)}`;
   const items = [];
-  if (n.needRpm.length) items.push(`Enter the loom RPM for ${n.needRpm.map(where).join(', ')}. Until then their consumption and realisation are left out.`);
+  if (n.needRpm.length) items.push(`Enter the loom RPM for ${n.needRpm.map(where).join(', ')}. Until then their consumption${showMoney ? ' and realisation' : ''} are left out.`);
   if (n.needEff.length) items.push(`Enter the loom efficiency for ${n.needEff.map(where).join(', ')}.`);
   if (n.needTfo.length) items.push(`Enter the TFO RPM for ${n.needTfo.map((r) => `${r.yarn.name} on ${r.type.name}`).join(', ')}. Until then that output is left out.`);
-  if (n.noReal.length) items.push(`No realisation for ${[...new Set(n.noReal.map((r) => r.q.label + (r.soldAs === 'rfd' && r.q.both ? ' (RFD)' : '')))].join(', ')} (no selling price or cost): left out of the realisation tiles.`);
+  if (showMoney && n.noReal.length) items.push(`No realisation for ${[...new Set(n.noReal.map((r) => r.q.label + (r.soldAs === 'rfd' && r.q.both ? ' (RFD)' : '')))].join(', ')} (no selling price or cost): left out of the realisation tiles.`);
   if (n.noCount.length) items.push(`${n.noCount.map((y) => y.name).join(', ')} ${n.noCount.length === 1 ? 'has' : 'have'} no count, so ${n.noCount.length === 1 ? 'it is' : 'they are'} left out of the kg.`);
   if (!items.length) return null;
   return <div class="notice"><ul class="pnotes">{items.map((x) => <li>{x}</li>)}</ul></div>;
@@ -472,7 +477,7 @@ function BalanceChart({ balance }) {
   );
 }
 
-function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, pendingFocus, onAdd, onLooms, onRemove, onSoldAs, setSetting }) {
+function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, showMoney, pendingFocus, onAdd, onLooms, onRemove, onSoldAs, setSetting }) {
   const g = block.group;
   const opts = groupOptions(list, g, idx, { assignedOnly, unitId, exclude: block.rows.map((r) => r.fabricId) });
   const label = (q) => `${q.label} · ${q.fabric.weave || 'Plain'}${q.both ? ' · Greige + RFD' : ''}`;
@@ -502,7 +507,7 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, pendingFo
                 <th><span class="th">m / day / loom</span></th>
                 <th><span class="th">m / day, all looms</span></th>
                 <th><span class="th">TPM kg/day</span></th>
-                <th><span class="th">₹ / loom / day</span></th>
+                {showMoney ? <th><span class="th">₹ / loom / day</span></th> : null}
                 <th><span class="th" /></th>
               </tr>
             </thead>
@@ -520,7 +525,7 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, pendingFo
                   <td>{fmt.int(r.mPerDay)}</td>
                   <td class="strong">{fmt.int(r.mTotal)}</td>
                   <td>{r.tpm ? kg(r.tpmKg) : '—'}</td>
-                  <td class="strong" title={r.realPerLoom !== null ? `${fmt.pick(r.perPick)} per pick × ${fmt.int(r.mPerDay)} m × ${r.ppi} PPI` : undefined}>{rs0(r.realPerLoom)}</td>
+                  {showMoney ? <td class="strong" title={r.realPerLoom !== null ? `${fmt.pick(r.perPick)} per pick × ${fmt.int(r.mPerDay)} m × ${r.ppi} PPI` : undefined}>{rs0(r.realPerLoom)}</td> : null}
                   <td><button type="button" class="link-btn danger" onClick={() => onRemove(r.fabricId, g.id)}>Remove</button></td>
                 </tr>
               ))}
@@ -545,7 +550,7 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, pendingFo
               <div class="pline-out">
                 {r.mPerDay === null ? 'm/day needs RPM and efficiency' : `${fmt.int(r.mPerDay)} m/day per loom · ${fmt.int(r.mTotal)} m/day for ${fmt.int(r.looms)} ${r.looms === 1 ? 'loom' : 'looms'}`}
                 {r.tpm ? ` · TPM ${kg(r.tpmKg)}/day` : ''}
-                {' · '}<b>{r.realPerLoom === null ? '₹ —' : `${rs0(r.realPerLoom)}/loom/day`}</b>
+                {showMoney ? <>{' · '}<b>{r.realPerLoom === null ? '₹ —' : `${rs0(r.realPerLoom)}/loom/day`}</b></> : null}
               </div>
             </div>
           ))
@@ -741,11 +746,12 @@ function SaveSheet({ open, onClose, draft, planRow, unitId, model, onSaved }) {
 }
 
 // ---------- saved plans ----------
-function PlansSheet({ open, onClose, idx, unitId, plans, currentId, unsaved, onOpen, onDeleted }) {
+function PlansSheet({ open, onClose, idx, unitId, plans, currentId, unsaved, showMoney, onOpen, onDeleted }) {
   const [ask, setAsk] = useState(null); // { kind: 'open' | 'delete' | 'share', row }
-  const [shareMoney, setShareMoney] = useState(true);
+  const [shareMoney, setShareMoney] = useState(!!showMoney);
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (!open) setAsk(null); }, [open]);
+  useEffect(() => { setShareMoney(!!showMoney); }, [showMoney]);
   const sorted = plans.slice().sort((a, b) => String(b.plan_date || '').localeCompare(String(a.plan_date || '')) || String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
   const tryOpen = (row) => (unsaved && row.id !== currentId ? setAsk({ kind: 'open', row }) : onOpen(row));
   async function act(fn) {
@@ -790,7 +796,7 @@ function PlansSheet({ open, onClose, idx, unitId, plans, currentId, unsaved, onO
                     </div>
                     <div class="plan-item-figs">
                       <div class={num(s.net) !== null && num(s.net) < 0 ? 'bad' : 'good'}>{num(s.net) === null ? '—' : signedKg(num(s.net))}</div>
-                      <div class="pline-meta">{num(s.plantRealisation) === null ? '₹ —' : `${rs0(num(s.plantRealisation))}/day`}</div>
+                      {showMoney ? <div class="pline-meta">{num(s.plantRealisation) === null ? '₹ —' : `${rs0(num(s.plantRealisation))}/day`}</div> : null}
                     </div>
                   </div>
                   {asking && ask.kind === 'share' ? (
@@ -818,7 +824,7 @@ function PlansSheet({ open, onClose, idx, unitId, plans, currentId, unsaved, onO
               );
             })}
           </div>
-          <p class="section-footer">Net TPM balance and plant realisation as they were when each plan was saved.</p>
+          <p class="section-footer">{showMoney ? 'Net TPM balance and plant realisation as they were when each plan was saved.' : 'Net TPM balance as it was when each plan was saved.'}</p>
         </section>
       ) : null}
     </Sheet>
@@ -834,9 +840,10 @@ async function sharePlanFile(kind, money, model, meta) {
   else await mod.exportPlanXlsx(model, meta, { money });
 }
 
-function ExportSheet({ open, onClose, model, planRow, unsaved }) {
+function ExportSheet({ open, onClose, model, planRow, unsaved, showMoney }) {
   const [busy, setBusy] = useState('');
-  const [money, setMoney] = useState(true);
+  const [money, setMoney] = useState(!!showMoney);
+  useEffect(() => { if (open) setMoney(!!showMoney); }, [open, showMoney]);
   const meta = planRow
     ? { name: planRow.name || 'Plan', date: String(planRow.plan_date || '').slice(0, 10) || todayIst(), unsaved: !!unsaved }
     : { name: 'Unsaved plan', date: todayIst(), unsaved: false };
