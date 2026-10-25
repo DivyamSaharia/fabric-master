@@ -202,3 +202,15 @@ describe('into the plan', () => {
 });
 
 export { SHEET };
+
+describe('remembered names (kept outside the app Sheet)', () => {
+  it('merges by unit + width + text, replacing a changed fabric', async () => {
+    const { mergeNames } = await import('../api.js');
+    const a = mergeNames([], [{ unit_id: 'u2', width_cm: 190, sheet_text: 'ORGANZA TWILL(4801)', fabric_id: 'ot50', fabric_name: 'Organza Twill 50' }]);
+    const b = mergeNames(a, [
+      { unit_id: 'u2', width_cm: 190, sheet_text: 'ORGANZA TWILL(4801)', fabric_id: 'ot49' },
+      { unit_id: 'u2', width_cm: 280, sheet_text: 'ORGANZA TWILL(4801)', fabric_id: 'ot50' },
+    ]);
+    expect(b.map((r) => [r.width_cm, r.fabric_id])).toEqual([[190, 'ot49'], [280, 'ot50']]);
+  });
+});

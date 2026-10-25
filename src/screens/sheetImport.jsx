@@ -2,12 +2,12 @@
 // shows every row with what it matched, asks only where unsure, lets you pick the RPM per row
 // (sheet speed, target speed, master or typed) and puts the looms into the working plan.
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { fmt, num } from '../calc.js';
+import { fabricLabel, fmt, num } from '../calc.js';
 import { groupLabel, masterLoomRpm } from '../planner.js';
 import { countChecks } from '../sheetImport/parse.js';
 import { aliasText, applyImport, checkRpm, codeFree, defaultSource, matchRow, membersWithoutCode, noteWithCode, placeLooms, widthGroups } from '../sheetImport/match.js';
 import { fitsGroup } from '../planner.js';
-import { saveImportMemory, toast } from '../store.js';
+import { loadSheetNames, saveImportMemory, toast } from '../store.js';
 import { Badge, Button, SearchPicker, Sheet } from '../ui.jsx';
 
 const SKIP = '__skip';
@@ -48,7 +48,11 @@ export function SheetImport({ open, onClose, idx, unitId, list, plan, onApply })
   const [busy, setBusy] = useState(false);
   const fileRef = useRef(null);
   const groups = (idx.loomGroupsByUnit[unitId] || []).slice();
-  const aliases = (idx.tables.SheetAliases || []).filter((a) => !a.unit_id || a.unit_id === unitId);
+  const [aliases, setAliases] = useState([]); // names you confirmed before (kept in their own spreadsheet)
+
+  useEffect(() => {
+    if (open) loadSheetNames(unitId).then(setAliases).catch(() => {});
+  }, [open, unitId]);
 
   useEffect(() => {
     if (!open) {
@@ -101,7 +105,7 @@ export function SheetImport({ open, onClose, idx, unitId, list, plan, onApply })
       });
     }
     return out;
-  }, [result]);
+  }, [result, aliases]);
 
   const loomsOf = (row) => {
     const t = looms[row.key];
@@ -172,7 +176,7 @@ export function SheetImport({ open, onClose, idx, unitId, list, plan, onApply })
       }
       const next = applyImport(plan, entries, list, groups);
       // remember answers and add missing codes (best effort: the plan goes in either way)
-      const memAliases = imported.filter((row) => !(row.m.how === 'alias' && picks[row.key] === undefined)).map((row) => ({ width: row.width, text: aliasText(row.r.name), fabricId: qOf(row).id }));
+      const memAliases = imported.filter((row) => !(row.m.how === 'alias' && picks[row.key] === undefined)).map((row) => ({ width: row.width, text: aliasText(row.r.name), fabricId: qOf(row).id, fabricName: qOf(row).fabric ? fabricLabel(qOf(row).fabric) : '' }));
       const memCodes = [];
       for (const row of imported) {
         const q = qOf(row);

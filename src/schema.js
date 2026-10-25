@@ -15,8 +15,6 @@ export const TABLES = {
   // TFO planner (backend v12): saved plans, and their inputs as lines (only differences from master).
   TfoBalancePlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'summary', 'created_at', 'created_by', 'updated_at', 'updated_by'],
   TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by'],
-  // Planning sheet photo import (backend v13): a sheet name you confirmed once, per loom width → the fabric.
-  SheetAliases: ['id', 'unit_id', 'width_cm', 'sheet_text', 'fabric_id', 'updated_at', 'updated_by'],
 };
 
 export const TABLE_NAMES = Object.keys(TABLES);

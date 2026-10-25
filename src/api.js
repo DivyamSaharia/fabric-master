@@ -6,6 +6,20 @@ import { sampleTables } from './sampleData.js';
 import { emptyTables, TABLE_NAMES } from './schema.js';
 
 const DEMO_KEY = 'fm.demo.v1';
+const NAMES_KEY = 'fm.sheetNames.v1';
+
+// Merge confirmed planning-sheet names into a list (same unit + width + text replaces).
+export function mergeNames(list, rows) {
+  const out = [...list];
+  const k = (r) => `${r.unit_id}|${Number(r.width_cm)}|${r.sheet_text}`;
+  for (const r of rows) {
+    const at = out.findIndex((x) => k(x) === k(r));
+    const row = { unit_id: r.unit_id, width_cm: Number(r.width_cm), sheet_text: r.sheet_text, fabric_id: r.fabric_id, fabric_name: r.fabric_name || '' };
+    if (at >= 0) out[at] = row;
+    else out.push(row);
+  }
+  return out;
+}
 
 export function applyOps(tables, ops) {
   const next = { ...tables };
@@ -79,6 +93,15 @@ export function demoBackend() {
     },
     async log() {
       return [];
+    },
+    // Names confirmed in the planning-sheet photo import; kept on this phone in demo mode.
+    async sheetNames() {
+      return local.get(NAMES_KEY, []) || [];
+    },
+    async saveSheetNames(rows) {
+      const next = mergeNames(local.get(NAMES_KEY, []) || [], rows);
+      local.set(NAMES_KEY, next);
+      return next;
     },
     people: notInDemo,
     addPerson: notInDemo,
@@ -158,6 +181,13 @@ export function sheetBackend(url, key) {
     async log(limit = 200) {
       const data = await call('log', { limit });
       return data.entries || [];
+    },
+    // Names confirmed in the photo import, kept in their own spreadsheet ("Fabric Master – Sheet Names").
+    async sheetNames() {
+      return (await call('sheetNames')).names || [];
+    },
+    async saveSheetNames(rows) {
+      return (await call('saveSheetNames', { rows })).names || [];
     },
     // Owner only: everyone with a key, and adding, renaming or removing a person.
     async people() {

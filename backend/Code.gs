@@ -8,7 +8,8 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
- * Backend v13: SheetAliases, the planning-sheet names confirmed in the photo import (sheet text + width → fabric). Not in the change log.
+ * Backend v13: names confirmed in the planning-sheet photo import are kept in their own spreadsheet ("Fabric Master – Sheet Names", made on the first save,
+ *   next to this one in Drive), not in this workbook. Actions sheetNames and saveSheetNames. Not in the change log.
  * Backend v12: TFO planner plans (TfoBalancePlans, TfoBalanceLines); plan_date is date only. Logged as type "TFO plan".
  * Backend v11: Sale date for fabrics (Fabrics.sale_date, yyyy-mm-dd, date only).
  * Backend v10: Transportation cost head for RFD fabrics (Fabrics.transport_charge); RFD fabric names show as name + RS + (RFD).
@@ -31,8 +32,7 @@ var TABLES = {
   FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
   Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
   TfoBalancePlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'summary', 'created_at', 'created_by', 'updated_at', 'updated_by'],
-  TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by'],
-  SheetAliases: ['id', 'unit_id', 'width_cm', 'sheet_text', 'fabric_id', 'updated_at', 'updated_by']
+  TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by']
 };
 
 // Columns stored as numbers or TRUE/FALSE. Everything else is kept as plain text,
@@ -41,7 +41,7 @@ var NUMERIC = {
   count: 1, filaments: 1, tpm: 1, tpm_delta: 1, rate: 1, cost_per_pick: 1, tfo_default_eff: 1, reed_width_cm: 1, looms: 1, rpm: 1, efficiency: 1,
   reed: 1, ppi: 1, reed_space_in: 1, greige_width_in: 1, warp_shortage_pct: 1, weft_shortage_pct: 1, price: 1, vatav_pct: 1, rfd_shortage_pct: 1,
   processing_charge: 1, brokering_pct: 1, transport_charge: 1, loom_rpm: 1, loom_rpm_dp: 1, loom_eff_pct: 1, ends: 1, parts: 1, sort: 1,
-  machines: 1, spindles_per_side: 1, beam_length_m: 1, width_cm: 1
+  machines: 1, spindles_per_side: 1, beam_length_m: 1
 };
 var BOOLEAN = { has_tfo: 1, is_cover: 1 };
 var DATE_ONLY = { effective_date: 1, sale_date: 1, plan_date: 1 };
@@ -112,7 +112,7 @@ function ensureSheets_() {
   if (first && first.getName() === 'Sheet1' && first.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(first);
 }
 
-var SCHEMA_VERSION = '13';
+var SCHEMA_VERSION = '12';
 
 // Cheap check on every load; the full tab and format setup runs only when something is missing.
 function ensureReady_() {
@@ -197,6 +197,10 @@ function handle_(p) {
         return json_({ ok: true });
       case 'saveExport':
         return json_({ ok: true, url: saveExport_(p) });
+      case 'sheetNames':
+        return json_({ ok: true, names: readNames_() });
+      case 'saveSheetNames':
+        return json_({ ok: true, names: withLock_(function () { saveNames_(p.rows); return readNames_(); }) });
       case 'log':
         return json_({ ok: true, entries: readLog_(p.limit) });
       case 'people':
@@ -381,7 +385,7 @@ function rowObj_(head, values) {
   return obj;
 }
 
-var ID_PREFIX = { Yarns: 'y', YarnRates: 'r', Units: 'u', LoomGroups: 'lg', TfoTypes: 'tt', TfoSpeeds: 'sp', Fabrics: 'f', FabricYarns: 'l', Assignments: 'a', Photos: 'p', TfoBalancePlans: 'bp', TfoBalanceLines: 'bl', SheetAliases: 'sa' };
+var ID_PREFIX = { Yarns: 'y', YarnRates: 'r', Units: 'u', LoomGroups: 'lg', TfoTypes: 'tt', TfoSpeeds: 'sp', Fabrics: 'f', FabricYarns: 'l', Assignments: 'a', Photos: 'p', TfoBalancePlans: 'bp', TfoBalanceLines: 'bl' };
 
 // Reads a tab. Rows pasted in by hand without an id get one, so bulk import is just a paste.
 function readTable_(name, fillIds) {
@@ -852,4 +856,88 @@ function saveExport_(p) {
   var folder = folder_('EXPORTS_FOLDER_ID', 'Fabric Master Exports');
   var blob = Utilities.newBlob(Utilities.base64Decode(p.base64), p.mime || 'application/octet-stream', String(p.name).replace(/[\\/]/g, '-'));
   return folder.createFile(blob).getUrl();
+}
+
+// ---------- remembered planning-sheet names ----------
+// What you confirmed in the photo import ("SALSA ANMOL-54(5909)" at 280 cm = this fabric) lives in a spreadsheet of its
+// own, "Fabric Master – Sheet Names", made on the first save and kept next to this Sheet in Drive. It is not a tab of
+// this workbook. You can open it and fix or delete a row by hand. Everything is stored as text.
+
+var NAMES_TAB = 'Names';
+var NAMES_COLS = ['unit_id', 'width_cm', 'sheet_text', 'fabric_id', 'fabric_name', 'updated_at', 'updated_by'];
+
+function namesSheet_(create) {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('SHEET_NAMES_ID');
+  var book = null;
+  if (id) {
+    try {
+      book = SpreadsheetApp.openById(id);
+    } catch (e) {
+      book = null;
+    }
+  }
+  if (!book) {
+    if (!create) return null;
+    book = SpreadsheetApp.create('Fabric Master – Sheet Names');
+    try {
+      var parents = DriveApp.getFileById(ss_().getId()).getParents();
+      if (parents.hasNext()) DriveApp.getFileById(book.getId()).moveTo(parents.next());
+    } catch (e) {
+      /* stays in My Drive; still found by its id */
+    }
+    props.setProperty('SHEET_NAMES_ID', book.getId());
+  }
+  var sh = book.getSheetByName(NAMES_TAB);
+  if (!sh) {
+    if (!create) return null;
+    sh = book.getSheets()[0];
+    sh.setName(NAMES_TAB);
+  }
+  if (create && sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, NAMES_COLS.length).setValues([NAMES_COLS]).setFontWeight('bold');
+    sh.setFrozenRows(1);
+    sh.getRange(2, 1, sh.getMaxRows() - 1, NAMES_COLS.length).setNumberFormat('@');
+  }
+  return sh;
+}
+
+function readNames_() {
+  var sh = namesSheet_(false);
+  if (!sh || sh.getLastRow() < 2) return [];
+  var values = sh.getRange(2, 1, sh.getLastRow() - 1, NAMES_COLS.length).getValues();
+  return values
+    .filter(function (r) { return String(r[2]).trim() !== '' && String(r[3]).trim() !== ''; })
+    .map(function (r) {
+      return { unit_id: String(r[0]), width_cm: Number(r[1]), sheet_text: String(r[2]), fabric_id: String(r[3]), fabric_name: String(r[4]) };
+    });
+}
+
+function saveNames_(rows) {
+  rows = (rows || []).slice(0, 300);
+  if (!rows.length) return;
+  var sh = namesSheet_(true);
+  var last = sh.getLastRow();
+  var pos = {};
+  if (last >= 2) {
+    sh.getRange(2, 1, last - 1, 3).getValues().forEach(function (r, i) {
+      pos[String(r[0]) + '|' + String(r[1]) + '|' + String(r[2])] = i + 2;
+    });
+  }
+  var now = new Date().toISOString();
+  var who = REQ_ ? REQ_.user.name : '';
+  var appends = [];
+  rows.forEach(function (r) {
+    var text = String(r.sheet_text || '').trim();
+    var fid = String(r.fabric_id || '').trim();
+    if (!text || !fid) return;
+    var key = String(r.unit_id || '') + '|' + String(Number(r.width_cm) || '') + '|' + text;
+    var line = [String(r.unit_id || ''), String(Number(r.width_cm) || ''), text, fid, String(r.fabric_name || ''), now, who];
+    if (pos[key]) sh.getRange(pos[key], 1, 1, NAMES_COLS.length).setValues([line]);
+    else {
+      pos[key] = -1;
+      appends.push(line);
+    }
+  });
+  if (appends.length) sh.getRange(sh.getLastRow() + 1, 1, appends.length, NAMES_COLS.length).setValues(appends);
 }
