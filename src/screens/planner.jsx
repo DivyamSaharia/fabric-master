@@ -42,6 +42,7 @@ const parseSummary = (s) => {
 
 const kg = (v, dp = 1) => (v === null || v === undefined ? '—' : `${fmt.n(v, dp)} kg`);
 const signedKg = (v) => (v === null || v === undefined ? '—' : `${v > 0.05 ? '+' : v < -0.05 ? '−' : ''}${fmt.n(Math.abs(v), 1)} kg`);
+const mtr = (v) => (v === null || v === undefined ? '—' : `${fmt.int(v)} m`);
 const rs0 = (v) => (v === null || v === undefined ? '—' : fmt.rs(v, 0));
 const effText = (v) => (v === null || v === undefined ? '—' : fmt.n(v, v % 1 ? 1 : 0));
 
@@ -254,6 +255,7 @@ export function Planner() {
         <Tile label="From outside" value={kg(t.received, 0)} sub="average per day" />
         <Tile label="Net balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} accent />
         <Tile label="Yarns short" value={String(t.short)} sub={`of ${model.balance.length} TPM ${model.balance.length === 1 ? 'yarn' : 'yarns'}`} tone={t.short ? 'bad' : ''} />
+        <Tile label="Production" value={mtr(t.metresPerDay)} sub={`per day · ${fmt.int(t.looms)} looms`} />
         <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={t.realLooms ? `per day · ${fmt.int(t.realLooms)} looms` : 'enter looms with a price'} accent />
         <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub="per loom per day" />
         <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="with VATAV, weighted by output" />
@@ -384,6 +386,12 @@ export function Planner() {
       </section>
 
       <section class="section">
+        <h2 class="section-header">Production by quality</h2>
+        <ProductionTable rows={model.production} total={t.metresPerDay} wide={wide} />
+        <p class="section-footer">Metres per day = looms × RPM × 1,440 × efficiency ÷ (PPI × 39.37) × panna, summed over loom groups. Greige metres, before shortage.</p>
+      </section>
+
+      <section class="section">
         <h2 class="section-header">Yarn consumption · all yarns</h2>
         <ConsumptionTable rows={model.consumption} wide={wide} />
       </section>
@@ -492,6 +500,7 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, pendingFo
                 <th><span class="th">RPM</span></th>
                 <th><span class="th">Eff %</span></th>
                 <th><span class="th">m / day / loom</span></th>
+                <th><span class="th">m / day, all looms</span></th>
                 <th><span class="th">TPM kg/day</span></th>
                 <th><span class="th">₹ / loom / day</span></th>
                 <th><span class="th" /></th>
@@ -509,6 +518,7 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, pendingFo
                   <td><SettingBox s={r.rpm} label={`RPM ${r.q.label} ${groupLabel(g)}`} needText="Enter RPM" onChange={setSetting(r.rpm)} /></td>
                   <td><SettingBox s={r.eff} label={`Efficiency ${r.q.label} ${groupLabel(g)}`} onChange={setSetting(r.eff)} /></td>
                   <td>{fmt.int(r.mPerDay)}</td>
+                  <td class="strong">{fmt.int(r.mTotal)}</td>
                   <td>{r.tpm ? kg(r.tpmKg) : '—'}</td>
                   <td class="strong" title={r.realPerLoom !== null ? `${fmt.pick(r.perPick)} per pick × ${fmt.int(r.mPerDay)} m × ${r.ppi} PPI` : undefined}>{rs0(r.realPerLoom)}</td>
                   <td><button type="button" class="link-btn danger" onClick={() => onRemove(r.fabricId, g.id)}>Remove</button></td>
@@ -533,7 +543,7 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, pendingFo
               </div>
               {sold(r) ? <div class="sold">{sold(r)}</div> : null}
               <div class="pline-out">
-                {r.mPerDay === null ? 'm/day needs RPM and efficiency' : `${fmt.int(r.mPerDay)} m/day per loom`}
+                {r.mPerDay === null ? 'm/day needs RPM and efficiency' : `${fmt.int(r.mPerDay)} m/day per loom · ${fmt.int(r.mTotal)} m/day for ${fmt.int(r.looms)} ${r.looms === 1 ? 'loom' : 'looms'}`}
                 {r.tpm ? ` · TPM ${kg(r.tpmKg)}/day` : ''}
                 {' · '}<b>{r.realPerLoom === null ? '₹ —' : `${rs0(r.realPerLoom)}/loom/day`}</b>
               </div>
@@ -544,6 +554,48 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, pendingFo
       <div class="padd">
         <SearchPicker value="" label={`Add a quality to ${groupLabel(g)}`} title={`Add a quality · ${groupLabel(g)}`} placeholder="+ Add a quality" searchHint="Search qualities" options={options} onChange={onAdd} />
       </div>
+    </div>
+  );
+}
+
+function ProductionTable({ rows, total, wide }) {
+  if (!rows.length) return <div class="group"><div class="pline"><div class="pline-meta">Enter looms to see production per quality.</div></div></div>;
+  const where = (r) => r.byGroup.map((x) => `${groupLabel(x.group)} ${fmt.int(x.looms)}`).join(' · ');
+  const looms = rows.reduce((s, r) => s + r.looms, 0);
+  const note = (r) => (r.loomsNoRate ? ` · ${fmt.int(r.loomsNoRate)} without RPM or efficiency` : '');
+  if (!wide) {
+    return (
+      <div class="group">
+        {rows.map((r) => (
+          <div class="pline">
+            <div class="pline-top">
+              <div class="pline-name">{r.q.label}</div>
+              <div class="pline-val">{mtr(r.metres)}</div>
+            </div>
+            <div class="pline-meta">{fmt.int(r.looms)} {r.looms === 1 ? 'loom' : 'looms'} · {where(r)}{note(r)}</div>
+          </div>
+        ))}
+        <div class="pline"><div class="pline-top"><div class="pline-name">Total</div><div class="pline-val">{mtr(total)}</div></div><div class="pline-meta">{fmt.int(looms)} looms</div></div>
+      </div>
+    );
+  }
+  return (
+    <div class="table-wrap">
+      <table class="ftable">
+        <thead><tr><th class="txt"><span class="th">Quality</span></th><th><span class="th">Looms</span></th><th><span class="th">Metres / day</span></th><th><span class="th">Share</span></th><th class="txt"><span class="th">Running on</span></th></tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr>
+              <td class="txt strong">{r.q.label}</td>
+              <td>{fmt.int(r.looms)}</td>
+              <td class="strong">{fmt.int(r.metres)}</td>
+              <td>{total ? `${fmt.n((r.metres / total) * 100, 1)}%` : '—'}</td>
+              <td class="txt muted">{where(r)}{note(r)}</td>
+            </tr>
+          ))}
+          <tr><td class="txt strong">Total</td><td class="strong">{fmt.int(looms)}</td><td class="strong">{fmt.int(total)}</td><td /><td /></tr>
+        </tbody>
+      </table>
     </div>
   );
 }

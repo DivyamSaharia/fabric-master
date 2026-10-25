@@ -5,7 +5,7 @@ import { Button, Field, Icon, NavBar, Row, Section, Segmented, Sheet, useWide, w
 import { exportListXlsx, openWhatsAppText } from '../export/exports.js';
 import { computeRows } from './fabrics.jsx';
 
-export const APP_VERSION = '1.16.2';
+export const APP_VERSION = '1.17.0';
 
 // What to send someone so they can open the app on their own phone or laptop.
 export function inviteText(person, url, appUrl) {

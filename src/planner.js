@@ -210,7 +210,8 @@ export function computePlan(plan, idx) {
   const calcs = {};
   const calcOf = (f) => (calcs[f.id] ||= fabricCalc(f, idx));
 
-  let loomsTotal = 0, realTotal = 0, realLooms = 0, pickOutput = 0;
+  let loomsTotal = 0, realTotal = 0, realLooms = 0, pickOutput = 0, metresTotal = 0;
+  const production = new Map(); // fabric id → metres per day summed over every loom group
 
   const groupBlocks = groups.map((group) => {
     const rows = [];
@@ -247,9 +248,19 @@ export function computePlan(plan, idx) {
       } else {
         for (const x of lines) if (x.noCount) notes.noCount.add(x.yarn.id);
       }
-      const row = { q, fabricId: fid, group, looms, loomsRaw: entry.looms ?? '', panna, rpm, eff, ppi, mPerDay, soldAs, soldKey, record, perPick, realPerLoom, realTotal: realPerLoom !== null ? realPerLoom * looms : null, tpmKg, tpm: usesTpm(q, idx) };
+      const mTotal = mPerDay !== null ? mPerDay * looms : null;
+      const row = { q, fabricId: fid, group, looms, loomsRaw: entry.looms ?? '', panna, rpm, eff, ppi, mPerDay, mTotal, soldAs, soldKey, record, perPick, realPerLoom, realTotal: realPerLoom !== null ? realPerLoom * looms : null, tpmKg, tpm: usesTpm(q, idx) };
       if (rpm.missing) notes.needRpm.push(row);
       else if (eff.missing) notes.needEff.push(row);
+      if (looms > 0) {
+        const p = add(production, fid, () => ({ q, looms: 0, metres: 0, loomsNoRate: 0, byGroup: [] }));
+        p.looms += looms;
+        if (mTotal !== null) {
+          p.metres += mTotal;
+          metresTotal += mTotal;
+        } else p.loomsNoRate += looms;
+        p.byGroup.push({ group, looms, mPerDay, mTotal });
+      }
       if (looms > 0) {
         loomsTotal += looms;
         if (realPerLoom !== null) {
@@ -325,6 +336,7 @@ export function computePlan(plan, idx) {
     net: sum('balance'),
     short: balance.filter((b) => b.balance < -0.005).length,
     looms: loomsTotal,
+    metresPerDay: production.size ? metresTotal : null,
     plantRealisation: realLooms ? realTotal : null,
     avgLoomRealisation: realLooms ? realTotal / realLooms : null,
     avgPerPick: pickOutput ? realTotal / pickOutput : null,
@@ -336,6 +348,7 @@ export function computePlan(plan, idx) {
     groups: groupBlocks,
     types: typeBlocks,
     receipts: receiptRows,
+    production: [...production.values()].sort((a, b) => b.metres - a.metres || String(a.q.label).localeCompare(String(b.q.label))),
     consumption,
     balance,
     totals,
@@ -348,7 +361,7 @@ export function computePlan(plan, idx) {
 export function planSummary(model) {
   const t = model.totals;
   const r = (v, dp = 2) => (v === null || v === undefined ? null : Math.round(v * 10 ** dp) / 10 ** dp);
-  return { tpmConsumption: r(t.tpmConsumption, 1), tfoOutput: r(t.tfoOutput, 1), received: r(t.received, 1), net: r(t.net, 1), short: t.short, looms: t.looms, plantRealisation: r(t.plantRealisation, 0), avgLoomRealisation: r(t.avgLoomRealisation, 0), avgPerPick: r(t.avgPerPick, 4) };
+  return { tpmConsumption: r(t.tpmConsumption, 1), tfoOutput: r(t.tfoOutput, 1), received: r(t.received, 1), net: r(t.net, 1), short: t.short, looms: t.looms, metresPerDay: r(t.metresPerDay, 0), plantRealisation: r(t.plantRealisation, 0), avgLoomRealisation: r(t.avgLoomRealisation, 0), avgPerPick: r(t.avgPerPick, 4) };
 }
 
 // ---------- plan ↔ Sheet lines ----------

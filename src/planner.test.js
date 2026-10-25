@@ -211,6 +211,35 @@ describe('yarn', () => {
   });
 });
 
+describe('production per day', () => {
+  it('a row makes looms × m/day per loom; a quality adds up across loom groups; the plant adds up the qualities', () => {
+    const plan = {
+      ...emptyPlan('u2'),
+      looms: [{ fabricId: 'nc53', groupId: 'g190p', looms: '4' }, { fabricId: 'nc53', groupId: 'g280p', looms: '3' }, { fabricId: 'cotton', groupId: 'g190d', looms: '5' }],
+    };
+    const m = computePlan(plan, idx);
+    const a = rowsOf(m, 'g190p')[0];
+    expect(a.mTotal).toBeCloseTo(4 * metresPerDay(1026, 93, 80, 1), 6);
+    const rows = m.groups.flatMap((b) => b.rows).filter((r) => r.mTotal !== null);
+    const nc = m.production.find((p) => p.q.id === q('nc53').id);
+    expect(nc.looms).toBe(7);
+    expect(nc.byGroup).toHaveLength(2);
+    expect(nc.metres).toBeCloseTo(rows.filter((r) => r.fabricId === 'nc53').reduce((s, r) => s + r.mTotal, 0), 6);
+    expect(m.totals.metresPerDay).toBeCloseTo(m.production.reduce((s, p) => s + p.metres, 0), 6);
+    // biggest producer first
+    expect(m.production.map((p) => p.metres)).toEqual([...m.production.map((p) => p.metres)].sort((x, y) => y - x));
+  });
+
+  it('looms with no RPM or efficiency are counted but make no metres; an empty plan has no production', () => {
+    const m = computePlan({ ...emptyPlan('u2'), looms: [{ fabricId: 'nc74', groupId: 'g280p', looms: '2' }] }, idx);
+    const p = m.production[0];
+    expect(p.looms).toBe(2);
+    expect(p.loomsNoRate).toBe(2);
+    expect(p.metres).toBe(0);
+    expect(computePlan(emptyPlan('u2'), idx).totals.metresPerDay).toBeNull();
+  });
+});
+
 describe('realisation', () => {
   it('a row’s ₹/loom/day = realisation per pick × m/day × PPI; RFD toggle uses the RFD record', () => {
     const base = { ...emptyPlan('u2'), looms: [{ fabricId: 'nc53', groupId: 'g190p', looms: '4' }] };

@@ -20,10 +20,15 @@ it('builds the plan workbook rows and file names', () => {
   const model = computePlan(plan, idx);
   const meta = { name: 'Diwali plan', date: '2026-10-25' };
   const rows = planWorkbookRows(model, meta);
-  expect(Object.keys(rows)).toEqual(['Summary', 'Looms', 'TFO', 'Received', 'Yarn consumption', 'TPM balance']);
+  expect(Object.keys(rows)).toEqual(['Summary', 'Looms', 'Production', 'TFO', 'Received', 'Yarn consumption', 'TPM balance']);
   expect(rows.Looms).toHaveLength(3);
   expect(typeof rows.Looms[0].Looms).toBe('number');
   expect(rows.Looms.find((x) => x.RPM === 650)).toBeTruthy();
+  const made = rows.Production.filter((x) => x.Quality !== 'Total');
+  expect(made.length).toBeGreaterThan(0);
+  const totalRow = rows.Production.find((x) => x.Quality === 'Total');
+  expect(totalRow['Metres/day']).toBeCloseTo(made.reduce((a, x) => a + x['Metres/day'], 0), -1);
+  expect(rows.Looms.every((x) => 'm/day all looms' in x)).toBe(true);
   expect(planFileName(meta, 'pdf')).toBe('2026-10-25_tfo-plan_diwali-plan.pdf');
   expect(planFileName(meta, 'pdf', false)).toBe('2026-10-25_tfo-plan_diwali-plan_no-revenue.pdf');
   expect(planFileName({ name: 'Unsaved plan', date: '2026-10-25' }, 'xlsx')).toBe('2026-10-25_tfo-plan_unsaved-plan.xlsx');
@@ -47,6 +52,8 @@ it('leaves out every rupee figure without revenue', () => {
   const bare = planWorkbookRows(model, meta, { money: false });
   expect(JSON.stringify(bare)).not.toMatch(MONEY);
   expect(bare.Looms[0]).not.toHaveProperty('₹/loom/day');
+  expect(bare.Looms[0]).toHaveProperty('m/day all looms');
+  expect(bare.Production.length).toBeGreaterThan(0);
   expect(bare.Summary.map((r) => r.Field).some((f) => MONEY.test(f))).toBe(false);
 });
 

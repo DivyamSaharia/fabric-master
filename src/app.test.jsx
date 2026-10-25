@@ -517,6 +517,10 @@ describe('TFO planner', () => {
     // 800 RPM × 1440 × 85% ÷ (80 × 39.37) = 311 m per loom per day
     await screen.findByText(/311 m\/day per loom/);
     expect(screen.getByText('10 of 24 looms')).toBeTruthy();
+    // production per day: 10 looms × 311 m, as a tile, in the per-loom line and in the per-quality table
+    await screen.findByRole('heading', { name: 'Production by quality' });
+    expect(screen.getAllByText(/3,1\d\d m/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText(/for 10 looms/)).toBeTruthy();
     // 280 cm has no 280 cm RPM in master for this fabric: needs entry
     await addQuality('280 cm Plain', 'Poly Crepe 60 (RFD)');
     expect(screen.getByText(/Enter the loom RPM for Poly Crepe 60 \(RFD\) on 280 cm Plain/)).toBeTruthy();
