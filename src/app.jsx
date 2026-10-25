@@ -7,6 +7,7 @@ import { FabricDetail, FabricEdit, FabricList } from './screens/fabrics.jsx';
 import { YarnEdit, YarnList } from './screens/yarns.jsx';
 import { UnitDetail, UnitEdit, UnitList } from './screens/units.jsx';
 import { Ranking } from './screens/ranking.jsx';
+import { Planner } from './screens/planner.jsx';
 import { Settings } from './screens/settings.jsx';
 import { Changes } from './screens/changes.jsx';
 
@@ -29,6 +30,8 @@ function resolve({ path, query }) {
       return { tab: 'units', el: <UnitDetail key={b} id={b} /> };
     case 'ranking':
       return { tab: 'ranking', el: <Ranking /> };
+    case 'planner':
+      return { tab: 'planner', el: <Planner /> };
     case 'settings':
       return { tab: 'fabrics', modal: true, el: <Settings /> };
     case 'changes':

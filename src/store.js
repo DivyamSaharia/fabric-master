@@ -154,6 +154,7 @@ export async function commit(ops) {
     } catch (e) {
       // Beam lengths need backend v8; an older script in the Sheet doesn't know the FabricBeams tab.
       if (/Unknown table FabricBeams/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save beam lengths.');
+      if (/Unknown table TfoBalance/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save TFO plans.');
       throw e;
     }
     const tables = applyOps(state.tables, applied || ops);
@@ -416,6 +417,46 @@ export async function deletePhoto(photo) {
     if (rest.length) await setCover(rest[0]);
   }
   toast('Photo deleted');
+}
+
+// ---------- TFO plans ----------
+// A saved plan is a TfoBalancePlans row plus its inputs as TfoBalanceLines (planner.planToLines).
+// Saving writes the plan row and replaces its lines in one call.
+export async function savePlan({ id, unitId, date, name, notes, lines, summary }) {
+  const idx = getIndex();
+  const planId = id || newId('bp');
+  const old = (idx.tables.TfoBalanceLines || []).filter((l) => l.plan_id === planId).map((l) => l.id);
+  const prev = id ? (idx.tables.TfoBalancePlans || []).find((p) => p.id === id) : null;
+  const row = { id: planId, unit_id: unitId, plan_date: date, name, notes: notes ?? (prev ? prev.notes || '' : ''), summary: JSON.stringify(summary || {}) };
+  if (!prev) row.created_at = new Date().toISOString();
+  const rows = lines.map((l, i) => ({ id: newId('bl'), plan_id: planId, kind: l.kind, ref: l.ref, value: l.value, sort: i + 1 }));
+  const ops = [];
+  if (old.length) ops.push({ op: 'delete', table: 'TfoBalanceLines', ids: old });
+  ops.push({ op: 'upsert', table: 'TfoBalancePlans', rows: [row] });
+  if (rows.length) ops.push({ op: 'upsert', table: 'TfoBalanceLines', rows });
+  await commit(ops);
+  toast(prev ? 'Plan updated' : 'Plan saved');
+  return planId;
+}
+
+export async function deletePlan(id) {
+  const idx = getIndex();
+  const lines = (idx.tables.TfoBalanceLines || []).filter((l) => l.plan_id === id).map((l) => l.id);
+  const ops = [];
+  if (lines.length) ops.push({ op: 'delete', table: 'TfoBalanceLines', ids: lines });
+  ops.push({ op: 'delete', table: 'TfoBalancePlans', ids: [id] });
+  await commit(ops);
+  toast('Plan deleted');
+}
+
+export async function duplicatePlan(id) {
+  const idx = getIndex();
+  const src = (idx.tables.TfoBalancePlans || []).find((p) => p.id === id);
+  if (!src) return null;
+  const lines = (idx.tables.TfoBalanceLines || []).filter((l) => l.plan_id === id).sort((a, b) => (num(a.sort) ?? 0) - (num(b.sort) ?? 0));
+  let summary = {};
+  try { summary = JSON.parse(src.summary || '{}'); } catch { summary = {}; }
+  return savePlan({ unitId: src.unit_id, date: String(src.plan_date || '').slice(0, 10), name: `${src.name || 'Plan'} (copy)`, notes: src.notes || '', lines, summary });
 }
 
 export function setPendingShare(pending) {

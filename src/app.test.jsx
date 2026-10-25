@@ -379,11 +379,11 @@ describe('laptop layout', () => {
     expect(row.textContent).toContain('base ₹118 + ₹50');
   });
 
-  it('has no Planner tab: TFO planning is the separate TFO Planner app', async () => {
+  it('has a Planner item after Ranking in the sidebar', async () => {
     await open('#/fabrics');
     await screen.findByText('Fabric Database');
-    expect(document.querySelector('.sidebar').textContent).not.toContain('Planner');
-    expect(document.querySelector('.sidebar').textContent).toContain('Units');
+    const labels = [...document.querySelectorAll('.sidebar .sb-nav .sb-label')].map((n) => n.textContent);
+    expect(labels).toEqual(['Fabrics', 'Yarns', 'Units', 'Ranking', 'Planner']);
   });
 
   it('"/" jumps to the search box', async () => {
@@ -494,5 +494,65 @@ describe('fabric list state sticks', () => {
     saveListState({ search: '', unitId: 'all', filters: defaultFilters() });
     expect(loadListState(defaultFilters()).filters.sort).toBe('realisation');
     resetListState();
+  });
+});
+
+describe('TFO planner', () => {
+  const box = (label) => screen.getByLabelText(label);
+  async function addQuality(group, name) {
+    fireEvent.click(screen.getByRole('button', { name: `Add a quality to ${group}` }));
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(`^${name.replace(/[()]/g, '\\$&')}`) }));
+  }
+
+  it('adds qualities, TFO sides and a receipt, edits and resets a setting, saves and reopens a plan', async () => {
+    await open('#/planner');
+    await screen.findByRole('heading', { name: 'TFO planner' });
+    expect(document.querySelector('.tabbar').textContent).toContain('Planner');
+    // dobby fabrics only under dobby groups
+    fireEvent.click(screen.getByRole('button', { name: 'Add a quality to 280 cm Plain' }));
+    expect(screen.queryByRole('button', { name: /^Viscose Nylon Dobby/ })).toBeNull();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]);
+    await addQuality('190 cm Dobby', 'Poly Crepe 60 (RFD)');
+    fireEvent.input(box('Looms Poly Crepe 60 (RFD) 190 cm Dobby'), { target: { value: '10' } });
+    // 800 RPM × 1440 × 85% ÷ (80 × 39.37) = 311 m per loom per day
+    await screen.findByText(/311 m\/day per loom/);
+    expect(screen.getByText('10 of 24 looms')).toBeTruthy();
+    // 280 cm has no 280 cm RPM in master for this fabric: needs entry
+    await addQuality('280 cm Plain', 'Poly Crepe 60 (RFD)');
+    expect(screen.getByText(/Enter the loom RPM for Poly Crepe 60 \(RFD\) on 280 cm Plain/)).toBeTruthy();
+    fireEvent.input(box('RPM Poly Crepe 60 (RFD) 280 cm Plain'), { target: { value: '650' } });
+    await waitFor(() => expect(screen.queryByText(/Enter the loom RPM/)).toBeNull());
+    // edit and reset the 190 cm RPM
+    fireEvent.input(box('RPM Poly Crepe 60 (RFD) 190 cm Dobby'), { target: { value: '850' } });
+    fireEvent.blur(box('RPM Poly Crepe 60 (RFD) 190 cm Dobby'));
+    await screen.findByText('master 800');
+    fireEvent.click(screen.getByText('master 800').parentElement.querySelector('button'));
+    await waitFor(() => expect(screen.queryByText('master 800')).toBeNull());
+    expect(box('RPM Poly Crepe 60 (RFD) 190 cm Dobby').value).toBe('800');
+    // TFO sides and a receipt
+    fireEvent.click(screen.getByRole('button', { name: 'Add a TPM yarn to M/C 1–12' }));
+    fireEvent.click(await screen.findByRole('button', { name: '75D TPM 2000 S/Z' }));
+    fireEvent.input(box('Sides 75D TPM 2000 S/Z M/C 1–12'), { target: { value: '4' } });
+    expect(screen.getByText('4 of 24 sides')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Add yarn received from outside' }));
+    fireEvent.click(await screen.findByRole('button', { name: '75D TPM 2000 S/Z' }));
+    fireEvent.input(box('kg per day 75D TPM 2000 S/Z'), { target: { value: '25' } });
+    expect(screen.getAllByText('75D TPM 2000 S/Z').length).toBeGreaterThan(2);
+    // save, then clear, then reopen
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.input(await screen.findByLabelText('Plan name'), { target: { value: 'Test plan' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+    await screen.findByText('Test plan');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear plan' }));
+    await screen.findByText('Clear the plan?');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clear plan' }).pop());
+    await screen.findByText('Working plan');
+    expect(screen.queryByLabelText('Looms Poly Crepe 60 (RFD) 190 cm Dobby')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Saved plans' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
+    await screen.findByText('Test plan');
+    expect(box('Looms Poly Crepe 60 (RFD) 190 cm Dobby').value).toBe('10');
+    expect(box('RPM Poly Crepe 60 (RFD) 280 cm Plain').value).toBe('650');
+    expect(box('Sides 75D TPM 2000 S/Z M/C 1–12').value).toBe('4');
   });
 });

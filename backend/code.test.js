@@ -272,3 +272,41 @@ describe('a key per person, last edited by, and the change log', () => {
     expect(gas.ss.getSheetByName('Change log')).toBeTruthy();
   });
 });
+
+describe('TFO plans (v12)', () => {
+  const log = () => gas.post({ action: 'log', key }).entries;
+  const plan = (over = {}) => ({ id: 'bp_1', unit_id: 'u_2', plan_date: '2026-10-25', name: 'Plan 25 Oct 2026', notes: '', summary: '{"net":-12.5}', ...over });
+  const lines = (n, from = 0) => Array.from({ length: n }, (_, i) => ({ id: `bl_${from + i}`, plan_id: 'bp_1', kind: 'looms', ref: `f_crepe:lg1`, value: String(10 + i), sort: i + 1 }));
+
+  it('saves a plan with its lines as text, logs "saved", replaces lines on update and deletes with its lines', () => {
+    gas.post({ action: 'batch', key, ops: [{ op: 'upsert', table: 'Units', rows: [{ id: 'u_2', name: 'Unit 2' }] }] });
+    let r = gas.post({ action: 'batch', key, ops: [{ op: 'upsert', table: 'TfoBalancePlans', rows: [plan()] }, { op: 'upsert', table: 'TfoBalanceLines', rows: lines(2) }] });
+    expect(r.ok).toBe(true);
+    let t = gas.post({ action: 'bootstrap', key }).tables;
+    expect(t.TfoBalancePlans[0]).toMatchObject({ id: 'bp_1', plan_date: '2026-10-25', name: 'Plan 25 Oct 2026', created_by: 'Owner' });
+    expect(t.TfoBalanceLines.map((l) => l.value)).toEqual(['10', '11']);
+    expect(log()[0]).toMatchObject({ action: 'saved', type: 'TFO plan', item: 'Plan 25 Oct 2026 (2026-10-25)', details: 'Unit 2' });
+
+    r = gas.post({ action: 'batch', key, ops: [
+      { op: 'delete', table: 'TfoBalanceLines', ids: ['bl_0', 'bl_1'] },
+      { op: 'upsert', table: 'TfoBalancePlans', rows: [plan({ summary: '{"net":3}' })] },
+      { op: 'upsert', table: 'TfoBalanceLines', rows: lines(3, 10) },
+    ] });
+    expect(r.ok).toBe(true);
+    t = gas.post({ action: 'bootstrap', key }).tables;
+    expect(t.TfoBalanceLines).toHaveLength(3);
+    expect(log()[0]).toMatchObject({ action: 'updated', type: 'TFO plan', details: 'plan inputs changed' });
+
+    gas.post({ action: 'batch', key, ops: [{ op: 'upsert', table: 'TfoBalancePlans', rows: [plan({ name: 'Diwali plan' })] }] });
+    expect(log()[0].details).toBe('Name Plan 25 Oct 2026 → Diwali plan');
+
+    gas.post({ action: 'batch', key, ops: [{ op: 'delete', table: 'TfoBalanceLines', ids: ['bl_10', 'bl_11', 'bl_12'] }, { op: 'delete', table: 'TfoBalancePlans', ids: ['bp_1'] }] });
+    t = gas.post({ action: 'bootstrap', key }).tables;
+    expect(t.TfoBalancePlans).toHaveLength(0);
+    expect(t.TfoBalanceLines).toHaveLength(0);
+    const e = log();
+    expect(e[0]).toMatchObject({ action: 'deleted', type: 'TFO plan', item: 'Diwali plan (2026-10-25)' });
+    // the lines that went with the plan add no line of their own
+    expect(e[1].details).toBe('Name Plan 25 Oct 2026 → Diwali plan');
+  });
+});

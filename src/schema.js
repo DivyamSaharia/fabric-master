@@ -12,6 +12,9 @@ export const TABLES = {
   // Beam length (metres) of a fabric on one loom group of a unit it is assigned to.
   FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
   Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
+  // TFO planner (backend v12): saved plans, and their inputs as lines (only differences from master).
+  TfoBalancePlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'summary', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+  TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by'],
 };
 
 export const TABLE_NAMES = Object.keys(TABLES);

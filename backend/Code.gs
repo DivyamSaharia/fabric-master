@@ -8,6 +8,7 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
+ * Backend v12: TFO planner plans (TfoBalancePlans, TfoBalanceLines); plan_date is date only. Logged as type "TFO plan".
  * Backend v11: Sale date for fabrics (Fabrics.sale_date, yyyy-mm-dd, date only).
  * Backend v10: Transportation cost head for RFD fabrics (Fabrics.transport_charge); RFD fabric names show as name + RS + (RFD).
  * Backend v9: the old TFO planner is gone (TfoPlans and Plan* tabs removed); planning is the separate TFO Planner app.
@@ -27,7 +28,9 @@ var TABLES = {
   FabricYarns: ['id', 'fabric_id', 'side', 'yarn_id', 'ends', 'parts', 'pattern', 'sort', 'updated_at', 'updated_by'],
   Assignments: ['id', 'fabric_id', 'unit_id', 'updated_at', 'updated_by'],
   FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
-  Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by']
+  Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
+  TfoBalancePlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'summary', 'created_at', 'created_by', 'updated_at', 'updated_by'],
+  TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by']
 };
 
 // Columns stored as numbers or TRUE/FALSE. Everything else is kept as plain text,
@@ -39,7 +42,7 @@ var NUMERIC = {
   machines: 1, spindles_per_side: 1, beam_length_m: 1
 };
 var BOOLEAN = { has_tfo: 1, is_cover: 1 };
-var DATE_ONLY = { effective_date: 1, sale_date: 1 };
+var DATE_ONLY = { effective_date: 1, sale_date: 1, plan_date: 1 };
 
 // ---------- menu and one-time setup ----------
 
@@ -107,7 +110,7 @@ function ensureSheets_() {
   if (first && first.getName() === 'Sheet1' && first.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(first);
 }
 
-var SCHEMA_VERSION = '11';
+var SCHEMA_VERSION = '12';
 
 // Cheap check on every load; the full tab and format setup runs only when something is missing.
 function ensureReady_() {
@@ -376,7 +379,7 @@ function rowObj_(head, values) {
   return obj;
 }
 
-var ID_PREFIX = { Yarns: 'y', YarnRates: 'r', Units: 'u', LoomGroups: 'lg', TfoTypes: 'tt', TfoSpeeds: 'sp', Fabrics: 'f', FabricYarns: 'l', Assignments: 'a', Photos: 'p' };
+var ID_PREFIX = { Yarns: 'y', YarnRates: 'r', Units: 'u', LoomGroups: 'lg', TfoTypes: 'tt', TfoSpeeds: 'sp', Fabrics: 'f', FabricYarns: 'l', Assignments: 'a', Photos: 'p', TfoBalancePlans: 'bp', TfoBalanceLines: 'bl' };
 
 // Reads a tab. Rows pasted in by hand without an id get one, so bulk import is just a paste.
 function readTable_(name, fillIds) {
@@ -518,10 +521,11 @@ var ROOT_OF = {
   YarnRates: ['Yarns', 'yarn_id'],
   LoomGroups: ['Units', 'unit_id'],
   TfoTypes: ['Units', 'unit_id'],
-  TfoSpeeds: ['Units', 'unit_id']
+  TfoSpeeds: ['Units', 'unit_id'],
+  TfoBalanceLines: ['TfoBalancePlans', 'plan_id']
 };
-var KIND = { Fabrics: 'Fabric', Yarns: 'Yarn', Units: 'Unit' };
-var ID_REF = { yarn_id: 'Yarns', base_yarn_id: 'Yarns', unit_id: 'Units', tfo_type_id: 'TfoTypes', fabric_id: 'Fabrics', loom_group_id: 'LoomGroups' };
+var KIND = { Fabrics: 'Fabric', Yarns: 'Yarn', Units: 'Unit', TfoBalancePlans: 'TFO plan' };
+var ID_REF = { yarn_id: 'Yarns', base_yarn_id: 'Yarns', unit_id: 'Units', tfo_type_id: 'TfoTypes', fabric_id: 'Fabrics', loom_group_id: 'LoomGroups', plan_id: 'TfoBalancePlans' };
 var LABELS = {
   name: 'Name', weave: 'Weave', design_note: 'Design', end_use: 'End use', reed: 'Reed', ppi: 'PPI', reed_space_in: 'RS',
   greige_width_in: 'Greige width', warp_shortage_pct: 'Warp shortage %', weft_shortage_pct: 'Weft shortage %', price: 'Price', sale_date: 'Sale date',
@@ -533,7 +537,7 @@ var LABELS = {
   yarn_id: 'Yarn', ends: 'Ends', parts: 'Pick share', pattern: 'Pattern', rate: 'Rate', effective_date: 'From',
   make: 'Make', reed_width_cm: 'Reed width cm', shedding: 'Shedding', looms: 'Looms', rpm: 'RPM', efficiency: 'Efficiency',
   tfo_type_id: 'TFO type', unit_id: 'Unit', caption: 'Caption', is_cover: 'Cover',
-  machines: 'Machines', spindles_per_side: 'Spindles per side', loom_group_id: 'Loom group'
+  machines: 'Machines', spindles_per_side: 'Spindles per side', loom_group_id: 'Loom group', plan_date: 'Plan date'
 };
 
 function note_(table, action, row, diffs) {
@@ -602,6 +606,7 @@ function fabricLabel_(f) {
 function label_(table, row) {
   if (!row) return '';
   if (table === 'Fabrics') return fabricLabel_(row);
+  if (table === 'TfoBalancePlans') return String(row.name || 'Plan') + (row.plan_date ? ' (' + String(row.plan_date).slice(0, 10) + ')' : '');
   if (table === 'LoomGroups') return [row.make, row.reed_width_cm ? row.reed_width_cm + ' cm' : '', row.shedding].filter(function (x) { return x; }).join(' ') || 'loom group';
   return String(row.name || row.id || '');
 }
@@ -627,7 +632,7 @@ function show_(h, v) {
 }
 
 function diffText_(d) {
-  if (d.field === 'sort' || STAMPS[d.field]) return '';
+  if (d.field === 'sort' || d.field === 'summary' || STAMPS[d.field]) return '';
   return (LABELS[d.field] || d.field.replace(/_/g, ' ')) + ' ' + show_(d.field, d.from) + ' → ' + show_(d.field, d.to);
 }
 
@@ -684,6 +689,8 @@ function describe_(ev) {
       if (a === 'deleted') return 'loom group removed: ' + lg;
       return fieldDiffs_(ev, 'loom group ' + lg);
     }
+    case 'TfoBalanceLines':
+      return 'plan inputs changed';
     default:
       return '';
   }
@@ -749,6 +756,21 @@ function finish_() {
     var self = g.self;
     if (self && self.action === 'deleted') {
       lines.push([when, who, 'deleted', kind, label_(g.root.table, self.row), '', g.root.id]);
+      return;
+    }
+    if (g.root.table === 'TfoBalancePlans') {
+      // TFO plans: "saved", "updated" or "deleted", with the plan's name and date as the item.
+      if (self && self.action === 'added') {
+        lines.push([when, who, 'saved', kind, label_(g.root.table, self.row), nameOf_('Units', self.row.unit_id) || '', g.root.id]);
+        return;
+      }
+      var pd = uniq_((self ? self.diffs.map(diffText_) : []).concat(g.kids.map(describe_)));
+      if (!pd.length) return;
+      lines.push([when, who, 'updated', kind, self ? label_(g.root.table, self.row) : nameOf_(g.root.table, g.root.id) || g.root.id, pd.join('; '), g.root.id]);
+      if (!self) {
+        var tp = touch_(g.root.table, g.root.id);
+        if (tp) extra.push({ op: 'upsert', table: g.root.table, rows: [tp] });
+      }
       return;
     }
     if (self && self.action === 'added') {

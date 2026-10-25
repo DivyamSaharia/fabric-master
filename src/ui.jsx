@@ -329,6 +329,7 @@ const TABS = [
   { id: 'yarns', label: 'Yarns', icon: Icon.yarns },
   { id: 'units', label: 'Units', icon: Icon.units },
   { id: 'ranking', label: 'Ranking', icon: Icon.ranking },
+  { id: 'planner', label: 'Planner', icon: Icon.spindle },
 ];
 
 function syncText(st) {

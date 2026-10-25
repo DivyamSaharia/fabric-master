@@ -10,6 +10,7 @@ export function entryTitle(e) {
     if (e.action === 'removed access') return `${e.who} removed access for ${e.item}`;
     return `${e.who} ${e.action} ${e.item}`;
   }
+  if (e.type === 'TFO plan') return `${e.who} ${e.action} plan ${e.item}`;
   return `${e.who} ${e.action} ${e.item}`;
 }
 
