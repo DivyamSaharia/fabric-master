@@ -207,6 +207,7 @@ describe('yarn', () => {
     expect(neu.rows[0].rpm.missing).toBe(true);
     expect(neu.rows[0].output).toBeNull();
     expect(m.types.find((t) => t.type.id === 'tOld').avail.value).toBe(24);
+    expect(m.types.map((t) => t.type.id)).toEqual(['tOld', 'tNew']);
   });
 });
 

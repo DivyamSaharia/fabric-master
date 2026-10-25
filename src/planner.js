@@ -203,7 +203,8 @@ export function computePlan(plan, idx) {
   const groups = (idx.loomGroupsByUnit[unitId] || [])
     .slice()
     .sort((a, b) => (num(a.reed_width_cm) ?? 0) - (num(b.reed_width_cm) ?? 0) || String(a.shedding || '').localeCompare(String(b.shedding || '')));
-  const types = (idx.tfoTypesByUnit[unitId] || []).slice().sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'en', { numeric: true }));
+  // most machines first (Old machines (1-12) before New machines (13-16)), then by name
+  const types = (idx.tfoTypesByUnit[unitId] || []).slice().sort((a, b) => (num(b.machines) ?? -1) - (num(a.machines) ?? -1) || String(a.name || '').localeCompare(String(b.name || ''), 'en', { numeric: true }));
   const yarnUse = new Map(); // yarnId → { yarn, warp, weft, used: Set }
   const notes = { needRpm: [], needEff: [], noReal: [], noCount: new Set(), needTfo: [] };
   const calcs = {};
