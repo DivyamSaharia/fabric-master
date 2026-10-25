@@ -155,6 +155,7 @@ export async function commit(ops) {
       // Beam lengths need backend v8; an older script in the Sheet doesn't know the FabricBeams tab.
       if (/Unknown table FabricBeams/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save beam lengths.');
       if (/Unknown table TfoBalance/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save TFO plans.');
+      if (/Unknown table SheetAliases/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to remember sheet names.');
       throw e;
     }
     const tables = applyOps(state.tables, applied || ops);
@@ -457,6 +458,27 @@ export async function duplicatePlan(id) {
   let summary = {};
   try { summary = JSON.parse(src.summary || '{}'); } catch { summary = {}; }
   return savePlan({ unitId: src.unit_id, date: String(src.plan_date || '').slice(0, 10), name: `${src.name || 'Plan'} (copy)`, notes: src.notes || '', lines, summary });
+}
+
+// ---------- planning sheet photo import ----------
+// What an import teaches the app: article codes for fabrics that had none (into the design note, as the master
+// writes them, e.g. "Bright Satin-48 (0402)") and sheet names you confirmed (SheetAliases), so the next photo
+// matches them without asking. Codes first, so an older Sheet script that lacks SheetAliases still keeps them.
+export async function saveImportMemory({ unitId, aliases = [], codes = [] }) {
+  const idx = getIndex();
+  const tidy = (s) => String(s || '').toUpperCase().replace(/\s+/g, ' ').replace(/\s*\(\s*/g, '(').replace(/\s*\)\s*/g, ')').trim();
+  if (codes.length) await commit([{ op: 'upsert', table: 'Fabrics', rows: codes.map((c) => ({ id: c.fabricId, design_note: c.design_note })) }]);
+  if (!aliases.length) return;
+  const existing = idx.tables.SheetAliases || [];
+  const rows = [];
+  for (const a of aliases) {
+    const text = tidy(a.text);
+    const old = existing.find((x) => x.unit_id === unitId && Number(x.width_cm) === Number(a.width) && tidy(x.sheet_text) === text);
+    if (old && old.fabric_id === a.fabricId) continue;
+    if (rows.some((r) => Number(r.width_cm) === Number(a.width) && r.sheet_text === text)) continue;
+    rows.push({ id: old ? old.id : newId('sa'), unit_id: unitId, width_cm: Number(a.width), sheet_text: text, fabric_id: a.fabricId });
+  }
+  if (rows.length) await commit([{ op: 'upsert', table: 'SheetAliases', rows }]);
 }
 
 export function setPendingShare(pending) {

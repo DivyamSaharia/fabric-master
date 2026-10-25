@@ -1,3 +1,6 @@
 node_modules/
 dist/
 dist-demo/
+.scratch/
+public/ocr/
+src/sheetImport.fixture.png

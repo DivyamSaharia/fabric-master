@@ -10,6 +10,7 @@ import {
   planSig, planSummary, planToLines, resetAll, tfoUnits, todayIst, tpmYarns, withSetting,
 } from '../planner.js';
 import { Badge, Button, Empty, Icon, IconButton, NavBar, SearchPicker, Segmented, Sheet, TextButton, Toggle, useWide } from '../ui.jsx';
+import { SheetImport } from './sheetImport.jsx';
 
 const KEY = 'fm.planner.v1';
 
@@ -133,7 +134,7 @@ export function Planner() {
   const plan = draft.plan;
   const model = useMemo(() => computePlan(plan, idx), [plan, idx]);
   const unsaved = planSig(plan) !== draft.savedSig || (draft.planId && !planRow);
-  const [sheet, setSheet] = useState(null); // 'save' | 'plans' | 'export' | 'reset' | 'clear'
+  const [sheet, setSheet] = useState(null); // 'save' | 'plans' | 'export' | 'reset' | 'clear' | 'import'
   const pendingFocus = useRef(null);
 
   useEffect(() => local.set(KEY, store), [store]);
@@ -218,6 +219,7 @@ export function Planner() {
         title="TFO planner"
         right={
           <>
+            <IconButton label="Import from sheet photo" onClick={() => setSheet('import')}><Icon.camera /></IconButton>
             <IconButton label="Saved plans" onClick={() => setSheet('plans')}><Icon.grid /></IconButton>
             <IconButton label="Export plan" onClick={() => setSheet('export')}><Icon.share /></IconButton>
             <TextButton bold onClick={() => setSheet('save')}>Save</TextButton>
@@ -239,6 +241,7 @@ export function Planner() {
             </div>
           </div>
           <div class="plan-btns">
+            <button type="button" class="chip" onClick={() => setSheet('import')}>Import sheet photo</button>
             <button type="button" class="chip" disabled={!nSettings} onClick={() => setSheet('reset')}>Reset all{nSettings ? ` · ${nSettings}` : ''}</button>
             <button type="button" class="chip" disabled={!hasInputs && !planRow} onClick={() => setSheet('clear')}>Clear plan</button>
           </div>
@@ -394,6 +397,20 @@ export function Planner() {
       <SaveSheet open={sheet === 'save'} onClose={() => setSheet(null)} draft={draft} planRow={planRow} unitId={unitId} model={model} onSaved={(d) => setDraft(d)} />
       <PlansSheet open={sheet === 'plans'} onClose={() => setSheet(null)} plans={savedPlans} currentId={planRow ? planRow.id : null} unsaved={!!(unsaved && hasInputs)} onOpen={openSaved} onDeleted={(id) => { if (id === draft.planId) setDraft((d) => ({ ...d, planId: null, savedSig: '' })); }} />
       <ExportSheet open={sheet === 'export'} onClose={() => setSheet(null)} model={model} plan={plan} planRow={planRow} unsaved={unsaved} idx={idx} />
+      <SheetImport
+        open={sheet === 'import'}
+        onClose={() => setSheet(null)}
+        idx={idx}
+        unitId={unitId}
+        list={model.qualities}
+        plan={plan}
+        onApply={(next, n) => {
+          // an imported day is a new plan: Save offers today's date and a new name
+          setDraft((d) => ({ ...d, plan: next, planId: null, name: '', date: '', savedSig: '' }));
+          window.scrollTo(0, 0);
+          toast(`Imported ${n.qualities} ${n.qualities === 1 ? 'quality' : 'qualities'}, ${n.looms} looms${n.stopped ? ` · ${n.stopped} stopped` : ''}. Save to keep it.`);
+        }}
+      />
       <Confirm open={sheet === 'reset'} onClose={() => setSheet(null)} title="Reset all settings?" text={`Every edited setting in this plan (${nSettings}) goes back to the master value. Looms, sides and receipts stay.`} yes="Reset all" onYes={() => setPlan(resetAll)} />
       <Confirm open={sheet === 'clear'} onClose={() => setSheet(null)} danger title="Clear the plan?" text="This empties the working plan on this device: looms, sides, receipts and edited settings. Saved plans are not touched." yes="Clear plan" onYes={() => setDraft(blankDraft(unitId))} />
     </div>

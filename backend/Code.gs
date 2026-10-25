@@ -8,6 +8,7 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
+ * Backend v13: SheetAliases, the planning-sheet names confirmed in the photo import (sheet text + width → fabric). Not in the change log.
  * Backend v12: TFO planner plans (TfoBalancePlans, TfoBalanceLines); plan_date is date only. Logged as type "TFO plan".
  * Backend v11: Sale date for fabrics (Fabrics.sale_date, yyyy-mm-dd, date only).
  * Backend v10: Transportation cost head for RFD fabrics (Fabrics.transport_charge); RFD fabric names show as name + RS + (RFD).
@@ -30,7 +31,8 @@ var TABLES = {
   FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
   Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
   TfoBalancePlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'summary', 'created_at', 'created_by', 'updated_at', 'updated_by'],
-  TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by']
+  TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by'],
+  SheetAliases: ['id', 'unit_id', 'width_cm', 'sheet_text', 'fabric_id', 'updated_at', 'updated_by']
 };
 
 // Columns stored as numbers or TRUE/FALSE. Everything else is kept as plain text,
@@ -39,7 +41,7 @@ var NUMERIC = {
   count: 1, filaments: 1, tpm: 1, tpm_delta: 1, rate: 1, cost_per_pick: 1, tfo_default_eff: 1, reed_width_cm: 1, looms: 1, rpm: 1, efficiency: 1,
   reed: 1, ppi: 1, reed_space_in: 1, greige_width_in: 1, warp_shortage_pct: 1, weft_shortage_pct: 1, price: 1, vatav_pct: 1, rfd_shortage_pct: 1,
   processing_charge: 1, brokering_pct: 1, transport_charge: 1, loom_rpm: 1, loom_rpm_dp: 1, loom_eff_pct: 1, ends: 1, parts: 1, sort: 1,
-  machines: 1, spindles_per_side: 1, beam_length_m: 1
+  machines: 1, spindles_per_side: 1, beam_length_m: 1, width_cm: 1
 };
 var BOOLEAN = { has_tfo: 1, is_cover: 1 };
 var DATE_ONLY = { effective_date: 1, sale_date: 1, plan_date: 1 };
@@ -110,7 +112,7 @@ function ensureSheets_() {
   if (first && first.getName() === 'Sheet1' && first.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(first);
 }
 
-var SCHEMA_VERSION = '12';
+var SCHEMA_VERSION = '13';
 
 // Cheap check on every load; the full tab and format setup runs only when something is missing.
 function ensureReady_() {
@@ -379,7 +381,7 @@ function rowObj_(head, values) {
   return obj;
 }
 
-var ID_PREFIX = { Yarns: 'y', YarnRates: 'r', Units: 'u', LoomGroups: 'lg', TfoTypes: 'tt', TfoSpeeds: 'sp', Fabrics: 'f', FabricYarns: 'l', Assignments: 'a', Photos: 'p', TfoBalancePlans: 'bp', TfoBalanceLines: 'bl' };
+var ID_PREFIX = { Yarns: 'y', YarnRates: 'r', Units: 'u', LoomGroups: 'lg', TfoTypes: 'tt', TfoSpeeds: 'sp', Fabrics: 'f', FabricYarns: 'l', Assignments: 'a', Photos: 'p', TfoBalancePlans: 'bp', TfoBalanceLines: 'bl', SheetAliases: 'sa' };
 
 // Reads a tab. Rows pasted in by hand without an id get one, so bulk import is just a paste.
 function readTable_(name, fillIds) {

@@ -7,18 +7,22 @@
     "dev": "vite",
     "build": "vite build",
     "build:demo": "vite build --mode demo",
-    "test": "vitest run"
+    "test": "vitest run",
+    "prebuild": "node scripts/copy-ocr.js"
   },
   "dependencies": {
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.9",
     "preact": "^11.0.1",
+    "tesseract.js": "^7.0.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.10.6",
+    "@tesseract.js-data/eng": "^1.0.0",
     "@testing-library/preact": "^3.2.4",
     "jsdom": "^29.1.1",
+    "pngjs": "^7.0.0",
     "vite": "^8.3.4",
     "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^5.0.5"
