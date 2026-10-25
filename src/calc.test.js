@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { baseFabric, buildIndex, fabricCalc, fabricLabel, loomPerDay, stripRs, unitProfit, spindlesForUnit, spindleProfit, refTfoType, tfoOutput, yarnDenier, yarnRate } from './calc.js';
+import { baseFabric, buildIndex, fabricCalc, fabricLabel, groupPanna, loomPerDay, productionForUnit, rateSources, stripRs, tfoPerSide, unitProfit, spindlesForUnit, spindleProfit, refTfoType, tfoOutput, yarnDenier, yarnRate } from './calc.js';
 import { sampleTables } from './sampleData.js';
 
 const idx = buildIndex(sampleTables());
@@ -202,5 +202,72 @@ describe('spindle profitability', () => {
     const plain = Object.values(idx.fabricsById).find((f) => fabricCalc(f, idx).tfoClass === 'Non-TPM');
     expect(plain).toBeTruthy();
     expect(spindleProfit(fabricCalc(plain, idx), plain, idx.unitsById.u_2, idx)).toBeNull();
+  });
+});
+
+describe('rates as of an older date, per base yarn', () => {
+  const t = sampleTables();
+  t.YarnRates.push({ id: 'r_old', yarn_id: 'y_fdy75', rate: 100, effective_date: '2026-09-01' });
+  const ix = buildIndex(t);
+  const f = ix.fabricsById.f_crepe;
+  const now = fabricCalc(f, ix);
+  it('lists each base yarn once, newest rate first, with the TPM yarns that use it', () => {
+    const src = rateSources(now, ix);
+    expect(src.map((s) => s.yarn.id)).toEqual(['y_fdy75']);
+    expect(src[0].dates).toEqual([{ date: '2026-10-01', rate: 118 }, { date: '2026-09-01', rate: 100 }]);
+    expect(src[0].usedBy.map((y) => y.id).sort()).toEqual(['y_fdy75', 'y_tpm75']);
+  });
+  it('a picked date changes the base yarn and its TPM yarn (base + delta), and the realisation', () => {
+    const old = fabricCalc(f, ix, null, { y_fdy75: '2026-09-01' });
+    expect(old.warp[0].rate).toBe(100);
+    expect(old.weft[0].rate).toBe(150);
+    expect(old.rmCost).toBeLessThan(now.rmCost);
+    expect(old.realisationNetPerPick).toBeGreaterThan(now.realisationNetPerPick);
+    expect(yarnRate(ix.yarnsById.y_tpm75, ix, null, { y_fdy75: '2026-09-01' }).rate).toBe(150);
+  });
+  it('rates dated with a time still count on their day', () => {
+    const t2 = sampleTables();
+    t2.YarnRates = [{ id: 'x', yarn_id: 'y_fdy75', rate: 99, effective_date: '2026-09-01T00:00:00.000Z' }];
+    expect(yarnRate(buildIndex(t2).yarnsById.y_fdy75, buildIndex(t2), '2026-09-01').rate).toBe(99);
+  });
+});
+
+describe('production centre', () => {
+  it('double panna when two reed spaces fit the reed width (+0.5 in)', () => {
+    expect(groupPanna(52.5, { reed_width_cm: 280 })).toBe(2);
+    expect(groupPanna(52.5, { reed_width_cm: 190 })).toBe(1);
+    expect(groupPanna(60, { reed_width_cm: 280 })).toBe(1);
+    expect(groupPanna(120, { reed_width_cm: 280 })).toBe(null);
+  });
+  it('one line per loom group the fabric fits, per loom and for all looms', () => {
+    const c = fabricCalc(crepe, idx);
+    const rows = productionForUnit(c, crepe, idx.unitsById.u_2, idx);
+    expect(rows.map((r) => r.group.id)).toEqual(['lg1', 'lg2']);
+    const m = (800 * 1440 * 0.85) / (80 * 39.37);
+    expect(rows[0].panna).toBe(1);
+    expect(rows[0].loom.mPerDay).toBeCloseTo(m, 6);
+    expect(rows[0].loom.warpKg).toBeCloseTo((m * c.warpGpm) / 1000, 6);
+    expect(rows[0].total.weftKg).toBeCloseTo((m * c.weftGpm * 24) / 1000, 6);
+    const vn = idx.fabricsById.f_vn;
+    expect(productionForUnit(fabricCalc(vn, idx), vn, idx.unitsById.u_2, idx).map((r) => r.group.id)).toEqual(['lg1']);
+  });
+});
+
+describe('TFO output per side', () => {
+  it('kg per side per day for each TPM yarn on every TFO type, RPM not doubled', () => {
+    const c = fabricCalc(crepe, idx);
+    const t = tfoPerSide(c, idx.unitsById.u_2, idx);
+    expect(t.map((x) => x.type.id)).toEqual(['tt1', 'tt2']);
+    expect(t[0].yarns[0].sides).toEqual(['weft']);
+    expect(t[0].yarns[0].kgPerSide).toBeCloseTo((18000 / 2000) * 1440 * 0.9 * (75 / 9e6) * 252, 6);
+    expect(t[1].yarns[0].kgPerSide).toBeCloseTo((21000 / 2000) * 1440 * 0.9 * (75 / 9e6) * 252, 6);
+    expect(t[0].eff).toBe(90);
+    expect(tfoPerSide(c, idx.unitsById.u_caj, idx)).toEqual([]);
+  });
+  it('a yarn on warp and weft is one line', () => {
+    const g = idx.fabricsById.f_geo;
+    const t = tfoPerSide(fabricCalc(g, idx), idx.unitsById.u_2, idx);
+    expect(t[0].yarns.length).toBe(1);
+    expect(t[0].yarns[0].sides).toEqual(['warp', 'weft']);
   });
 });

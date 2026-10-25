@@ -68,16 +68,30 @@ describe('every screen renders with demo data', () => {
     expect(screen.getByText('3% · −₹1.35 / m')).toBeTruthy();
   });
 
-  it('a TPM fabric has 8 tiles: spindle realisation 7th, sale rate 8th; RFD fabrics show transportation', async () => {
+  it('a TPM fabric has 7 tiles: sale rate 4th, daily consumption 5th, TFO per side for each type; no GSM, consumption or cost tile', async () => {
     await open('#/fabric/f_crepe');
     await screen.findByText('Sale rate');
     const tiles = [...document.querySelectorAll('.tiles .tile')];
-    expect(tiles.length).toBe(8);
-    expect(tiles[6].textContent).toContain('Spindle profitability');
-    expect(tiles[6].textContent).toContain('profit per pick per spindle');
-    expect(tiles[7].textContent).toContain('₹45.00');
-    expect(tiles[7].textContent).toContain('per RFD metre');
+    expect(tiles.length).toBe(7);
+    expect(tiles.map((t) => t.querySelector('.t-label').textContent).join('|')).not.toMatch(/GSM|^Consumption|RM cost|RFD cost|Spindle/);
+    expect(tiles[3].textContent).toContain('₹45.00');
+    expect(tiles[3].textContent).toContain('per RFD metre');
+    expect(tiles[4].textContent).toContain('Daily consumption');
+    expect(tiles[4].textContent).toContain('15.9 kg');
+    expect(tiles[4].textContent).toContain('12.7 kg');
+    expect(tiles[4].textContent).toContain('(311 m) · single panna · 800 RPM · 85% eff.');
+    expect(tiles[5].textContent).toContain('TFO per side · M/C 1–12');
+    expect(tiles[5].textContent).toContain('Weft · 75D TPM 2000 S/Z');
+    expect(tiles[5].textContent).toContain('24.5 kg');
+    expect(tiles[5].textContent).toContain('90% eff. assumed');
+    expect(tiles[6].textContent).toContain('M/C 13–16');
+    expect(tiles[6].textContent).toContain('28.6 kg');
     expect(screen.getByText('Transportation')).toBeTruthy();
+    // spindle profitability is a row in the realisation section now
+    expect(screen.getByText('Spindle profitability')).toBeTruthy();
+    // production centre: per unit, per loom group
+    expect(screen.getByText('Production centre')).toBeTruthy();
+    expect(screen.getByText('24 looms · single panna · 800 RPM')).toBeTruthy();
     cleanup();
     await open('#/fabric/f_crepe/edit');
     expect(await screen.findByLabelText(/Transportation/)).toBeTruthy();
@@ -87,18 +101,56 @@ describe('every screen renders with demo data', () => {
     await open('#/fabric/f_crepe');
     await screen.findByText('Sale rate');
     const tiles = [...document.querySelectorAll('.tiles .tile')];
-    expect(tiles[7].textContent).toContain('per RFD metre · 2 Oct 2026');
+    expect(tiles[3].textContent).toContain('per RFD metre · 2 Oct 2026');
     expect(screen.getByText('Sale date')).toBeTruthy();
     cleanup();
     await open('#/fabric/f_crepe/edit');
-    const field = await screen.findByLabelText('Sale date');
+    const field = await screen.findByLabelText(/Sale date/);
     expect(field.value).toBe('2026-10-02');
     fireEvent.input(field, { target: { value: '2026-10-09' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(JSON.parse(localStorage.getItem('fm.demo.v1')).Fabrics.find((f) => f.id === 'f_crepe').sale_date).toBe('2026-10-09'));
     cleanup();
     await open('#/fabric/new');
-    expect((await screen.findByLabelText('Sale date')).value).toBe('');
+    expect((await screen.findByLabelText(/Sale date/)).value).toBe('');
+  });
+
+  it('sale date follows a changed selling price unless set by hand', async () => {
+    const { todayIst } = await import('./screens/fabrics.jsx');
+    await open('#/fabric/f_crepe/edit');
+    const price = await screen.findByLabelText(/Selling price/);
+    const start = screen.getByLabelText(/Sale date/).value;
+    fireEvent.input(price, { target: { value: '47' } });
+    await waitFor(() => expect(screen.getByLabelText(/Sale date/).value).toBe(todayIst()));
+    expect(screen.getByText(/today, price changed/)).toBeTruthy();
+    fireEvent.input(price, { target: { value: '45' } });
+    await waitFor(() => expect(screen.getByLabelText(/Sale date/).value).toBe(start));
+    fireEvent.input(screen.getByLabelText(/Sale date/), { target: { value: '2026-10-05' } });
+    fireEvent.input(price, { target: { value: '48' } });
+    expect(screen.getByLabelText(/Sale date/).value).toBe('2026-10-05');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => {
+      const f = JSON.parse(localStorage.getItem('fm.demo.v1')).Fabrics.find((x) => x.id === 'f_crepe');
+      expect([String(f.price), f.sale_date]).toEqual(['48', '2026-10-05']);
+    });
+  });
+
+  it('an older yarn rate picked on the fabric page changes the figures shown, not the data', async () => {
+    const t = sampleTables();
+    t.YarnRates.push({ id: 'r_old', yarn_id: 'y_fdy75', rate: 100, effective_date: '2026-09-01' });
+    localStorage.setItem('fm.demo.v1', JSON.stringify(t));
+    await open('#/fabric/f_crepe');
+    await screen.findByText('Yarn rates');
+    const before = document.querySelector('.tiles .tile').textContent;
+    const sel = screen.getByLabelText('Rate for 75D Polyester FDY');
+    expect([...sel.options].map((o) => o.textContent)).toEqual(['1 Oct 2026 · ₹118/kg (current)', '1 Sept 2026 · ₹100/kg'.replace('Sept', 'Sep')]);
+    fireEvent.change(sel, { target: { value: '2026-09-01' } });
+    await screen.findByText(/Showing older yarn rates/);
+    expect(document.querySelector('.tiles .tile').textContent).not.toBe(before);
+    fireEvent.click(screen.getByRole('button', { name: 'Use current rates' }));
+    await waitFor(() => expect(screen.queryByText(/Showing older yarn rates/)).toBeNull());
+    expect(document.querySelector('.tiles .tile').textContent).toBe(before);
+    expect(JSON.parse(localStorage.getItem('fm.demo.v1')).YarnRates.length).toBe(t.YarnRates.length);
   });
 
   it('edit form shows the live result and saves', async () => {
@@ -354,7 +406,8 @@ describe('spindle profit sort', () => {
     await open(`#/fabric/${plain.fabric.id}`);
     await screen.findByText('Sale rate');
     expect(screen.queryByText(/Spindle profitability/)).toBeNull();
-    expect(document.querySelectorAll('.tiles .tile').length).toBe(7);
+    expect(screen.queryByText(/TFO per side/)).toBeNull();
+    expect(document.querySelectorAll('.tiles .tile').length).toBe(5);
     cleanup();
   });
 });

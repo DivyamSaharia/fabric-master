@@ -124,23 +124,25 @@ export function tpmDelta(yarn) {
 }
 
 // Base yarn: latest rate on or before asOf (yyyy-mm-dd). TPM yarn: base yarn's rate + delta.
-export function yarnRate(yarn, idx, asOf) {
+// picks: { baseYarnId: 'yyyy-mm-dd' } overrides asOf for that base yarn (the fabric page's rate pickers).
+export function yarnRate(yarn, idx, asOf, picks) {
   if (!yarn) return null;
   if (isTpm(yarn)) {
     const base = baseOf(yarn, idx);
-    const r = base ? yarnRate(base, idx, asOf) : null;
+    const r = base ? yarnRate(base, idx, asOf, picks) : null;
     if (!r) return null;
     const delta = tpmDelta(yarn);
     return { rate: r.rate + delta, date: r.date, baseRate: r.rate, delta };
   }
-  const rates = (idx.ratesByYarn[yarn.id] || []).filter((r) => num(r.rate) !== null && (!asOf || String(r.effective_date || '') <= asOf));
+  const on = (picks && picks[yarn.id]) || asOf;
+  const rates = (idx.ratesByYarn[yarn.id] || []).filter((r) => num(r.rate) !== null && (!on || String(r.effective_date || '').slice(0, 10) <= on));
   if (rates.length) return { rate: num(rates[0].rate), date: rates[0].effective_date || '' };
   return null;
 }
 
 export const TFO_CLASSES = ['Non-TPM', 'Warp TPM', 'Weft TPM', 'TPM × TPM'];
 
-export function fabricCalc(fabric, idx, asOf) {
+export function fabricCalc(fabric, idx, asOf, picks) {
   const missing = [];
   const ppi = num(fabric.ppi);
   const rs = num(fabric.reed_space_in);
@@ -159,7 +161,7 @@ export function fabricCalc(fabric, idx, asOf) {
   if (!weftLines.length) missing.push('weft yarn');
 
   const lineCost = (yarn, gpm) => {
-    const r = yarnRate(yarn, idx, asOf);
+    const r = yarnRate(yarn, idx, asOf, picks);
     return { rate: r ? r.rate : null, costPerM: r && gpm !== null ? (gpm / 1000) * r.rate : null };
   };
 
@@ -327,6 +329,80 @@ export function spindleProfit(calc, fabric, unit, idx) {
   else if (profit === null) reason = num(unit.cost_per_pick) === null ? 'Set cost per pick on the unit' : 'Realisation not available';
   const value = spindles && profit !== null ? profit / spindles : null;
   return { value, spindles, unit, type, reason };
+}
+
+// ---------- rate pickers ----------
+// The yarns whose rate list sets this fabric's cost: each base yarn used (a TPM yarn's rate comes from its base),
+// with its dated rates, newest first.
+export function rateSources(calc, idx) {
+  const out = [];
+  for (const x of [...calc.warp, ...calc.weft]) {
+    const src = isTpm(x.yarn) ? baseOf(x.yarn, idx) : x.yarn;
+    if (!src) continue;
+    let s = out.find((o) => o.yarn.id === src.id);
+    if (!s) {
+      const rates = (idx.ratesByYarn[src.id] || []).filter((r) => num(r.rate) !== null && r.effective_date);
+      const dates = [];
+      for (const r of rates) if (!dates.some((d) => d.date === String(r.effective_date).slice(0, 10))) dates.push({ date: String(r.effective_date).slice(0, 10), rate: num(r.rate) });
+      out.push((s = { yarn: src, dates, usedBy: [] }));
+    }
+    if (x.yarn && !s.usedBy.some((y) => y.id === x.yarn.id)) s.usedBy.push(x.yarn);
+  }
+  return out;
+}
+
+// ---------- production per loom ----------
+// Panna a loom group can weave: double when two reed spaces fit its reed width (+0.5″), else single;
+// null when even one does not fit. Reed width is in cm.
+export function groupPanna(rs, group) {
+  const w = num(group && group.reed_width_cm);
+  const r = num(rs);
+  if (!w || !r) return null;
+  const inches = w / 2.54 + 0.5;
+  return r * 2 <= inches ? 2 : r <= inches ? 1 : null;
+}
+
+// Loom groups of a unit the fabric can run on (a dobby fabric needs a dobby group), with metres and
+// warp/weft kg per loom per day at the panna that fits, and the same for all looms of the group.
+export function productionForUnit(calc, fabric, unit, idx) {
+  const dobbyOnly = String((fabric && fabric.weave) || '').toLowerCase() === 'dobby';
+  return (idx.loomGroupsByUnit[unit.id] || [])
+    .filter((g) => !dobbyOnly || String(g.shedding || '').toLowerCase() === 'dobby')
+    .slice()
+    .sort((a, b) => (num(a.reed_width_cm) ?? 0) - (num(b.reed_width_cm) ?? 0) || String(a.shedding || '').localeCompare(String(b.shedding || '')))
+    .map((group) => {
+      const panna = groupPanna(calc.rs, group);
+      const looms = num(group.looms);
+      if (!panna) return { group, panna: null, looms, loom: null, reason: calc.rs ? 'Reed space wider than this loom' : 'Set the reed space on the fabric' };
+      const loom = loomPerDay(calc, fabric, unit, panna);
+      const all = (v) => (v !== null && looms ? v * looms : null);
+      return { group, panna, looms, loom, total: { mPerDay: all(loom.mPerDay), warpKg: all(loom.warpKg), weftKg: all(loom.weftKg) }, reason: loom.reason };
+    });
+}
+
+// ---------- TFO output per side ----------
+// kg one side of a machine makes per day, for each TPM yarn of the fabric, on every TFO type of the unit.
+// RPM is used as stored (already ×2). Efficiency: the speed's own, else the type's, else the unit default.
+export function tfoPerSide(calc, unit, idx) {
+  if (!unit || !truthy(unit.has_tfo) || !calc.tpmLines.length) return [];
+  const speeds = idx.speedsByUnit[unit.id] || [];
+  return (idx.tfoTypesByUnit[unit.id] || []).map((type) => {
+    const perSide = num(type.spindles_per_side) ?? 252;
+    const yarns = [];
+    for (const x of calc.tpmLines) {
+      let y = yarns.find((o) => o.yarn.id === x.yarn.id);
+      if (y) {
+        if (!y.sides.includes(x.line.side)) y.sides.push(x.line.side);
+        continue;
+      }
+      const sp = speeds.find((s) => s.tfo_type_id === type.id && s.yarn_id === x.yarn.id) || null;
+      const eff = sp ? tfoEff(sp, type, unit) : tfoEff(null, type, unit);
+      const q = sp ? tfoOutput(sp.rpm, x.yarn.tpm, eff, x.denier) : null;
+      yarns.push({ yarn: x.yarn, sides: [x.line.side], speed: sp, rpm: sp ? num(sp.rpm) : null, eff, kgPerSide: q !== null ? q * perSide : null, reason: sp ? (q === null ? 'Speed or TPM incomplete' : null) : 'No TFO speed set' });
+    }
+    const effs = [...new Set(yarns.map((y) => y.eff).filter((e) => e !== null))];
+    return { type, perSide, yarns, eff: effs.length === 1 ? effs[0] : null };
+  });
 }
 
 // ---------- formatting ----------

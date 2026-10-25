@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, spindleProfit, spindlesForUnit, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
-import { beamRowsOf, beamSlots, slotLabel } from '../machines.js';
+import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, productionForUnit, rateSources, spindleProfit, spindlesForUnit, tfoPerSide, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
+import { beamRowsOf, beamSlots, groupLabel, slotLabel } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
   addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, toast, useStore,
@@ -442,6 +442,9 @@ export function FabricDetail({ id }) {
   const [assignOpen, setAssignOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [slide, setSlide] = useState(0);
+  // Older yarn rates picked on this page: { baseYarnId: 'yyyy-mm-dd' }. View only, never saved.
+  const [picks, setPicks] = useState({});
+  useEffect(() => setPicks({}), [id]);
   if (!fabric) {
     return (
       <div>
@@ -450,12 +453,29 @@ export function FabricDetail({ id }) {
       </div>
     );
   }
-  const calc = fabricCalc(fabric, idx);
+  // calcNow: today's rates (exports). calc: what the page shows, at any older rates picked below.
+  const calcNow = fabricCalc(fabric, idx);
+  const sources = rateSources(calcNow, idx);
+  const livePicks = Object.fromEntries(Object.entries(picks).filter(([k, v]) => v && sources.some((s) => s.yarn.id === k && s.dates.length && s.dates[0].date !== v)));
+  const older = Object.keys(livePicks).length > 0;
+  const calc = older ? fabricCalc(fabric, idx, null, livePicks) : calcNow;
   const photos = idx.photosByFabric[id] || [];
   const units = unitsOf(id, idx);
   const spinUnit = units.find((u) => unitHasTfo(calc, u, idx)) || units[0] || null;
   const spin = spinUnit ? spindleProfit(calc, fabric, spinUnit, idx) : null;
   const rfd = calc.finish === 'RFD';
+  const dayUnit = units.find((u) => num(u.loom_eff_pct)) || units[0] || null;
+  const day = dayUnit ? loomPerDay(calc, fabric, dayUnit, 1) : null;
+  const tfoUnit = units.find((u) => unitHasTfo(calc, u, idx)) || null;
+  const tfoTiles = tfoUnit ? tfoPerSide(calc, tfoUnit, idx) : [];
+  const spinRow = spin ? (
+    <Row
+      label="Spindle profitability"
+      sub={spin.value !== null ? `${spin.unit.name} · ${fmt.int(spin.spindles)} spindles on ${spin.type.name}` : spin.unit.name}
+      value={<span class={`strong ${spin.value === null ? '' : spin.value >= 0 ? 'good' : 'bad'}`}>{fmt.spin(spin.value)}</span>}
+      valueSub={spin.value !== null ? 'profit per pick per spindle' : spin.reason}
+    />
+  ) : null;
 
   async function onFiles(e) {
     const files = [...(e.currentTarget.files || [])];
@@ -513,6 +533,13 @@ export function FabricDetail({ id }) {
 
       {calc.missing.length ? <div class="notice">To see every figure, add: {calc.missing.join(', ')}.</div> : null}
 
+      {older ? (
+        <div class="notice rates-note">
+          <span>Showing older yarn rates: {sources.filter((x) => livePicks[x.yarn.id]).map((x) => `${x.yarn.name} ${fmt.date(livePicks[x.yarn.id])}`).join(', ')}.</span>
+          <TextButton onClick={() => setPicks({})}>Use current rates</TextButton>
+        </div>
+      ) : null}
+
       <div class="tiles">
         <div class="tile accent">
           <div class="t-label">With VATAV</div>
@@ -525,38 +552,61 @@ export function FabricDetail({ id }) {
           <div class="t-sub">per pick · {fmt.rs(calc.realisationPerM)}/m</div>
         </div>
         <div class="tile">
-          <div class="t-label">{rfd ? 'RFD cost' : 'RM cost'}</div>
-          <div class="t-value">{fmt.rs(rfd ? calc.rfdCost : calc.rmCost)}</div>
-          <div class="t-sub">{rfd ? 'per RFD metre' : 'per metre'}</div>
-        </div>
-        <div class="tile">
           <div class="t-label">VATAV</div>
           <div class="t-value">{calc.vatavPct ? `${fmt.n(calc.vatavPct, calc.vatavPct % 1 ? 1 : 0)}%` : 'None'}</div>
           <div class="t-sub">{calc.vatavPct ? `${fmt.rs(calc.vatavAmount)} off per ${rfd ? 'RFD m' : 'm'}` : 'no discount set'}</div>
         </div>
         <div class="tile">
-          <div class="t-label">GSM</div>
-          <div class="t-value">{fmt.n(calc.gsm, 1)}</div>
-          <div class="t-sub">estimate, greige</div>
-        </div>
-        <div class="tile">
-          <div class="t-label">Consumption</div>
-          <div class="t-value">{calc.totalGpm === null ? '—' : `${fmt.n(calc.totalGpm, 1)} g/m`}</div>
-          <div class="t-sub">{calc.kgPer100 === null ? '—' : `${fmt.n(calc.kgPer100, 2)} kg per 100 m`}</div>
-        </div>
-        {spin ? (
-          <div class="tile">
-            <div class="t-label">Spindle profitability · {spin.unit.name}</div>
-            <div class={`t-value ${spin.value === null ? '' : spin.value >= 0 ? 'good' : 'bad'}`}>{fmt.spin(spin.value)}</div>
-            <div class="t-sub">{spin.value !== null ? `profit per pick per spindle · ${fmt.int(spin.spindles)} spindles on ${spin.type.name}` : spin.reason}</div>
-          </div>
-        ) : null}
-        <div class={`tile ${spin ? '' : 'span'}`}>
           <div class="t-label">Sale rate</div>
           <div class="t-value">{calc.price === null ? 'Not set' : fmt.rs(calc.price)}</div>
           <div class="t-sub">{calc.price === null ? 'add a selling price' : `${rfd ? 'per RFD metre' : 'per metre'}${fmt.date(fabric.sale_date) ? ` · ${fmt.date(fabric.sale_date)}` : ''}`}</div>
         </div>
+        <div class="tile span daily">
+          <div class="t-label">Daily consumption{dayUnit ? ` · ${dayUnit.name}` : ''}</div>
+          <div class="t-split">
+            <div><span class="t-k">Warp</span><span class="t-v">{day && day.warpKg !== null ? `${fmt.n(day.warpKg, 1)} kg` : '—'}</span></div>
+            <div><span class="t-k">Weft</span><span class="t-v">{day && day.weftKg !== null ? `${fmt.n(day.weftKg, 1)} kg` : '—'}</span></div>
+          </div>
+          <div class="t-sub">{!dayUnit ? 'assign a unit to see it' : day.mPerDay === null ? day.reason : `per loom per day (${fmt.int(day.mPerDay)} m) · single panna · ${fmt.int(day.rpm)} RPM · ${fmt.n(day.eff, day.eff % 1 ? 1 : 0)}% eff.`}</div>
+        </div>
+        {tfoTiles.map((t) => (
+          <div class="tile span tfo">
+            <div class="t-label">TFO per side · {t.type.name}</div>
+            <div class="t-lines">
+              {t.yarns.map((y) => (
+                <div class="t-line">
+                  <span class="t-k">{y.sides.map((x) => (x === 'warp' ? 'Warp' : 'Weft')).join(' + ')} · {y.yarn.name}</span>
+                  <span class="t-v">{y.kgPerSide === null ? <span class="t-miss">{y.reason}</span> : `${fmt.n(y.kgPerSide, 1)} kg`}</span>
+                </div>
+              ))}
+            </div>
+            <div class="t-sub">per side per day · {fmt.int(t.perSide)} spindles · {t.eff !== null ? `${fmt.n(t.eff, t.eff % 1 ? 1 : 0)}% eff. assumed` : 'efficiency per yarn as set'} · {tfoUnit.name}</div>
+          </div>
+        ))}
       </div>
+
+      {sources.length ? (
+        <Section header="Yarn rates" footer="Pick an older rate to see cost, realisation and profit at that rate. Only this page changes; nothing is saved. A TPM yarn takes its base yarn's rate plus its delta.">
+          {sources.map((src) => (
+            <label class="row field">
+              <span class="row-label">
+                {src.yarn.name}
+                {src.usedBy.some((y) => y.id !== src.yarn.id) ? <span class="hint"> for {src.usedBy.filter((y) => y.id !== src.yarn.id).map((y) => y.name).join(', ')}</span> : null}
+              </span>
+              {src.dates.length ? (
+                <span class="field-input select">
+                  <select value={livePicks[src.yarn.id] || src.dates[0].date} onChange={(e) => setPicks((p) => ({ ...p, [src.yarn.id]: e.currentTarget.value }))} aria-label={`Rate for ${src.yarn.name}`}>
+                    {src.dates.map((d, i) => <option value={d.date}>{`${fmt.date(d.date)} · ${fmt.rate(d.rate)}/kg${i === 0 ? ' (current)' : ''}`}</option>)}
+                  </select>
+                  <Icon.chevron size={12} />
+                </span>
+              ) : (
+                <span class="row-value"><span class="row-sub">No rate yet</span></span>
+              )}
+            </label>
+          ))}
+        </Section>
+      ) : null}
 
       <Section header="Construction">
         <Row label="Reed" value={fabric.reed || '—'} />
@@ -598,6 +648,7 @@ export function FabricDetail({ id }) {
           <Row label="Realisation without VATAV" value={<span class="strong">{fmt.pick(calc.realisationPerPick)} / pick</span>} valueSub={`${fmt.rs(calc.realisationPerM)} / RFD m`} />
           <Row label="VATAV" value={calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'} />
           <Row label="Realisation with VATAV" strong value={<span class="strong accent-text">{fmt.pick(calc.realisationNetPerPick)} / pick</span>} valueSub={`${fmt.rs(calc.realisationNetPerM)} / RFD m`} />
+          {spinRow}
         </Section>
       ) : (
         <Section header="Greige">
@@ -607,6 +658,7 @@ export function FabricDetail({ id }) {
           <Row label="Realisation without VATAV" value={<span class="strong">{fmt.pick(calc.realisationPerPick)} / pick</span>} valueSub={`${fmt.rs(calc.realisationPerM)} / m`} />
           <Row label="VATAV" value={calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'} />
           <Row label="Realisation with VATAV" strong value={<span class="strong accent-text">{fmt.pick(calc.realisationNetPerPick)} / pick</span>} valueSub={`${fmt.rs(calc.realisationNetPerM)} / m`} />
+          {spinRow}
         </Section>
       )}
 
@@ -615,6 +667,12 @@ export function FabricDetail({ id }) {
         {!units.length ? <Row label="Not in any unit yet" sub="Assign it to see profit per pick and spindles." /> : null}
         <button type="button" class="add-row" onClick={() => setAssignOpen(true)}><Icon.plus size={20} />{units.length ? 'Change units' : 'Assign to units'}</button>
       </Section>
+
+      {units.length ? (
+        <Section header="Production centre" footer="Per loom per day at each unit's loom efficiency; 'all' is for every loom in the group. Double panna where two reed spaces fit the reed width. Warp and weft include shortage.">
+          {units.map((u) => <ProductionCard unit={u} fabric={fabric} calc={calc} idx={idx} />)}
+        </Section>
+      ) : null}
 
       {units.length ? (
         <Section header="Beam length" footer="Per loom group of the units it is assigned to. Set it in Edit.">
@@ -651,9 +709,47 @@ export function FabricDetail({ id }) {
       </div>
       </div>
 
-      <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} fabric={fabric} calc={calc} idx={idx} />
+      <ExportSheet open={exportOpen} onClose={() => setExportOpen(false)} fabric={fabric} calc={calcNow} idx={idx} />
       <AssignSheet open={assignOpen} onClose={() => setAssignOpen(false)} fabric={fabric} idx={idx} />
       <PhotoSheet photo={viewer} onClose={() => setViewer(null)} />
+    </div>
+  );
+}
+
+// Production centre: one block per unit, one line per loom group the fabric can run on.
+export function ProductionCard({ unit, fabric, calc, idx }) {
+  const groups = productionForUnit(calc, fabric, unit, idx);
+  const kg = (v) => (v === null || v === undefined ? '—' : `${fmt.n(v, 1)} kg`);
+  const fallback = !groups.length ? [1, 2].map((panna) => ({ group: null, panna, looms: null, loom: loomPerDay(calc, fabric, unit, panna) })) : [];
+  return (
+    <div class="unit-card prod-card">
+      <div class="unit-head">
+        <div style={{ minWidth: 0 }}>
+          <div class="row-label strong">{unit.name}</div>
+          <div class="row-sub">{num(unit.loom_eff_pct) ? `loom efficiency ${fmt.n(num(unit.loom_eff_pct), num(unit.loom_eff_pct) % 1 ? 1 : 0)}%` : 'loom efficiency not set'}{groups.length ? '' : ' · no loom groups, shown per panna'}</div>
+        </div>
+      </div>
+      {[...groups, ...fallback].map((g) => {
+        const title = g.group ? groupLabel(g.group) : `${g.panna === 2 ? 'Double' : 'Single'} panna`;
+        const ok = g.loom && g.loom.mPerDay !== null;
+        const meta = [g.looms ? `${fmt.int(g.looms)} looms` : null, g.group && g.panna ? `${g.panna === 2 ? 'double' : 'single'} panna` : null, ok ? `${fmt.int(g.loom.rpm)} RPM` : null].filter(Boolean).join(' · ');
+        const all = (v, u) => (g.total && v !== null && v !== undefined ? <div class="s-note">all {fmt.int(v)} {u}</div> : null);
+        return (
+          <>
+            <div class="pan-head">
+              <span class="pan-label">{title}</span>
+              <span class="pan-note tnum">{ok ? meta : g.loom ? g.loom.reason : g.reason}</span>
+            </div>
+            {ok ? (
+              <div class="spin-grid three">
+                <div class="spin"><div class="s-label">Metres / day</div><div class="s-value">{fmt.int(g.loom.mPerDay)} m</div>{all(g.total && g.total.mPerDay, 'm')}</div>
+                <div class="spin"><div class="s-label">Warp / day</div><div class="s-value">{kg(g.loom.warpKg)}</div>{all(g.total && g.total.warpKg, 'kg')}</div>
+                <div class="spin"><div class="s-label">Weft / day</div><div class="s-value">{kg(g.loom.weftKg)}</div>{all(g.total && g.total.weftKg, 'kg')}</div>
+              </div>
+            ) : null}
+          </>
+        );
+      })}
     </div>
   );
 }
@@ -895,6 +991,9 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
 }
 
 // ---------------- edit ----------------
+// Today in India, yyyy-mm-dd.
+export const todayIst = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+
 const blankFabric = () => ({ name: '', weave: 'Plain', design_note: '', end_use: '', reed: '', ppi: '', reed_space_in: '', greige_width_in: '', warp_shortage_pct: '', weft_shortage_pct: '', price: '', sale_date: '', vatav_pct: '', finish: 'Greige', rfd_shortage_pct: '', processing_charge: '', brokering_pct: '', transport_charge: '', loom_rpm: '', loom_rpm_dp: '', loom_eff_pct: '', notes: '' });
 
 export function FabricEdit({ id }) {
@@ -931,6 +1030,12 @@ function FabricEditForm({ id }) {
   };
   const [busy, setBusy] = useState(false);
   const up = (k) => (v) => setF((x) => ({ ...x, [k]: v }));
+  // Sale date follows the selling price: a changed price dates the sale today, unless the date was set by hand.
+  const [saleTouched, setSaleTouched] = useState(false);
+  const origPrice = existing ? num(existing.price) : null;
+  const origSale = existing ? String(existing.sale_date || '').slice(0, 10) : '';
+  const setPrice = (v) => setF((x) => ({ ...x, price: v, sale_date: saleTouched ? x.sale_date : num(v) !== null && num(v) !== origPrice ? todayIst() : origSale }));
+  const saleAuto = !saleTouched && num(f.price) !== null && num(f.price) !== origPrice && f.sale_date === todayIst();
 
   const tempId = existing ? existing.id : '__new__';
   const preview = useMemo(() => {
@@ -1031,10 +1136,10 @@ function FabricEditForm({ id }) {
       </Section>
       {!opts.length ? <p class="section-footer">No yarns yet. Add them in the Yarns tab first.</p> : null}
 
-      <Section header="Price and finishing" footer={rfd ? 'For RFD the selling price is per RFD metre. VATAV is the discount off that price. Shrinkage grosses up RM and processing; transportation is per RFD metre; brokering is taken on the full selling price.' : 'VATAV is the discount off the selling price. Leave it blank if there is none.'}>
+      <Section header="Price and finishing" footer={rfd ? 'Changing the selling price sets the sale date to today; change the date if the sale was on another day. For RFD the selling price is per RFD metre. VATAV is the discount off that price. Shrinkage grosses up RM and processing; transportation is per RFD metre; brokering is taken on the full selling price.' : 'Changing the selling price sets the sale date to today; change the date if the sale was on another day. VATAV is the discount off the selling price. Leave it blank if there is none.'}>
         <div class="row"><div style={{ width: '100%' }}><Segmented label="Finish" options={['Greige', 'RFD']} value={f.finish === 'RFD' ? 'RFD' : 'Greige'} onChange={up('finish')} /></div></div>
-        <NumField label="Selling price" hint={rfd ? 'per RFD m' : 'per m'} prefix="₹" value={f.price} onInput={up('price')} />
-        <Field label="Sale date" hint="last sale" type="date" value={String(f.sale_date || '').slice(0, 10)} onInput={up('sale_date')} />
+        <NumField label="Selling price" hint={rfd ? 'per RFD m' : 'per m'} prefix="₹" value={f.price} onInput={setPrice} />
+        <Field label="Sale date" hint={saleAuto ? 'today, price changed' : 'last sale'} type="date" value={String(f.sale_date || '').slice(0, 10)} onInput={(v) => { setSaleTouched(true); up('sale_date')(v); }} />
         <NumField label="VATAV" hint="discount" value={f.vatav_pct} onInput={up('vatav_pct')} suffix="%" placeholder="0" />
         {rfd ? (
           <>
