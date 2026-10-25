@@ -6,7 +6,7 @@ import { fmt, num } from '../calc.js';
 import { deletePlan, duplicatePlan, getIndex, savePlan, toast, useStore } from '../store.js';
 import { local } from '../storage.js';
 import {
-  cleanPlan, computePlan, defaultPlanName, editedSettings, emptyPlan, groupLabel, groupOptions, keys, linesToPlan,
+  cleanPlan, computePlan, defaultPlanName, emptyPlan, groupLabel, groupOptions, keys, linesToPlan,
   planSig, planSummary, planToLines, resetAll, tfoUnits, todayIst, tpmYarns, withSetting,
 } from '../planner.js';
 import { Badge, Button, Empty, Icon, IconButton, NavBar, SearchPicker, Segmented, Sheet, TextButton, Toggle, useWide } from '../ui.jsx';
@@ -221,7 +221,7 @@ export function Planner() {
           <>
             <IconButton label="Import from sheet photo" onClick={() => setSheet('import')}><Icon.camera /></IconButton>
             <IconButton label="Saved plans" onClick={() => setSheet('plans')}><Icon.grid /></IconButton>
-            <IconButton label="Export plan" onClick={() => setSheet('export')}><Icon.share /></IconButton>
+            <IconButton label="Share plan" onClick={() => setSheet('export')}><Icon.share /></IconButton>
             <TextButton bold onClick={() => setSheet('save')}>Save</TextButton>
           </>
         }
@@ -395,8 +395,8 @@ export function Planner() {
       </section>
 
       <SaveSheet open={sheet === 'save'} onClose={() => setSheet(null)} draft={draft} planRow={planRow} unitId={unitId} model={model} onSaved={(d) => setDraft(d)} />
-      <PlansSheet open={sheet === 'plans'} onClose={() => setSheet(null)} plans={savedPlans} currentId={planRow ? planRow.id : null} unsaved={!!(unsaved && hasInputs)} onOpen={openSaved} onDeleted={(id) => { if (id === draft.planId) setDraft((d) => ({ ...d, planId: null, savedSig: '' })); }} />
-      <ExportSheet open={sheet === 'export'} onClose={() => setSheet(null)} model={model} plan={plan} planRow={planRow} unsaved={unsaved} idx={idx} />
+      <PlansSheet open={sheet === 'plans'} onClose={() => setSheet(null)} idx={idx} unitId={unitId} plans={savedPlans} currentId={planRow ? planRow.id : null} unsaved={!!(unsaved && hasInputs)} onOpen={openSaved} onDeleted={(id) => { if (id === draft.planId) setDraft((d) => ({ ...d, planId: null, savedSig: '' })); }} />
+      <ExportSheet open={sheet === 'export'} onClose={() => setSheet(null)} model={model} planRow={planRow} unsaved={unsaved} />
       <SheetImport
         open={sheet === 'import'}
         onClose={() => setSheet(null)}
@@ -689,8 +689,9 @@ function SaveSheet({ open, onClose, draft, planRow, unitId, model, onSaved }) {
 }
 
 // ---------- saved plans ----------
-function PlansSheet({ open, onClose, plans, currentId, unsaved, onOpen, onDeleted }) {
-  const [ask, setAsk] = useState(null); // { kind: 'open' | 'delete', row }
+function PlansSheet({ open, onClose, idx, unitId, plans, currentId, unsaved, onOpen, onDeleted }) {
+  const [ask, setAsk] = useState(null); // { kind: 'open' | 'delete' | 'share', row }
+  const [shareMoney, setShareMoney] = useState(true);
   const [busy, setBusy] = useState(false);
   useEffect(() => { if (!open) setAsk(null); }, [open]);
   const sorted = plans.slice().sort((a, b) => String(b.plan_date || '').localeCompare(String(a.plan_date || '')) || String(b.updated_at || '').localeCompare(String(a.updated_at || '')));
@@ -704,6 +705,20 @@ function PlansSheet({ open, onClose, plans, currentId, unsaved, onOpen, onDelete
     }
     setBusy(false);
     setAsk(null);
+  }
+  // Share a saved plan straight from the list, without opening it.
+  async function share(row, kind) {
+    setBusy(true);
+    try {
+      const lines = (idx.tables.TfoBalanceLines || []).filter((l) => l.plan_id === row.id);
+      const saved = cleanPlan(linesToPlan(unitId, lines), idx);
+      const meta = { name: row.name || 'Plan', date: String(row.plan_date || '').slice(0, 10) || todayIst(), unsaved: false };
+      await sharePlanFile(kind, shareMoney, computePlan(saved, idx), meta);
+      setAsk(null);
+    } catch (e) {
+      toast(e.message || 'Share failed', 'error');
+    }
+    setBusy(false);
   }
   return (
     <Sheet open={open} onClose={onClose} title="Saved plans">
@@ -726,7 +741,14 @@ function PlansSheet({ open, onClose, plans, currentId, unsaved, onOpen, onDelete
                       <div class="pline-meta">{num(s.plantRealisation) === null ? '₹ —' : `${rs0(num(s.plantRealisation))}/day`}</div>
                     </div>
                   </div>
-                  {asking ? (
+                  {asking && ask.kind === 'share' ? (
+                    <div class="plan-ask">
+                      <Segmented small label="Revenue" options={[{ value: 'with', label: 'With ₹' }, { value: 'without', label: 'No ₹' }]} value={shareMoney ? 'with' : 'without'} onChange={(v) => setShareMoney(v === 'with')} />
+                      <button type="button" class="link-btn" disabled={busy} onClick={() => share(p, 'pdf')}>PDF</button>
+                      <button type="button" class="link-btn" disabled={busy} onClick={() => share(p, 'xlsx')}>Excel</button>
+                      <button type="button" class="link-btn" disabled={busy} onClick={() => setAsk(null)}>Cancel</button>
+                    </div>
+                  ) : asking ? (
                     <div class="plan-ask">
                       <span>{ask.kind === 'delete' ? `Delete ${p.name || 'this plan'}?` : 'Discard unsaved changes and open this plan?'}</span>
                       <button type="button" class="link-btn danger" disabled={busy} onClick={() => (ask.kind === 'delete' ? act(async () => { await deletePlan(p.id); onDeleted(p.id); }) : (setAsk(null), onOpen(p)))}>{ask.kind === 'delete' ? 'Delete' : 'Discard and open'}</button>
@@ -736,6 +758,7 @@ function PlansSheet({ open, onClose, plans, currentId, unsaved, onOpen, onDelete
                     <div class="plan-item-btns">
                       <button type="button" class="link-btn" onClick={() => tryOpen(p)}>Open</button>
                       <button type="button" class="link-btn" disabled={busy} onClick={() => act(() => duplicatePlan(p.id))}>Duplicate</button>
+                      <button type="button" class="link-btn" onClick={() => setAsk({ kind: 'share', row: p })}>Share</button>
                       <button type="button" class="link-btn danger" onClick={() => setAsk({ kind: 'delete', row: p })}>Delete</button>
                     </div>
                   )}
@@ -751,18 +774,24 @@ function PlansSheet({ open, onClose, plans, currentId, unsaved, onOpen, onDelete
 }
 
 // ---------- export ----------
-function ExportSheet({ open, onClose, model, plan, planRow, unsaved, idx }) {
+// One place builds and shares the file, for the working plan and for any saved plan.
+// money = false leaves out every rupee figure. Edited-setting markers never appear in a shared file.
+async function sharePlanFile(kind, money, model, meta) {
+  const mod = await import('../export/planExport.js');
+  if (kind === 'pdf') await mod.exportPlanPdf(model, meta, { money });
+  else await mod.exportPlanXlsx(model, meta, { money });
+}
+
+function ExportSheet({ open, onClose, model, planRow, unsaved }) {
   const [busy, setBusy] = useState('');
+  const [money, setMoney] = useState(true);
   const meta = planRow
     ? { name: planRow.name || 'Plan', date: String(planRow.plan_date || '').slice(0, 10) || todayIst(), unsaved: !!unsaved }
     : { name: 'Unsaved plan', date: todayIst(), unsaved: false };
   async function run(kind) {
     setBusy(kind);
     try {
-      const mod = await import('../export/planExport.js');
-      const edited = editedSettings(plan, idx);
-      if (kind === 'pdf') await mod.exportPlanPdf(model, meta, edited);
-      else await mod.exportPlanXlsx(model, meta, edited);
+      await sharePlanFile(kind, money, model, meta);
       onClose();
     } catch (e) {
       toast(e.message || 'Export failed', 'error');
@@ -770,21 +799,22 @@ function ExportSheet({ open, onClose, model, plan, planRow, unsaved, idx }) {
     setBusy('');
   }
   return (
-    <Sheet open={open} onClose={onClose} title="Export plan">
+    <Sheet open={open} onClose={onClose} title="Share plan">
       <section class="section">
         <div class="group">
+          <Toggle label="Include revenue (₹)" value={money} onChange={setMoney} />
           <button type="button" class="row" disabled={!!busy} onClick={() => run('pdf')}>
             <span class="row-chevron" style={{ color: 'var(--accent)' }}><Icon.pdf /></span>
-            <div class="row-main"><div class="row-label">PDF</div><div class="row-sub">Tiles, looms, TFO, yarn consumption, TPM balance and edited settings</div></div>
+            <div class="row-main"><div class="row-label">PDF</div><div class="row-sub">{money ? 'Tiles, looms, TFO, yarn consumption and TPM balance' : 'Looms, TFO, yarn consumption and TPM balance, with no rupee figures'}</div></div>
             {busy === 'pdf' ? <span class="spinner" aria-hidden="true" /> : null}
           </button>
           <button type="button" class="row" disabled={!!busy} onClick={() => run('xlsx')}>
             <span class="row-chevron" style={{ color: 'var(--accent)' }}><Icon.grid /></span>
-            <div class="row-main"><div class="row-label">Excel</div><div class="row-sub">One sheet each: Summary, Looms, TFO, Received, Yarn consumption, TPM balance, Settings</div></div>
+            <div class="row-main"><div class="row-label">Excel</div><div class="row-sub">{money ? 'One sheet each: Summary, Looms, TFO, Received, Yarn consumption, TPM balance' : 'The same sheets, with no rupee figures'}</div></div>
             {busy === 'xlsx' ? <span class="spinner" aria-hidden="true" /> : null}
           </button>
         </div>
-        <p class="section-footer">{planRow ? `${meta.name} · ${fmt.date(meta.date)}${unsaved ? ' · with the unsaved changes on screen' : ''}` : 'The working plan is not saved: it exports as “Unsaved plan” with today’s date.'}</p>
+        <p class="section-footer">{planRow ? `${meta.name} · ${fmt.date(meta.date)}${unsaved ? ' · with the unsaved changes on screen' : ''}` : 'The working plan is not saved: it shares as “Unsaved plan” with today’s date.'}</p>
       </section>
     </Sheet>
   );
