@@ -3,8 +3,8 @@ import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/pr
 import { App } from './app.jsx';
 import { sampleTables } from './sampleData.js';
 import { whatsappText, fileName } from './export/exports.js';
-import { buildIndex, fabricCalc } from './calc.js';
-import { computeRows, defaultFilters } from './screens/fabrics.jsx';
+import { buildIndex, fabricCalc, fmt, loomRealisationForUnit } from './calc.js';
+import { computeRows, defaultFilters, sortOptions } from './screens/fabrics.jsx';
 import { resetListState } from './listState.js';
 
 beforeAll(() => {
@@ -72,7 +72,7 @@ describe('every screen renders with demo data', () => {
     await open('#/fabric/f_crepe');
     await screen.findByText('Sale rate');
     const tiles = [...document.querySelectorAll('.tiles .tile')];
-    expect(tiles.length).toBe(8);
+    expect(tiles.length).toBe(10);
     expect(tiles.map((t) => t.querySelector('.t-label').textContent).join('|')).not.toMatch(/GSM|^Consumption|RM cost|RFD cost|Spindle/);
     expect(tiles[3].textContent).toContain('₹45.00');
     expect(tiles[3].textContent).toContain('per RFD metre');
@@ -81,12 +81,23 @@ describe('every screen renders with demo data', () => {
     expect(daily[0].textContent).toContain('15.9 kg');
     expect(daily[0].textContent).toContain('12.7 kg');
     expect(daily[0].textContent).toContain('(311 m) · single panna · 800 RPM · 85% eff. · Unit 2');
-    expect(tiles[6].textContent).toContain('TFO per side · M/C 1–12');
-    expect(tiles[6].textContent).toContain('Weft · 75D TPM 2000 S/Z');
-    expect(tiles[6].textContent).toContain('24.5 kg');
-    expect(tiles[6].textContent).toContain('90% eff. assumed');
-    expect(tiles[7].textContent).toContain('M/C 13–16');
-    expect(tiles[7].textContent).toContain('28.6 kg');
+    // loom realisation: one tile per loom width, after the daily consumption tiles
+    const ix = buildIndex(sampleTables());
+    const cc = fabricCalc(ix.fabricsById.f_crepe, ix);
+    const lr = loomRealisationForUnit(cc, ix.fabricsById.f_crepe, ix.unitsById.u_2, ix);
+    const loomTiles = tiles.filter((t) => /Loom realisation/.test(t.querySelector('.t-label').textContent));
+    expect(loomTiles.map((t) => t.querySelector('.t-label').textContent)).toEqual(['Loom realisation · 190 cm', 'Loom realisation · 280 cm']);
+    expect(tiles.indexOf(loomTiles[0])).toBe(6);
+    expect(lr[0].value).toBeGreaterThan(0);
+    expect(loomTiles[0].querySelector('.t-value').textContent).toBe(fmt.rs(lr[0].value, 0));
+    expect(loomTiles[0].textContent).toContain('per loom per day · single panna');
+    expect(loomTiles[1].querySelector('.t-value').textContent).toBe(fmt.rs(lr[1].value, 0));
+    expect(tiles[8].textContent).toContain('TFO per side · M/C 1–12');
+    expect(tiles[8].textContent).toContain('Weft · 75D TPM 2000 S/Z');
+    expect(tiles[8].textContent).toContain('24.5 kg');
+    expect(tiles[8].textContent).toContain('90% eff. assumed');
+    expect(tiles[9].textContent).toContain('M/C 13–16');
+    expect(tiles[9].textContent).toContain('28.6 kg');
     expect(screen.getByText('Transportation')).toBeTruthy();
     // spindle profitability is a row in the realisation section now
     expect(screen.getByText('Spindle profitability')).toBeTruthy();
@@ -408,8 +419,49 @@ describe('spindle profit sort', () => {
     await screen.findByText('Sale rate');
     expect(screen.queryByText(/Spindle profitability/)).toBeNull();
     expect(screen.queryByText(/TFO per side/)).toBeNull();
-    expect(document.querySelectorAll('.tiles .tile').length).toBe(5);
+    expect(document.querySelectorAll('.tiles .tile').length).toBe(6);
     cleanup();
+  });
+});
+
+describe('loom realisation sort', () => {
+  const idx = buildIndex(sampleTables());
+  it('one sort per loom width of the selected unit; none without a unit', () => {
+    expect(sortOptions(null, idx).some((o) => String(o.value).startsWith('loom:'))).toBe(false);
+    expect(sortOptions(idx.unitsById.u_2, idx).filter((o) => String(o.value).startsWith('loom:')).map((o) => o.value)).toEqual(['loom:190', 'loom:280']);
+    expect(sortOptions(idx.unitsById.u_caj, idx).filter((o) => String(o.value).startsWith('loom:'))).toEqual([]);
+  });
+  it('lists the fabrics that fit that width, highest ₹ per loom per day first, blanks last', () => {
+    const unitId = 'u_2';
+    for (const w of [190, 280]) {
+      const rows = computeRows(idx, { unitId, filters: { ...defaultFilters(), sort: `loom:${w}` } });
+      expect(rows.length).toBeGreaterThan(0);
+      expect(rows.every((r) => r.loomReal.find((x) => x.width === w).panna)).toBe(true);
+      const vals = rows.map((r) => r.loomReal.find((x) => x.width === w).value);
+      const firstNull = vals.findIndex((v) => v === null);
+      const filled = firstNull < 0 ? vals : vals.slice(0, firstNull);
+      expect(filled).toEqual([...filled].sort((a, b) => b - a));
+      if (firstNull >= 0) expect(vals.slice(firstNull).every((v) => v === null)).toBe(true);
+    }
+    expect(computeRows(idx, { filters: { ...defaultFilters(), sort: 'loom:190' } }).length).toBe(computeRows(idx, {}).length);
+  });
+});
+
+describe('loom realisation sort in the list', () => {
+  it('a saved loom sort shows ₹ per loom per day on each row and survives the unit being set', async () => {
+    const { saveListState } = await import('./listState.js');
+    saveListState({ search: '', unitId: 'u_2', filters: { ...defaultFilters(), sort: 'loom:190' } });
+    await open('#/fabrics');
+    await screen.findByText('Poly Crepe 60 (RFD)');
+    expect(screen.getByText('Loom realisation 190 cm ↓')).toBeTruthy();
+    expect(screen.getAllByText('per loom per day · 190 cm').length).toBeGreaterThan(0);
+    cleanup();
+    // All units: the loom sort is not available, so the list returns to realisation per pick
+    saveListState({ search: '', unitId: 'all', filters: { ...defaultFilters(), sort: 'loom:190' } });
+    await open('#/fabrics');
+    await screen.findByText('Poly Crepe 60 (RFD)');
+    await waitFor(() => expect(screen.getByText('Realisation ↓')).toBeTruthy());
+    expect(screen.queryByText('per loom per day · 190 cm')).toBeNull();
   });
 });
 

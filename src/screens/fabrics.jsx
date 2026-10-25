@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, num, productionForUnit, rateSources, spindleProfit, spindlesForUnit, tfoPerSide, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
+import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, loomRealisation, loomRealisationForUnit, num, productionForUnit, rateSources, spindleProfit, spindlesForUnit, tfoPerSide, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
 import { beamRowsOf, beamSlots, groupLabel, slotLabel } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
@@ -18,6 +18,13 @@ const SORTS = [
   { value: 'gsm', label: 'GSM ↑' },
   { value: 'recent', label: 'Recent' },
 ];
+
+// Loom widths (cm) of a unit's loom groups, narrowest first.
+export const loomWidths = (unit, idx) => (unit ? [...new Set((idx.loomGroupsByUnit[unit.id] || []).map((g) => num(g.reed_width_cm)).filter(Boolean))].sort((a, b) => a - b) : []);
+// Sort choices: spindle profit and loom realisation (one per loom width) need a unit.
+export const sortOptions = (unit, idx) => (unit ? [...SORTS, SPINDLE_SORT, ...loomWidths(unit, idx).map((w) => ({ value: `loom:${w}`, label: `Loom realisation ${fmt.int(w)} cm ↓` }))] : SORTS);
+const loomSortWidth = (sort) => (String(sort).startsWith('loom:') ? Number(String(sort).slice(5)) : null);
+const loomOf = (row, width) => (row.loomReal || []).find((x) => x.width === width) || null;
 
 export const defaultFilters = () => ({ sort: 'realisation', weaves: [], classes: [], finish: '', loomType: '', yarnId: '', endUse: '', tpmMin: '', tpmMax: '', gsmMin: '', gsmMax: '', rMin: '', rMax: '' });
 
@@ -61,7 +68,14 @@ export function computeRows(idx, { search = '', unitId = 'all', filters = defaul
     // Spindle profitability needs a unit; sorting by it lists that unit's TPM fabrics only.
     const spin = unit ? spindleProfit(calc, f, unit, idx) : null;
     if (filters.sort === 'spindle' && !spin) continue;
-    rows.push({ fabric: f, calc, units, spin, profit: unit ? unitProfit(calc, unit) : null });
+    // Loom realisation per loom width at the unit; sorting by a width lists the fabrics that fit that width.
+    const loomReal = unit ? loomRealisationForUnit(calc, f, unit, idx) : [];
+    const lw = loomSortWidth(filters.sort);
+    if (lw !== null && unit) {
+      const e = loomReal.find((x) => x.width === lw);
+      if (!e || !e.panna) continue;
+    }
+    rows.push({ fabric: f, calc, units, spin, loomReal, profit: unit ? unitProfit(calc, unit) : null });
   }
   const byNull = (v) => (v === null || v === undefined ? -Infinity : v);
   const sorters = {
@@ -71,7 +85,10 @@ export function computeRows(idx, { search = '', unitId = 'all', filters = defaul
     gsm: (a, b) => (a.calc.gsm ?? Infinity) - (b.calc.gsm ?? Infinity),
     recent: (a, b) => String(b.fabric.updated_at || '').localeCompare(String(a.fabric.updated_at || '')),
   };
-  rows.sort(sorters[filters.sort] || sorters.realisation);
+  const lw = loomSortWidth(filters.sort);
+  const loomVal = (r) => { const e = loomOf(r, lw); return e && e.value !== null ? e.value : null; };
+  const byLoom = (a, b) => { const x = loomVal(a), y = loomVal(b); return x === null ? (y === null ? 0 : 1) : y === null ? -1 : y - x; };
+  rows.sort(lw !== null ? byLoom : sorters[filters.sort] || sorters.realisation);
   return rows;
 }
 
@@ -100,7 +117,12 @@ export function FabricRow({ row, idx, unit, onClick, sort }) {
         <div class="fcon">{constructionLine(row.fabric, row.calc, idx)}</div>
         <FabricBadges fabric={row.fabric} calc={row.calc} />
       </div>
-      {sort === 'spindle' && unit ? (
+      {loomSortWidth(sort) !== null && unit ? (
+      <div class="fval">
+        <div class="big">{fmt.rs(loomOf(row, loomSortWidth(sort)) ? loomOf(row, loomSortWidth(sort)).value : null, 0)}</div>
+        <div class="small">per loom per day · {fmt.int(loomSortWidth(sort))} cm</div>
+      </div>
+      ) : sort === 'spindle' && unit ? (
       <div class="fval">
         <div class={`big ${row.spin && row.spin.value !== null ? (row.spin.value >= 0 ? 'good' : 'bad') : ''}`}>{fmt.spin(row.spin && row.spin.value)}</div>
         <div class="small">{row.spin && row.spin.spindles ? `profit/pick · ${fmt.int(row.spin.spindles)} spindles` : 'profit per pick per spindle'}</div>
@@ -137,9 +159,11 @@ const TABLE_COLS = [
 const SPINDLE_COL = { key: 'sr', label: 'Profit/spindle', title: 'Spindle profitability: profit per pick at this unit ÷ spindles per loom per day (single panna, old TFO machines). TPM fabrics only; sorting by it hides the rest.', tpmOnly: true, profit: true, get: (r) => (r.spin ? r.spin.value : null), show: (r) => (r.spin ? fmt.spin(r.spin.value) : '—') };
 const PROFIT_COL = { key: 'profit', label: 'Profit ₹/pick', get: (r) => (r.profit ? r.profit.profitPerPick : null), show: (r) => fmt.signedPick(r.profit ? r.profit.profitPerPick : null), profit: true };
 
+const loomCol = (w) => ({ key: `lr:${w}`, label: `Loom ₹/day ${fmt.int(w)} cm`, title: `Loom realisation: ₹ per pick with VATAV × metres per loom per day × PPI, on ${fmt.int(w)} cm looms at this unit.`, get: (r) => { const e = loomOf(r, w); return e ? e.value : null; }, show: (r) => { const e = loomOf(r, w); return e && e.value !== null ? fmt.rs(e.value, 0) : '—'; } });
+
 export function FabricTable({ rows, idx, unit }) {
   const [sort, setSort] = useState(null);
-  const cols = unit ? [...TABLE_COLS, PROFIT_COL, SPINDLE_COL] : TABLE_COLS;
+  const cols = unit ? [...TABLE_COLS, PROFIT_COL, SPINDLE_COL, ...loomWidths(unit, idx).map(loomCol)] : TABLE_COLS;
   const sorted = useMemo(() => {
     if (!sort) return rows;
     const col = cols.find((c) => c.key === sort.key);
@@ -234,10 +258,12 @@ export function FabricList({ query }) {
     if (filters.yarnId && !(st.tables.Yarns || []).some((y) => y.id === filters.yarnId)) setFilters((f) => ({ ...f, yarnId: '' }));
   }, [st.tables, st.status.loading]);
   const rows = useMemo(() => computeRows(idx, { search, unitId, filters }), [idx, search, unitId, filters]);
-  // Spindle profit sorts one unit at a time: back to realisation when All units is picked.
+  // Spindle profit and loom realisation sort one unit at a time: back to realisation when All units is picked
+  // (or when the unit has no loom of that width).
   useEffect(() => {
-    if (!unit && filters.sort === 'spindle') setFilters((f) => ({ ...f, sort: 'realisation' }));
-  }, [unit, filters.sort]);
+    const ok = unitId === 'all' ? SORTS.some((o) => o.value === filters.sort) : !unit || sortOptions(unit, idx).some((o) => o.value === filters.sort);
+    if (!ok) setFilters((f) => ({ ...f, sort: 'realisation' }));
+  }, [unit, unitId, filters.sort, idx]);
   const nActive = activeFilterCount(filters);
   const unitOptions = [{ value: 'all', label: 'All units' }, ...units.map((u) => ({ value: u.id, label: u.name }))];
 
@@ -279,7 +305,7 @@ export function FabricList({ query }) {
           )}
         </div>
         <div class="chips">
-          <Chip on onClick={() => setSheet(true)}>{([...SORTS, SPINDLE_SORT].find((s) => s.value === filters.sort) || SORTS[0]).label}</Chip>
+          <Chip on onClick={() => setSheet(true)}>{(sortOptions(unit, idx).find((s) => s.value === filters.sort) || SORTS[0]).label}</Chip>
           <Chip on={nActive > 0} onClick={() => setSheet(true)}>{nActive ? `Filters · ${nActive}` : 'Filters'}</Chip>
           {WEAVES.map((w) => (
             <Chip on={filters.weaves.includes(w)} onClick={() => setFilters({ ...filters, weaves: toggleIn(filters.weaves, w) })}>{w}</Chip>
@@ -290,7 +316,7 @@ export function FabricList({ query }) {
       </div>
       <div class="list-meta">
         <span>{rows.length} {rows.length === 1 ? 'fabric' : 'fabrics'} · {unit ? unit.name : 'all units'}</span>
-        <span>{wide ? 'Click a heading to sort · press / to search' : filters.sort === 'spindle' ? 'Profit / pick per spindle · TPM fabrics' : '₹ / pick with VATAV'}</span>
+        <span>{wide ? 'Click a heading to sort · press / to search' : filters.sort === 'spindle' ? 'Profit / pick per spindle · TPM fabrics' : loomSortWidth(filters.sort) !== null ? `₹ per loom per day · ${fmt.int(loomSortWidth(filters.sort))} cm looms` : '₹ / pick with VATAV'}</span>
       </div>
       {rows.length ? (
         wide ? (
@@ -370,7 +396,7 @@ function FilterSheet({ open, onClose, filters, setFilters, idx, count, unit }) {
           <span class="row-label">Order</span>
           <span class="field-input select">
             <select value={f.sort} onChange={(e) => up({ sort: e.currentTarget.value })} aria-label="Sort by">
-              {(unit ? [...SORTS, SPINDLE_SORT] : SORTS).map((o) => <option value={o.value}>{o.label}</option>)}
+              {sortOptions(unit, idx).map((o) => <option value={o.value}>{o.label}</option>)}
             </select>
           </span>
         </label>
@@ -595,6 +621,18 @@ export function FabricDetail({ id }) {
             <div class="t-sub">assign a unit to see it</div>
           </div>
         )}
+        {dayUnit ? dayTiles.map((d) => {
+          const l = d.loom;
+          const v = loomRealisation(calc, l);
+          const why = l && l.mPerDay !== null ? (calc.realisationNetPerPick === null ? 'realisation not available' : 'set the pick on the fabric') : l ? l.reason : d.reason;
+          return (
+            <div class="tile loomreal" title={v !== null ? `${fmt.pick(calc.realisationNetPerPick)} per pick × ${fmt.int(l.mPerDay)} m × ${calc.ppi} PPI · ${dayUnit.name}${dayAssumed ? ' (fabric not assigned to it)' : ''}` : undefined}>
+              <div class="t-label">Loom realisation{d.width ? ` · ${fmt.int(d.width)} cm` : ''}</div>
+              <div class="t-value">{v === null ? '—' : fmt.rs(v, 0)}</div>
+              <div class="t-sub">{v !== null ? `per loom per day · ${d.panna === 2 ? 'double' : 'single'} panna` : why}</div>
+            </div>
+          );
+        }) : null}
         {tfoTiles.map((t) => (
           <div class="tile span tfo">
             <div class="t-label">TFO per side · {t.type.name}</div>

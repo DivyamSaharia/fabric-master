@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { baseFabric, buildIndex, fabricCalc, fabricLabel, groupPanna, loomPerDay, productionForUnit, rateSources, stripRs, tfoPerSide, unitProfit, spindlesForUnit, spindleProfit, refTfoType, tfoOutput, yarnDenier, yarnRate } from './calc.js';
+import { baseFabric, buildIndex, fabricCalc, fabricLabel, groupPanna, loomPerDay, loomRealisation, loomRealisationForUnit, productionForUnit, rateSources, stripRs, tfoPerSide, unitProfit, spindlesForUnit, spindleProfit, refTfoType, tfoOutput, yarnDenier, yarnRate } from './calc.js';
 import { sampleTables } from './sampleData.js';
 
 const idx = buildIndex(sampleTables());
@@ -250,6 +250,34 @@ describe('production centre', () => {
     expect(rows[0].total.weftKg).toBeCloseTo((m * c.weftGpm * 24) / 1000, 6);
     const vn = idx.fabricsById.f_vn;
     expect(productionForUnit(fabricCalc(vn, idx), vn, idx.unitsById.u_2, idx).map((r) => r.group.id)).toEqual(['lg1']);
+  });
+});
+
+describe('loom realisation', () => {
+  const c = fabricCalc(crepe, idx);
+  const unit = idx.unitsById.u_2;
+  it('is realisation per pick with VATAV × metres per loom per day × PPI, one per loom width', () => {
+    const rows = loomRealisationForUnit(c, crepe, unit, idx);
+    expect(rows.map((r) => r.width)).toEqual([190, 280]);
+    const m = (800 * 1440 * 0.85) / (80 * 39.37);
+    expect(rows[0].panna).toBe(1);
+    expect(rows[0].value).toBeCloseTo(c.realisationNetPerPick * m * 80, 6);
+    // the same thing as realisation per greige metre (net of VATAV, ÷ RFD gain) × metres
+    expect(rows[0].value).toBeCloseTo((c.realisationNetPerM / c.g) * m, 6);
+    expect(rows[1].value === null ? null : rows[1].value).toBe(loomRealisation(c, rows[1].loom));
+  });
+  it('is blank, with the reason, while an input is missing', () => {
+    expect(loomRealisation(c, null)).toBeNull();
+    expect(loomRealisation(c, { mPerDay: null })).toBeNull();
+    const noPrice = fabricCalc({ ...crepe, price: '' }, idx);
+    const r = loomRealisationForUnit(noPrice, crepe, unit, idx)[0];
+    expect(r.value).toBeNull();
+    expect(r.reason).toBe('Realisation not available');
+    const noRpm = fabricCalc({ ...crepe, loom_rpm: '' }, idx);
+    const r2 = loomRealisationForUnit(noRpm, { ...crepe, loom_rpm: '' }, unit, idx)[0];
+    expect(r2.value).toBeNull();
+    expect(r2.reason).toMatch(/RPM/);
+    expect(loomRealisationForUnit(c, crepe, null, idx)).toEqual([]);
   });
 });
 

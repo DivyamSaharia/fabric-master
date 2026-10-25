@@ -380,6 +380,32 @@ export function productionForUnit(calc, fabric, unit, idx) {
     });
 }
 
+// Loom realisation: what one loom earns in a day, in ₹ = realisation per pick (with VATAV) × metres a loom
+// makes per day × PPI. "Per pick" here is ₹ per metre per pick of PPI (the cost-per-pick convention), so
+// per pick × PPI is ₹ per greige metre and no inch-to-metre factor is needed. Null while any input is missing.
+export function loomRealisation(calc, loom) {
+  if (!loom || loom.mPerDay === null || loom.mPerDay === undefined) return null;
+  if (calc.realisationNetPerPick === null || !calc.ppi) return null;
+  return calc.realisationNetPerPick * loom.mPerDay * calc.ppi;
+}
+
+// One entry per loom width of the unit the fabric can run on (a plain and a dobby group of a width share it):
+// the loom's figures at the panna that width weaves, and its loom realisation per day.
+export function loomRealisationForUnit(calc, fabric, unit, idx) {
+  const out = [];
+  if (!unit) return out;
+  for (const g of productionForUnit(calc, fabric, unit, idx)) {
+    const width = num(g.group.reed_width_cm);
+    if (out.some((o) => o.width === width)) continue;
+    const loom = g.loom || null;
+    const value = loomRealisation(calc, loom);
+    let reason = null;
+    if (value === null) reason = g.loom ? (g.loom.mPerDay === null ? g.loom.reason : calc.realisationNetPerPick === null ? 'Realisation not available' : 'Set the pick on the fabric') : g.reason;
+    out.push({ width, panna: g.panna, loom, value, reason });
+  }
+  return out;
+}
+
 // ---------- TFO output per side ----------
 // kg one side of a machine makes per day, for each TPM yarn of the fabric, on every TFO type of the unit.
 // RPM is used as stored (already ×2). Efficiency: the speed's own, else the type's, else the unit default.
