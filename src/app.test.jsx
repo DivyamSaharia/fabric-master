@@ -413,6 +413,21 @@ describe('spindle profit sort', () => {
   });
 });
 
+describe('daily consumption for a fabric in no unit', () => {
+  it('uses the unit with loom groups, one tile per width, and says the fabric is not assigned to it', async () => {
+    const t = sampleTables();
+    t.Assignments = t.Assignments.filter((x) => x.fabric_id !== 'f_crepe');
+    localStorage.setItem('fm.demo.v1', JSON.stringify(t));
+    await open('#/fabric/f_crepe');
+    await screen.findByText('Sale rate');
+    const daily = [...document.querySelectorAll('.tiles .tile.daily')];
+    expect(daily.map((d) => d.querySelector('.t-label').textContent)).toEqual(['Daily consumption · 190 cm', 'Daily consumption · 280 cm']);
+    expect(daily[0].textContent).toContain('Unit 2 (fabric not assigned to it)');
+    expect(daily[0].textContent).toContain('15.9 kg');
+    cleanup();
+  });
+});
+
 describe('fabric list state sticks', () => {
   it('keeps sort, filters and search after the list is left and reopened', async () => {
     const { loadListState, saveListState, resetListState } = await import('./listState.js');

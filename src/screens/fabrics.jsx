@@ -464,7 +464,12 @@ export function FabricDetail({ id }) {
   const spinUnit = units.find((u) => unitHasTfo(calc, u, idx)) || units[0] || null;
   const spin = spinUnit ? spindleProfit(calc, fabric, spinUnit, idx) : null;
   const rfd = calc.finish === 'RFD';
-  const dayUnit = units.find((u) => num(u.loom_eff_pct) && (idx.loomGroupsByUnit[u.id] || []).length) || units.find((u) => num(u.loom_eff_pct)) || units[0] || null;
+  // Daily consumption unit: an assigned unit with loom groups and loom efficiency; failing that, the first
+  // unit that has them (the tile says the fabric is not assigned to it).
+  const hasLooms = (u) => num(u.loom_eff_pct) && (idx.loomGroupsByUnit[u.id] || []).length;
+  const anyLoomUnit = Object.values(idx.unitsById).sort((a, b) => String(a.name).localeCompare(String(b.name))).find(hasLooms) || null;
+  const dayUnit = units.find(hasLooms) || anyLoomUnit || units.find((u) => num(u.loom_eff_pct)) || units[0] || null;
+  const dayAssumed = !!dayUnit && !units.some((u) => u.id === dayUnit.id);
   // One daily consumption tile per loom width of that unit (plain and dobby of a width share it),
   // at the panna that width weaves; a unit with no loom groups gets one single panna tile.
   const dayTiles = [];
@@ -580,7 +585,7 @@ export function FabricDetail({ id }) {
                 <div><span class="t-k">Warp</span><span class="t-v">{ok && l.warpKg !== null ? `${fmt.n(l.warpKg, 1)} kg` : '—'}</span></div>
                 <div><span class="t-k">Weft</span><span class="t-v">{ok && l.weftKg !== null ? `${fmt.n(l.weftKg, 1)} kg` : '—'}</span></div>
               </div>
-              <div class="t-sub">{ok ? `per loom per day (${fmt.int(l.mPerDay)} m) · ${d.panna === 2 ? 'double' : 'single'} panna · ${fmt.int(l.rpm)} RPM · ${fmt.n(l.eff, l.eff % 1 ? 1 : 0)}% eff. · ${dayUnit.name}` : `${l ? l.reason : d.reason} · ${dayUnit.name}`}</div>
+              <div class="t-sub">{ok ? `per loom per day (${fmt.int(l.mPerDay)} m) · ${d.panna === 2 ? 'double' : 'single'} panna · ${fmt.int(l.rpm)} RPM · ${fmt.n(l.eff, l.eff % 1 ? 1 : 0)}% eff. · ${dayUnit.name}${dayAssumed ? ' (fabric not assigned to it)' : ''}` : `${l ? l.reason : d.reason} · ${dayUnit.name}${dayAssumed ? ' (fabric not assigned to it)' : ''}`}</div>
             </div>
           );
         }) : (
