@@ -1,7 +1,8 @@
 // TFO planner exports: a PDF and an Excel workbook of the plan on screen (saved or not).
 import { fmt } from '../calc.js';
 import { groupLabel } from '../planner.js';
-import { deliver, preloadExports, sheetFromRows, slug, writeBook } from './exports.js';
+import { deliver, preloadExports, sheetFromRows, slug, tempRatesText, writeBook } from './exports.js';
+import { getIndex } from '../store.js';
 import { today } from '../schema.js';
 
 export const planFileName = (meta, ext, money = true) => `${meta.date}_tfo-plan_${slug(meta.name || 'plan')}${money ? '' : '_no-revenue'}.${ext}`;
@@ -30,6 +31,7 @@ function summaryRows(model, meta, money) {
       ['Plant realisation ₹/day', r(t.plantRealisation, 0)],
       ['Average loom realisation ₹/loom/day', r(t.avgLoomRealisation, 0)],
       ['Average realisation ₹/pick (with VATAV, weighted by output)', r(t.avgPerPick, 4)],
+      ...(tempRatesText(getIndex()) ? [['Note', tempRatesText(getIndex())]] : []),
     ] : []),
   ];
 }
@@ -137,7 +139,7 @@ export async function exportPlanPdf(model, meta, { money = true } = {}) {
   doc.setFont('DejaVu', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...grey);
-  const foot = 'Metres per loom per day = RPM × 1440 × efficiency / (PPI × 39.37) × panna. TFO kg per side per day = RPM / TPM × 60 × denier / 9000 × efficiency × 24 × spindles / 1000 (RPM as stored, already × 2).' + (money ? ' Loom realisation = realisation per pick with VATAV × metres × PPI.' : '');
+  const foot = 'Metres per loom per day = RPM × 1440 × efficiency / (PPI × 39.37) × panna. TFO kg per side per day = RPM / TPM × 60 × denier / 9000 × efficiency × 24 × spindles / 1000 (RPM as stored, already × 2).' + (money ? ' Loom realisation = realisation per pick with VATAV × metres × PPI.' : '') + (money && tempRatesText(getIndex()) ? ` ${tempRatesText(getIndex())}` : '');
   if (y > PH - 14) doc.addPage();
   doc.text(doc.splitTextToSize(foot, W), M, PH - 9);
   await deliver(doc.output('blob'), planFileName(meta, 'pdf', money), `TFO plan ${meta.name}`);

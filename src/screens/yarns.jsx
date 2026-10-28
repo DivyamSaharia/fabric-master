@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'preact/hooks';
-import { DEFAULT_TPM_DELTA, fmt, isTpm, num, tpmDelta, yarnDenier, yarnRate } from '../calc.js';
+import { DEFAULT_TPM_DELTA, fmt, isTpm, num, tempRateOf, tpmDelta, yarnDenier, yarnRate } from '../calc.js';
 import { rateLabel, yarnSub } from '../describe.js';
-import { deleteRates, deleteYarn, getIndex, saveYarn, toast, useStore, yarnUsage } from '../store.js';
+import { clearTempRate, deleteRates, deleteYarn, getIndex, saveYarn, toast, useStore, yarnUsage } from '../store.js';
 import { today } from '../schema.js';
 import { back, go, replace } from '../router.js';
 import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, SearchBox, Section, Segmented, SelectField, TextButton, useWide, History } from '../ui.jsx';
@@ -39,8 +39,8 @@ function YarnTable({ yarns, idx }) {
                 <td>{d ? fmt.n(d, d % 1 ? 1 : 0) : '—'}</td>
                 <td>{tpm && num(y.tpm) ? fmt.int(num(y.tpm)) : '—'}</td>
                 <td class="txt">{tpm ? y.twist || '—' : '—'}</td>
-                <td class="strong">{r ? fmt.n(r.rate, 2) : '—'}</td>
-                <td class="txt muted">{!r ? 'No rate' : r.delta !== undefined ? `base ${fmt.rate(r.baseRate)} + ${fmt.rate(r.delta)}` : r.date ? `from ${r.date}` : ''}</td>
+                <td class="strong">{r ? fmt.n(r.rate, 2) : '—'}{r && r.temp ? <span class="badge amber tag-temp">Temp</span> : null}</td>
+                <td class="txt muted">{!r ? 'No rate' : r.delta !== undefined ? `base ${fmt.rate(r.baseRate)}${r.temp ? ' (temp)' : ''} + ${fmt.rate(r.delta)}` : r.temp ? `temporary${r.masterRate !== null ? `, master ${fmt.rate(r.masterRate)}` : ''}` : r.date ? `from ${r.date}` : ''}</td>
                 <td class="opt">{used[y.id] ? used[y.id].size : 0}</td>
               </tr>
             );
@@ -79,7 +79,7 @@ export function YarnList() {
           <div class="group">
             {yarns.map((y) => {
               const r = rateLabel(y, idx);
-              return <Row label={y.name} sub={yarnSub(y, idx)} value={<span class="strong">{r.value}</span>} valueSub={r.sub} onClick={() => go(`/yarn/${y.id}`)} />;
+              return <Row label={y.name} sub={yarnSub(y, idx)} value={<span class="strong">{r.value}{r.temp ? <span class="badge amber tag-temp">Temp</span> : null}</span>} valueSub={r.sub} onClick={() => go(`/yarn/${y.id}`)} />;
             })}
           </div>
         )
@@ -115,7 +115,8 @@ function YarnEditForm({ id, query }) {
     if (num(start.tpm_delta) === null) start.tpm_delta = String(DEFAULT_TPM_DELTA);
     return start;
   });
-  const current = existing && !isTpm(existing) ? yarnRate(existing, idx) : null;
+  const current = existing && !isTpm(existing) ? yarnRate(existing, { ...idx, tempRates: {} }) : null;
+  const tempNow = existing && !isTpm(existing) ? tempRateOf(idx, existing.id) : null;
   const [rate, setRate] = useState(current ? String(current.rate) : '');
   const [rateDate, setRateDate] = useState(today());
   const [busy, setBusy] = useState(false);
@@ -248,6 +249,11 @@ function YarnEditForm({ id, query }) {
         ) : (
           <>
             <NumField label="Rate" hint="per kg" prefix="₹" value={rate} onInput={setRate} />
+            {tempNow !== null ? (
+              <Row label="Temporary rate" sub="This device only. Screens and files use it instead of the rate above." value={<span class="strong">{fmt.rate(tempNow)}/kg <span class="badge amber tag-temp">Temp</span></span>}>
+                <div class="temp-actions"><TextButton onClick={() => clearTempRate(existing.id)}>Reset</TextButton></div>
+              </Row>
+            ) : null}
             {rateChanged ? <Field label="Rate from" type="date" value={rateDate} onInput={setRateDate} /> : null}
           </>
         )}

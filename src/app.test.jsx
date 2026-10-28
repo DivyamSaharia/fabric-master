@@ -6,7 +6,7 @@ import { whatsappText, fileName } from './export/exports.js';
 import { buildIndex, fabricCalc, fmt, loomRealisationForUnit } from './calc.js';
 import { computeRows, defaultFilters, sortOptions } from './screens/fabrics.jsx';
 import { resetListState } from './listState.js';
-import { resetDemo } from './store.js';
+import { getIndex, getState, resetDemo, saveTempRateToMaster, setTempRate } from './store.js';
 import { local } from './storage.js';
 
 beforeAll(() => {
@@ -588,5 +588,57 @@ describe('TFO planner', () => {
     expect(local.get('fm.planner.v1').showMoney).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Show revenue and ₹ figures' }));
     await screen.findByText('Plant realisation');
+  });
+  it('temporary yarn rates: set on a fabric, shown everywhere, kept on the device, reset from the strip', async () => {
+    await resetDemo();
+    local.remove('fm.tempRates.v1');
+    const ratesBefore = JSON.stringify(getState().tables.YarnRates);
+    await open('#/fabric/f_crepe');
+    await screen.findByText('Finishing · RFD');
+    expect(document.querySelector('.temp-strip')).toBeNull();
+    const input = screen.getByLabelText('Temporary rate for 75D Polyester FDY');
+    fireEvent.input(input, { target: { value: '140' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(document.querySelector('.temp-strip').textContent).toMatch(/1 temporary yarn rate active/));
+    expect(document.querySelector('.temp-note').textContent).toMatch(/75D Polyester FDY ₹140\/kg/);
+    expect(document.body.textContent).toMatch(/₹190\/kg \(temp\)/);
+    // device only: stored on the device, the yarn master rows are untouched
+    expect(local.get('fm.tempRates.v1')).toEqual({ y_fdy75: 140 });
+    expect(JSON.stringify(getState().tables.YarnRates)).toBe(ratesBefore);
+    // the yarn master tags it
+    window.location.hash = '#/yarns';
+    await waitFor(() => expect(document.querySelector('.tag-temp')).toBeTruthy());
+    // reset from the strip panel
+    fireEvent.click(document.querySelector('.temp-strip'));
+    await screen.findByText('Temporary yarn rates');
+    fireEvent.click(screen.getByRole('button', { name: 'Reset all' }));
+    await waitFor(() => expect(document.querySelector('.temp-strip')).toBeNull());
+    expect(local.get('fm.tempRates.v1')).toBeNull();
+  });
+
+  it('a temporary rate can be cleared by emptying the field on the fabric page', async () => {
+    await resetDemo();
+    local.remove('fm.tempRates.v1');
+    await open('#/fabric/f_crepe');
+    await screen.findByText('Finishing · RFD');
+    const input = screen.getByLabelText('Temporary rate for 75D Polyester FDY');
+    fireEvent.input(input, { target: { value: '140' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(document.querySelector('.temp-strip')).toBeTruthy());
+    fireEvent.input(screen.getByLabelText('Temporary rate for 75D Polyester FDY'), { target: { value: '' } });
+    fireEvent.blur(screen.getByLabelText('Temporary rate for 75D Polyester FDY'));
+    await waitFor(() => expect(document.querySelector('.temp-strip')).toBeNull());
+  });
+  it('Save to master writes today\'s rate to the yarn master and drops the temporary rate', async () => {
+    await resetDemo();
+    local.remove('fm.tempRates.v1');
+    expect(setTempRate('y_fdy75', '0')).toBe(false);
+    expect(setTempRate('y_fdy75', 'abc')).toBe(false);
+    expect(setTempRate('y_fdy75', '140')).toBe(true);
+    await saveTempRateToMaster('y_fdy75');
+    expect(getState().tempRates).toEqual({});
+    expect(local.get('fm.tempRates.v1')).toBeNull();
+    const rates = getIndex().ratesByYarn.y_fdy75;
+    expect(rates[0].rate).toBe(140);
   });
 });

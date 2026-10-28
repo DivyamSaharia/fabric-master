@@ -3,11 +3,12 @@ import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, loomR
 import { beamRowsOf, beamSlots, groupLabel, slotLabel } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
-  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, toast, useStore,
+  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, clearTempRate, toast, useStore,
 } from '../store.js';
 import { back, go, replace } from '../router.js';
 import { loadListState, saveListState, savedScroll, saveScroll } from '../listState.js';
 import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, SearchPicker, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
+import { TempRateRow } from './tempRates.jsx';
 import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
 
 const WEAVES = ['Plain', 'Cam', 'Dobby'];
@@ -482,7 +483,8 @@ export function FabricDetail({ id }) {
   // calcNow: today's rates (exports). calc: what the page shows, at any older rates picked below.
   const calcNow = fabricCalc(fabric, idx);
   const sources = rateSources(calcNow, idx);
-  const livePicks = Object.fromEntries(Object.entries(picks).filter(([k, v]) => v && sources.some((s) => s.yarn.id === k && s.dates.length && s.dates[0].date !== v)));
+  const livePicks = Object.fromEntries(Object.entries(picks).filter(([k, v]) => v && sources.some((s) => s.yarn.id === k && s.temp === null && s.dates.length && s.dates[0].date !== v)));
+  const tempSources = sources.filter((x) => x.temp !== null);
   const older = Object.keys(livePicks).length > 0;
   const calc = older ? fabricCalc(fabric, idx, null, livePicks) : calcNow;
   const photos = idx.photosByFabric[id] || [];
@@ -573,6 +575,13 @@ export function FabricDetail({ id }) {
 
       {calc.missing.length ? <div class="notice">To see every figure, add: {calc.missing.join(', ')}.</div> : null}
 
+      {tempSources.length ? (
+        <div class="notice rates-note temp-note">
+          <span>Using temporary yarn rates on this device: {tempSources.map((x) => `${x.yarn.name} ${fmt.rate(x.temp)}/kg`).join(', ')}.</span>
+          <TextButton onClick={() => tempSources.forEach((x) => clearTempRate(x.yarn.id))}>Reset</TextButton>
+        </div>
+      ) : null}
+
       {older ? (
         <div class="notice rates-note">
           <span>Showing older yarn rates: {sources.filter((x) => livePicks[x.yarn.id]).map((x) => `${x.yarn.name} ${fmt.date(livePicks[x.yarn.id])}`).join(', ')}.</span>
@@ -650,8 +659,9 @@ export function FabricDetail({ id }) {
       </div>
 
       {sources.length ? (
-        <Section header="Yarn rates" footer="Pick an older rate to see cost, realisation and profit at that rate. Only this page changes; nothing is saved. A TPM yarn takes its base yarn's rate plus its delta.">
+        <Section header="Yarn rates" footer="Pick an older rate to see cost, realisation and profit at that rate; only this page changes. Or type a temporary rate: it applies to every fabric using the yarn, on this device only, until you reset it. Nothing is saved to the yarn master. A TPM yarn takes its base yarn's rate plus its delta.">
           {sources.map((src) => (
+            <>
             <label class="row field">
               <span class="row-label">
                 {src.yarn.name}
@@ -659,7 +669,7 @@ export function FabricDetail({ id }) {
               </span>
               {src.dates.length ? (
                 <span class="field-input select">
-                  <select value={livePicks[src.yarn.id] || src.dates[0].date} onChange={(e) => setPicks((p) => ({ ...p, [src.yarn.id]: e.currentTarget.value }))} aria-label={`Rate for ${src.yarn.name}`}>
+                  <select disabled={src.temp !== null} value={livePicks[src.yarn.id] || src.dates[0].date} onChange={(e) => setPicks((p) => ({ ...p, [src.yarn.id]: e.currentTarget.value }))} aria-label={`Rate for ${src.yarn.name}`}>
                     {src.dates.map((d, i) => <option value={d.date}>{`${fmt.date(d.date)} · ${fmt.rate(d.rate)}/kg${i === 0 ? ' (current)' : ''}`}</option>)}
                   </select>
                   <Icon.chevron size={12} />
@@ -668,6 +678,8 @@ export function FabricDetail({ id }) {
                 <span class="row-value"><span class="row-sub">No rate yet</span></span>
               )}
             </label>
+            <TempRateRow src={src} />
+            </>
           ))}
         </Section>
       ) : null}
@@ -690,7 +702,7 @@ export function FabricDetail({ id }) {
         {[...calc.warp, ...calc.weft].map((x) => (
           <Row
             label={x.yarn ? x.yarn.name : 'Yarn missing'}
-            sub={x.line.side === 'warp' ? `Warp · ${x.ends ? fmt.int(x.ends) : '—'} ends · ${x.rate !== null ? `${fmt.rate(x.rate)}/kg` : 'no rate'}` : `Weft${x.line.pattern ? ` · ${x.line.pattern}` : ''}${calc.weft.length > 1 ? ` · ${Math.round(x.share * 100)}% of picks` : ''} · ${x.rate !== null ? `${fmt.rate(x.rate)}/kg` : 'no rate'}`}
+            sub={x.line.side === 'warp' ? `Warp · ${x.ends ? fmt.int(x.ends) : '—'} ends · ${x.rate !== null ? `${fmt.rate(x.rate)}/kg${x.temp ? ' (temp)' : ''}` : 'no rate'}` : `Weft${x.line.pattern ? ` · ${x.line.pattern}` : ''}${calc.weft.length > 1 ? ` · ${Math.round(x.share * 100)}% of picks` : ''} · ${x.rate !== null ? `${fmt.rate(x.rate)}/kg${x.temp ? ' (temp)' : ''}` : 'no rate'}`}
             value={x.gpm === null ? '—' : <span class="strong">{fmt.n(x.gpm, 1)} g/m</span>}
             valueSub={x.gpm === null ? null : `${fmt.n(x.kgPer100, 2)} kg/100 m · ${fmt.rs(x.costPerM)}/m`}
           />
@@ -1106,9 +1118,9 @@ function FabricEditForm({ id }) {
     const t = getState().tables;
     const fab = { ...f, id: tempId };
     const ls = lines.filter((l) => l.yarn_id).map((l, i) => ({ ...l, id: l.id || `tmp${i}`, fabric_id: tempId, sort: i }));
-    const tIdx = buildIndex({ ...t, Fabrics: [...(t.Fabrics || []).filter((x) => x.id !== tempId), fab], FabricYarns: [...(t.FabricYarns || []).filter((x) => x.fabric_id !== tempId), ...ls] });
+    const tIdx = buildIndex({ ...t, Fabrics: [...(t.Fabrics || []).filter((x) => x.id !== tempId), fab], FabricYarns: [...(t.FabricYarns || []).filter((x) => x.fabric_id !== tempId), ...ls] }, getState().tempRates);
     return fabricCalc(fab, tIdx);
-  }, [f, lines, st.tables]);
+  }, [f, lines, st.tables, st.tempRates]);
 
   if (id && !existing) {
     return (

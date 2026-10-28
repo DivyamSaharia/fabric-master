@@ -528,3 +528,12 @@ button.row:active { background: var(--fill-2); }
 .rpm-k { font-size: 11px; color: var(--text-2); }
 .rpm-opts button.on .rpm-k { color: var(--accent-ink); }
 .rpm-v { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* temporary yarn rates (device only) */
+.temp-strip { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; min-height: 32px; padding: 6px 16px; border: 0; background: var(--amber-bg); color: var(--amber); font-size: 14px; font-weight: 600; text-align: left; }
+.temp-strip-go { display: inline-flex; align-items: center; gap: 4px; flex: none; }
+.temp-note { background: var(--amber-bg); }
+.temp-actions { display: flex; gap: 4px; margin-left: -8px; }
+.temp-actions .text-btn { height: 36px; font-size: 15px; }
+.tag-temp { margin-left: 6px; vertical-align: middle; }
+.field-input .text-btn { height: 32px; font-size: 15px; padding: 0 0 0 6px; flex: none; }

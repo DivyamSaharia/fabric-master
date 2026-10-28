@@ -19,7 +19,8 @@ export function num(v) {
 
 const pct = (v) => (num(v) ?? 0) / 100;
 
-export function buildIndex(tables) {
+// tempRates: { yarnId: rate } set on this device only (never in the Sheet); see yarnRate.
+export function buildIndex(tables, tempRates) {
   const t = tables || {};
   const by = (rows) => Object.fromEntries((rows || []).map((r) => [r.id, r]));
   const group = (rows, key) => {
@@ -41,6 +42,7 @@ export function buildIndex(tables) {
   }
   return {
     tables: t,
+    tempRates: tempRates || {},
     yarnsById: by(t.Yarns),
     unitsById: by(t.Units),
     // name shown everywhere = stored name + RS; base_name keeps the stored name
@@ -132,8 +134,25 @@ export function yarnRate(yarn, idx, asOf, picks) {
     const r = base ? yarnRate(base, idx, asOf, picks) : null;
     if (!r) return null;
     const delta = tpmDelta(yarn);
-    return { rate: r.rate + delta, date: r.date, baseRate: r.rate, delta };
+    return { rate: r.rate + delta, date: r.date, baseRate: r.rate, delta, ...(r.temp ? { temp: true, masterBaseRate: r.masterRate } : {}) };
   }
+  // A temporary rate (device only, idx.tempRates) beats the dated rates until it is reset.
+  const tmp = tempRateOf(idx, yarn.id);
+  if (tmp !== null) {
+    const m = yarnMasterRate(yarn, idx, asOf, picks);
+    return { rate: tmp, date: '', temp: true, masterRate: m ? m.rate : null };
+  }
+  return yarnMasterRate(yarn, idx, asOf, picks);
+}
+
+// The temporary rate set on this device for a base yarn, or null.
+export function tempRateOf(idx, yarnId) {
+  const v = idx && idx.tempRates ? num(idx.tempRates[yarnId]) : null;
+  return v !== null && v > 0 ? v : null;
+}
+
+// Master (sheet) rate of a base yarn, ignoring any temporary rate.
+function yarnMasterRate(yarn, idx, asOf, picks) {
   const on = (picks && picks[yarn.id]) || asOf;
   const rates = (idx.ratesByYarn[yarn.id] || []).filter((r) => num(r.rate) !== null && (!on || String(r.effective_date || '').slice(0, 10) <= on));
   if (rates.length) return { rate: num(rates[0].rate), date: rates[0].effective_date || '' };
@@ -162,7 +181,7 @@ export function fabricCalc(fabric, idx, asOf, picks) {
 
   const lineCost = (yarn, gpm) => {
     const r = yarnRate(yarn, idx, asOf, picks);
-    return { rate: r ? r.rate : null, costPerM: r && gpm !== null ? (gpm / 1000) * r.rate : null };
+    return { rate: r ? r.rate : null, temp: !!(r && r.temp), costPerM: r && gpm !== null ? (gpm / 1000) * r.rate : null };
   };
 
   const warp = warpLines.map((line) => {
@@ -344,7 +363,7 @@ export function rateSources(calc, idx) {
       const rates = (idx.ratesByYarn[src.id] || []).filter((r) => num(r.rate) !== null && r.effective_date);
       const dates = [];
       for (const r of rates) if (!dates.some((d) => d.date === String(r.effective_date).slice(0, 10))) dates.push({ date: String(r.effective_date).slice(0, 10), rate: num(r.rate) });
-      out.push((s = { yarn: src, dates, usedBy: [] }));
+      out.push((s = { yarn: src, dates, usedBy: [], temp: tempRateOf(idx, src.id) }));
     }
     if (x.yarn && !s.usedBy.some((y) => y.id === x.yarn.id)) s.usedBy.push(x.yarn);
   }

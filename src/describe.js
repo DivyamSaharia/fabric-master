@@ -30,7 +30,8 @@ export function yarnSub(yarn, idx) {
 export function rateLabel(yarn, idx) {
   const r = yarnRate(yarn, idx);
   if (!r) return { value: '—', sub: 'No rate' };
-  if (r.delta !== undefined) return { value: fmt.rate(r.rate), sub: `per kg · base ${fmt.rate(r.baseRate)} + ${fmt.rate(r.delta)}` };
+  if (r.delta !== undefined) return { value: fmt.rate(r.rate), temp: !!r.temp, sub: `per kg · base ${fmt.rate(r.baseRate)}${r.temp ? ' (temp)' : ''} + ${fmt.rate(r.delta)}` };
+  if (r.temp) return { value: fmt.rate(r.rate), temp: true, sub: r.masterRate === null ? 'per kg · temporary' : `per kg · temporary, master ${fmt.rate(r.masterRate)}` };
   return { value: fmt.rate(r.rate), sub: 'per kg' };
 }
 

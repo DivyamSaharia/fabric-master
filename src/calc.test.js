@@ -299,3 +299,55 @@ describe('TFO output per side', () => {
     expect(t[0].yarns[0].sides).toEqual(['warp', 'weft']);
   });
 });
+
+describe('temporary yarn rates (device only)', () => {
+  const tables = sampleTables();
+  const withTemp = (temp) => buildIndex(tables, temp);
+
+  it('a temporary rate beats the master rate and reports the master rate', () => {
+    const i = withTemp({ y_fdy75: 140 });
+    expect(yarnRate(i.yarnsById.y_fdy75, i)).toEqual({ rate: 140, date: '', temp: true, masterRate: 118 });
+  });
+  it('a TPM yarn follows its base yarn temp rate plus the delta', () => {
+    const i = withTemp({ y_fdy75: 140 });
+    const r = yarnRate(i.yarnsById.y_tpm75, i);
+    expect(r.rate).toBe(190);
+    expect(r.baseRate).toBe(140);
+    expect(r.temp).toBe(true);
+  });
+  it('costs match what the same rate would give in the master', () => {
+    const master = sampleTables();
+    master.YarnRates.find((r) => r.yarn_id === 'y_fdy75').rate = 140;
+    const a = fabricCalc(buildIndex(tables, { y_fdy75: 140 }).fabricsById.f_crepe, buildIndex(tables, { y_fdy75: 140 }));
+    const mi = buildIndex(master);
+    const b = fabricCalc(mi.fabricsById.f_crepe, mi);
+    expect(a.rmCost).toBeCloseTo(b.rmCost, 10);
+    expect(a.realisationPerPick).toBeCloseTo(b.realisationPerPick, 10);
+    expect(a.warp[0].temp).toBe(true);
+    expect(a.weft[0].temp).toBe(true);
+    expect(b.warp[0].temp).toBe(false);
+  });
+  it('no temporary rates, or unusable ones, change nothing', () => {
+    const base = fabricCalc(crepe, idx);
+    for (const t of [undefined, {}, { y_fdy75: 0 }, { y_fdy75: '' }, { y_fdy75: 'abc' }, { y_fdy75: -5 }]) {
+      const i = buildIndex(tables, t);
+      expect(fabricCalc(i.fabricsById.f_crepe, i).rmCost).toBeCloseTo(base.rmCost, 10);
+    }
+  });
+  it('only the yarn that has a temporary rate changes', () => {
+    const i = withTemp({ y_ny40: 300 });
+    expect(fabricCalc(i.fabricsById.f_crepe, i).rmCost).toBeCloseTo(fabricCalc(crepe, idx).rmCost, 10);
+    expect(yarnRate(i.yarnsById.y_ny40, i).rate).toBe(300);
+  });
+  it('the temporary rate wins over an older rate picked on the page', () => {
+    const i = withTemp({ y_fdy75: 140 });
+    expect(yarnRate(i.yarnsById.y_fdy75, i, null, { y_fdy75: '2020-01-01' }).rate).toBe(140);
+  });
+  it('rate pickers list the temporary rate of each source yarn', () => {
+    const i = withTemp({ y_fdy75: 140 });
+    const src = rateSources(fabricCalc(i.fabricsById.f_crepe, i), i);
+    expect(src.find((s) => s.yarn.id === 'y_fdy75').temp).toBe(140);
+    const plain = rateSources(fabricCalc(crepe, idx), idx);
+    expect(plain.every((s) => s.temp === null)).toBe(true);
+  });
+});

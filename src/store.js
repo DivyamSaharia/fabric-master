@@ -10,13 +10,26 @@ import { compressImage } from './photos.js';
 const SETTINGS_KEY = 'fm.settings.v1';
 const CACHE_KEY = 'fm.cache.v1';
 const FILTERS_KEY = 'fm.savedFilters.v1';
+const TEMP_RATES_KEY = 'fm.tempRates.v1';
 
 const listeners = new Set();
+function readTempRates() {
+  const raw = local.get(TEMP_RATES_KEY, {});
+  const out = {};
+  for (const [k, v] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
+    const n = num(v);
+    if (n !== null && n > 0) out[k] = n;
+  }
+  return out;
+}
+
 let state = {
   tables: emptyTables(),
   meta: {},
   // read now, so a screen opened straight from a link (e.g. Settings) starts from the saved source
   settings: { mode: 'demo', url: '', key: '', ...(local.get(SETTINGS_KEY, {}) || {}) },
+  // temporary yarn rates, this device only: { yarnId: rate }. Never sent to the Sheet.
+  tempRates: readTempRates(),
   status: { loading: true, error: null, lastSync: null },
   syncing: false,
   toast: null,
@@ -26,7 +39,7 @@ let backend = demoBackend();
 // can't put back the old rows when it lands after the save.
 let mutationSeq = 0;
 let inflight = 0;
-let indexCache = { tables: null, idx: null };
+let indexCache = { tables: null, temp: null, idx: null };
 
 function set(patch) {
   state = { ...state, ...patch };
@@ -36,8 +49,59 @@ function set(patch) {
 export const getState = () => state;
 
 export function getIndex() {
-  if (indexCache.tables !== state.tables) indexCache = { tables: state.tables, idx: buildIndex(state.tables) };
+  if (indexCache.tables !== state.tables || indexCache.temp !== state.tempRates) {
+    indexCache = { tables: state.tables, temp: state.tempRates, idx: buildIndex(state.tables, state.tempRates) };
+  }
   return indexCache.idx;
+}
+
+// ---------- temporary yarn rates (this device only) ----------
+// Base yarns only: a TPM yarn follows its base yarn's rate plus its delta.
+function writeTempRates(next) {
+  if (Object.keys(next).length) local.set(TEMP_RATES_KEY, next);
+  else local.remove(TEMP_RATES_KEY);
+  set({ tempRates: next });
+}
+
+export function setTempRate(yarnId, rate) {
+  const n = num(rate);
+  if (n === null || n <= 0) return false;
+  writeTempRates({ ...state.tempRates, [yarnId]: n });
+  return true;
+}
+
+export function clearTempRate(yarnId) {
+  if (!(yarnId in state.tempRates)) return;
+  const next = { ...state.tempRates };
+  delete next[yarnId];
+  writeTempRates(next);
+}
+
+export function clearAllTempRates() {
+  if (Object.keys(state.tempRates).length) writeTempRates({});
+}
+
+// Temporary rates whose yarn still exists, as [{ yarn, rate, masterRate }].
+export function activeTempRates() {
+  const idx = getIndex();
+  return Object.entries(state.tempRates)
+    .map(([id, rate]) => ({ yarn: idx.yarnsById[id], rate }))
+    .filter((x) => x.yarn)
+    .map((x) => {
+      const rates = (idx.ratesByYarn[x.yarn.id] || []).filter((r) => num(r.rate) !== null);
+      return { ...x, masterRate: rates.length ? num(rates[0].rate) : null };
+    })
+    .sort((a, b) => String(a.yarn.name).localeCompare(String(b.yarn.name)));
+}
+
+// Makes a temporary rate the real one: a new dated rate in the yarn master, then the temporary rate is dropped.
+export async function saveTempRateToMaster(yarnId) {
+  const idx = getIndex();
+  const yarn = idx.yarnsById[yarnId];
+  const rate = state.tempRates[yarnId];
+  if (!yarn || !rate) return;
+  await saveYarn(yarn, rate, today());
+  clearTempRate(yarnId);
 }
 
 export function useStore() {

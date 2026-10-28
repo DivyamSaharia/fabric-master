@@ -10,6 +10,7 @@ import { Ranking } from './screens/ranking.jsx';
 import { Planner } from './screens/planner.jsx';
 import { Settings } from './screens/settings.jsx';
 import { Changes } from './screens/changes.jsx';
+import { TempRatesStrip } from './screens/tempRates.jsx';
 
 function resolve({ path, query }) {
   const [a, b, c] = path;
@@ -79,7 +80,10 @@ export function App() {
   return (
     <div class={`shell ${wide ? 'wide' : ''}`}>
       {wide ? <Sidebar active={r.tab} settingsOpen={route.path[0] === 'settings' || route.path[0] === 'changes'} /> : null}
-      <div class={`app ${r.modal ? 'no-tabs' : ''}`}>{r.el}</div>
+      <div class={`app ${r.modal ? 'no-tabs' : ''}`}>
+        <TempRatesStrip />
+        {r.el}
+      </div>
       {r.modal || wide ? null : <TabBar active={r.tab} />}
       {st.toast ? <div class={`toast ${st.toast.kind === 'error' ? 'error' : ''}`} role="status">{st.toast.message}</div> : null}
       {st.pendingShare ? (
