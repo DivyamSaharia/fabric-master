@@ -485,6 +485,9 @@ function Notes({ model, showMoney }) {
   if (n.needTfo.length) items.push(`Enter the TFO RPM for ${n.needTfo.map((r) => `${r.yarn.name} on ${r.type.name}`).join(', ')}. Until then that output is left out.`);
   if (showMoney && n.noReal.length) items.push(`No realisation for ${[...new Set(n.noReal.map((r) => r.q.label + (r.soldAs === 'rfd' && r.q.both ? ' (RFD)' : '')))].join(', ')} (no selling price or cost): left out of the realisation tiles.`);
   if (showMoney && n.noCost) items.push(`Set the cost per pick on ${model.unit ? model.unit.name : 'this unit'} (Units tab) to see profit.`);
+  const tp = (getIndex().tempPrices) || {};
+  const temps = [...new Set(model.groups.flatMap((g) => g.rows).filter((r) => r.looms > 0 && r.record && tp[r.record.id]).map((r) => `${r.record.name} ${fmt.rs(tp[r.record.id])}/m`))];
+  if (showMoney && temps.length) items.push(`Temporary sale rate used (this device only, not the fabric master): ${temps.join(', ')}. Reset it from the strip at the top.`);
   if (n.noCount.length) items.push(`${n.noCount.map((y) => y.name).join(', ')} ${n.noCount.length === 1 ? 'has' : 'have'} no count, so ${n.noCount.length === 1 ? 'it is' : 'they are'} left out of the kg.`);
   if (!items.length) return null;
   return <div class="notice"><ul class="pnotes">{items.map((x) => <li>{x}</li>)}</ul></div>;

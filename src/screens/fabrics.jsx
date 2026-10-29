@@ -3,13 +3,13 @@ import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, loomR
 import { beamRowsOf, beamSlots, groupLabel, slotLabel } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
-  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, clearTempRate, toast, useStore,
+  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, clearTempPrice, clearTempRate, toast, useStore,
 } from '../store.js';
 import { back, go, replace } from '../router.js';
 import { loadListState, saveListState, savedScroll, saveScroll } from '../listState.js';
 import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, SearchPicker, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
 import { GuideHint, HelpButton } from './guide.jsx';
-import { TempRateRow } from './tempRates.jsx';
+import { TempPriceSection, TempRateRow } from './tempRates.jsx';
 import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
 
 const WEAVES = ['Plain', 'Cam', 'Dobby'];
@@ -105,6 +105,7 @@ function FabricBadges({ fabric, calc }) {
       {classBadge(calc.tfoClass)}
       {calc.finish === 'RFD' ? <Badge kind="teal">RFD</Badge> : <Badge kind="outline">Greige</Badge>}
       {fabric.weave ? <Badge>{fabric.weave}</Badge> : null}
+      {calc.priceTemp ? <Badge kind="amber">Temp sale rate</Badge> : null}
     </div>
   );
 }
@@ -153,7 +154,7 @@ const TABLE_COLS = [
   { key: 'ends', label: 'Ends', opt: true, get: (r) => r.calc.totalEnds, show: (r) => (r.calc.totalEnds === null ? '—' : fmt.int(r.calc.totalEnds)) },
   { key: 'gsm', label: 'GSM', opt: true, get: (r) => r.calc.gsm, show: (r) => fmt.n(r.calc.gsm, 1) },
   { key: 'cost', label: 'Cost ₹/m', title: 'RM cost, or RFD cost for RFD fabrics', get: (r) => (r.calc.finish === 'RFD' ? r.calc.rfdCost : r.calc.rmCost), show: (r) => fmt.n(r.calc.finish === 'RFD' ? r.calc.rfdCost : r.calc.rmCost, 2) },
-  { key: 'price', label: 'Price ₹/m', get: (r) => r.calc.price, show: (r) => fmt.n(r.calc.price, 2) },
+  { key: 'price', label: 'Price ₹/m', get: (r) => r.calc.price, show: (r) => (r.calc.priceTemp ? <span>{fmt.n(r.calc.price, 2)}<span class="badge amber tag-temp">Temp</span></span> : fmt.n(r.calc.price, 2)) },
   { key: 'vatav', label: 'VATAV', get: (r) => r.calc.vatavPct, show: (r) => (r.calc.vatavPct ? `${fmt.n(r.calc.vatavPct, r.calc.vatavPct % 1 ? 1 : 0)}%` : '—') },
   { key: 'rw', label: '₹/pick without', title: 'Realisation per pick without VATAV', get: (r) => r.calc.realisationPerPick, show: (r) => fmt.pick(r.calc.realisationPerPick) },
   { key: 'rn', label: '₹/pick with VATAV', title: 'Realisation per pick with VATAV', get: (r) => r.calc.realisationNetPerPick, show: (r) => fmt.pick(r.calc.realisationNetPerPick), strong: true },
@@ -489,6 +490,8 @@ export function FabricDetail({ id }) {
   const tempSources = sources.filter((x) => x.temp !== null);
   const older = Object.keys(livePicks).length > 0;
   const calc = older ? fabricCalc(fabric, idx, null, livePicks) : calcNow;
+  // Same page without this fabric's temporary sale rate, to show what it changes.
+  const calcMaster = calc.priceTemp ? fabricCalc(fabric, { ...idx, tempPrices: {} }, null, older ? livePicks : undefined) : calc;
   const photos = idx.photosByFabric[id] || [];
   const units = unitsOf(id, idx);
   const spinUnit = units.find((u) => unitHasTfo(calc, u, idx)) || units[0] || null;
@@ -585,6 +588,13 @@ export function FabricDetail({ id }) {
         </div>
       ) : null}
 
+      {calc.priceTemp ? (
+        <div class="notice rates-note temp-note">
+          <span>Using a temporary sale rate on this device: {fmt.rs(calc.price)}/{rfd ? 'RFD m' : 'm'} (master {calc.masterPrice === null ? 'not set' : fmt.rs(calc.masterPrice)}).</span>
+          <TextButton onClick={() => clearTempPrice(fabric.id)}>Reset</TextButton>
+        </div>
+      ) : null}
+
       {older ? (
         <div class="notice rates-note">
           <span>Showing older yarn rates: {sources.filter((x) => livePicks[x.yarn.id]).map((x) => `${x.yarn.name} ${fmt.date(livePicks[x.yarn.id])}`).join(', ')}.</span>
@@ -610,8 +620,8 @@ export function FabricDetail({ id }) {
         </div>
         <div class="tile">
           <div class="t-label">Sale rate</div>
-          <div class="t-value">{calc.price === null ? 'Not set' : fmt.rs(calc.price)}</div>
-          <div class="t-sub">{calc.price === null ? 'add a selling price' : `${rfd ? 'per RFD metre' : 'per metre'}${fmt.date(fabric.sale_date) ? ` · ${fmt.date(fabric.sale_date)}` : ''}`}</div>
+          <div class="t-value">{calc.price === null ? 'Not set' : fmt.rs(calc.price)}{calc.priceTemp ? <span class="badge amber tag-temp">Temp</span> : null}</div>
+          <div class="t-sub">{calc.price === null ? 'add a selling price' : calc.priceTemp ? `temporary · master ${calc.masterPrice === null ? 'not set' : fmt.rs(calc.masterPrice)}` : `${rfd ? 'per RFD metre' : 'per metre'}${fmt.date(fabric.sale_date) ? ` · ${fmt.date(fabric.sale_date)}` : ''}`}</div>
         </div>
         {dayTiles.length ? dayTiles.map((d) => {
           const l = d.loom;
@@ -660,6 +670,14 @@ export function FabricDetail({ id }) {
           </div>
         ))}
       </div>
+
+      <TempPriceSection
+        fabric={fabric}
+        calc={calc}
+        master={calcMaster}
+        unit={units.find((u) => num(u.cost_per_pick) !== null) || null}
+        loom={dayUnit && dayTiles.length && dayTiles[0].loom ? { ...dayTiles[0].loom, width: dayTiles[0].width } : null}
+      />
 
       {sources.length ? (
         <Section header="Yarn rates" footer="Pick an older rate to see cost, realisation and profit at that rate; only this page changes. Or type a temporary rate: it applies to every fabric using the yarn, on this device only, until you reset it. Nothing is saved to the yarn master. A TPM yarn takes its base yarn's rate plus its delta.">

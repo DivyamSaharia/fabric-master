@@ -3,10 +3,11 @@ import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/pr
 import { App } from './app.jsx';
 import { sampleTables } from './sampleData.js';
 import { whatsappText, fileName } from './export/exports.js';
-import { buildIndex, fabricCalc, fmt, loomRealisationForUnit } from './calc.js';
+import { buildIndex, fabricCalc, fmt, loomRealisationForUnit, priceForPick } from './calc.js';
 import { computeRows, defaultFilters, sortOptions } from './screens/fabrics.jsx';
 import { resetListState } from './listState.js';
-import { getIndex, getState, resetDemo, saveTempRateToMaster, saveUnit, setTempRate } from './store.js';
+import { getIndex, getState, resetDemo, saveTempPriceToMaster, saveTempRateToMaster, saveUnit, setTempPrice, setTempRate, todayIst } from './store.js';
+import { tempRatesText } from './export/exports.js';
 import { local } from './storage.js';
 
 beforeAll(() => {
@@ -642,7 +643,7 @@ describe('Planner', () => {
     await waitFor(() => expect(document.querySelector('.tag-temp')).toBeTruthy());
     // reset from the strip panel
     fireEvent.click(document.querySelector('.temp-strip'));
-    await screen.findByText('Temporary yarn rates');
+    await screen.findByText('Temporary rates');
     fireEvent.click(screen.getByRole('button', { name: 'Reset all' }));
     await waitFor(() => expect(document.querySelector('.temp-strip')).toBeNull());
     expect(local.get('fm.tempRates.v1')).toBeNull();
@@ -672,5 +673,73 @@ describe('Planner', () => {
     expect(local.get('fm.tempRates.v1')).toBeNull();
     const rates = getIndex().ratesByYarn.y_fdy75;
     expect(rates[0].rate).toBe(140);
+  });
+
+  it('temporary sale rate: changes every figure, kept on the device, tagged in the list, reset from the strip', async () => {
+    await resetDemo();
+    local.remove('fm.tempPrices.v1');
+    const before = JSON.stringify(getState().tables.Fabrics);
+    const master = fabricCalc(getIndex().fabricsById.f_crepe, getIndex());
+    await open('#/fabric/f_crepe');
+    await screen.findByText('Try a sale rate');
+    const input = screen.getByLabelText('Temporary sale rate for Poly Crepe 60 (RFD)');
+    fireEvent.input(input, { target: { value: '50' } });
+    fireEvent.blur(input);
+    await waitFor(() => expect(document.querySelector('.temp-strip').textContent).toMatch(/1 temporary sale rate active/));
+    expect(local.get('fm.tempPrices.v1')).toEqual({ f_crepe: 50 });
+    expect(JSON.stringify(getState().tables.Fabrics)).toBe(before);
+    const now = fabricCalc(getIndex().fabricsById.f_crepe, getIndex());
+    expect(now.price).toBe(50);
+    expect(now.priceTemp).toBe(true);
+    expect(now.masterPrice).toBe(45);
+    expect(now.realisationNetPerPick).toBeGreaterThan(master.realisationNetPerPick);
+    expect(document.querySelector('.temp-note').textContent).toMatch(/₹50\.00/);
+    expect(screen.getByText('Save to master')).toBeTruthy();
+    expect(document.body.textContent).toMatch(/vs master/);
+    // the +₹1 chip moves it from the temporary rate
+    fireEvent.click(screen.getByLabelText('Raise by 1 rupee'));
+    await waitFor(() => expect(local.get('fm.tempPrices.v1')).toEqual({ f_crepe: 51 }));
+    // files say so
+    expect(tempRatesText(getIndex())).toMatch(/Temporary sale rate used.*Poly Crepe 60 \(RFD\) ₹51\.00\/m/);
+    // list tag
+    window.location.hash = '#/fabrics';
+    await waitFor(() => expect(screen.getAllByText('Temp sale rate').length).toBeGreaterThan(0));
+    fireEvent.click(document.querySelector('.temp-strip'));
+    await screen.findByText('Temporary rates');
+    fireEvent.click(screen.getByRole('button', { name: 'Reset all' }));
+    await waitFor(() => expect(document.querySelector('.temp-strip')).toBeNull());
+    expect(local.get('fm.tempPrices.v1')).toBeNull();
+  });
+
+  it('No profit chip lands on the rate where profit per pick at the unit is zero', async () => {
+    await resetDemo();
+    local.remove('fm.tempPrices.v1');
+    const idx = getIndex();
+    const f = idx.fabricsById.f_crepe;
+    const unit = Object.values(idx.unitsById).find((u) => (idx.assignmentsByFabric.f_crepe || []).some((a) => a.unit_id === u.id) && u.cost_per_pick !== '');
+    const p = priceForPick(fabricCalc(f, idx), f, Number(unit.cost_per_pick));
+    expect(setTempPrice('f_crepe', p)).toBe(true);
+    const c = fabricCalc(f, getIndex());
+    expect(c.realisationNetPerPick).toBeCloseTo(Number(unit.cost_per_pick), 3); // price rounded to paise
+    const z = priceForPick(fabricCalc(f, idx), f, 0);
+    setTempPrice('f_crepe', z);
+    expect(fabricCalc(f, getIndex()).realisationNetPerM).toBeCloseTo(0, 1);
+  });
+
+  it('Save to master makes the temporary sale rate the selling price with today\'s sale date', async () => {
+    await resetDemo();
+    local.remove('fm.tempPrices.v1');
+    expect(setTempPrice('f_crepe', '0')).toBe(false);
+    expect(setTempPrice('f_crepe', 'x')).toBe(false);
+    expect(setTempPrice('f_crepe', '48.5')).toBe(true);
+    const lines = (getIndex().linesByFabric.f_crepe || []).length;
+    await saveTempPriceToMaster('f_crepe');
+    expect(getState().tempPrices).toEqual({});
+    expect(local.get('fm.tempPrices.v1')).toBeNull();
+    const f = getIndex().fabricsById.f_crepe;
+    expect(Number(f.price)).toBe(48.5);
+    expect(f.sale_date).toBe(todayIst());
+    expect(f.base_name).toBe('Poly Crepe');
+    expect((getIndex().linesByFabric.f_crepe || []).length).toBe(lines);
   });
 });

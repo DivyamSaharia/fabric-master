@@ -22,12 +22,18 @@ export function preloadExports() {
   return libs;
 }
 
-// Temporary yarn rates (device only) change every cost figure, so files say so.
+// Temporary yarn rates and sale rates (device only) change the figures, so files say so.
 export function tempRatesText(idx) {
   const items = Object.entries((idx && idx.tempRates) || {})
     .map(([id, rate]) => ({ yarn: idx.yarnsById[id], rate }))
     .filter((x) => x.yarn);
-  return items.length ? `Includes temporary yarn rates, not the yarn master: ${items.map((x) => `${x.yarn.name} ${fmt.n(x.rate, 2)}/kg`).join(', ')}.` : '';
+  const prices = Object.entries((idx && idx.tempPrices) || {})
+    .map(([id, price]) => ({ fabric: idx.fabricsById[id], price }))
+    .filter((x) => x.fabric);
+  return [
+    items.length ? `Includes temporary yarn rates, not the yarn master: ${items.map((x) => `${x.yarn.name} ${fmt.n(x.rate, 2)}/kg`).join(', ')}.` : '',
+    prices.length ? `Temporary sale rate used, not the fabric master: ${prices.map((x) => `${x.fabric.name} ₹${fmt.n(x.price, 2)}/m`).join(', ')}.` : '',
+  ].filter(Boolean).join(' ');
 }
 
 // ---------- WhatsApp ----------
@@ -152,7 +158,7 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
     ['Realisation with VATAV', `${fmt.pick(calc.realisationNetPerPick)} / pick`, `${fmt.rs(calc.realisationNetPerM)} / ${rfd ? 'RFD m' : 'm'} · without VATAV ${fmt.pick(calc.realisationPerPick)} / pick`],
     [rfd ? 'RFD cost' : 'RM cost', `${fmt.rs(rfd ? calc.rfdCost : calc.rmCost)} / m`, rfd ? `RM ${fmt.rs(calc.rmPerSaleM)} + finishing ${fmt.rs(calc.finishingCost)}` : 'shortage included'],
     ['GSM (estimate)', fmt.n(calc.gsm, 1), `${fmt.n(calc.totalGpm, 1)} g/m · ${fmt.n(calc.kgPer100, 2)} kg/100 m`],
-    ['Selling price', `${fmt.rs(calc.price)} / ${rfd ? 'RFD m' : 'm'}`, `${calc.vatavPct ? `VATAV ${calc.vatavPct}%` : 'No VATAV'} · ${constructionLine(fabric, calc, idx)}`],
+    ['Selling price', `${fmt.rs(calc.price)} / ${rfd ? 'RFD m' : 'm'}${calc.priceTemp ? ' (temporary)' : ''}`, `${calc.vatavPct ? `VATAV ${calc.vatavPct}%` : 'No VATAV'} · ${constructionLine(fabric, calc, idx)}`],
   ];
   const colW = (210 - M - figX) / 2;
   figs.forEach((f, i) => {
@@ -214,7 +220,7 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
 
   const costRows = rfd
     ? [
-        ['Selling price', `${fmt.rs(calc.price)} / RFD m`],
+        ['Selling price', `${fmt.rs(calc.price)} / RFD m${calc.priceTemp ? ' (temporary)' : ''}`],
         ['Sale date', fmt.date(fabric.sale_date) || '—'],
         ['RFD shortage', pctv(fabric.rfd_shortage_pct)],
         ['Processing charge', `${fmt.rs(num(fabric.processing_charge))} / m`],
@@ -228,7 +234,7 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
         ['Realisation with VATAV', `${fmt.rs(calc.realisationNetPerM)} / m · ${fmt.pick(calc.realisationNetPerPick)} / pick`],
       ]
     : [
-        ['Selling price', `${fmt.rs(calc.price)} / m`],
+        ['Selling price', `${fmt.rs(calc.price)} / m${calc.priceTemp ? ' (temporary)' : ''}`],
         ['Sale date', fmt.date(fabric.sale_date) || '—'],
         ['RM cost (shortage included)', `${fmt.rs(calc.rmCost)} / m`],
         ['Realisation without VATAV', `${fmt.rs(calc.realisationPerM)} / m · ${fmt.pick(calc.realisationPerPick)} / pick`],
@@ -300,6 +306,7 @@ function fabricRow(fabric, calc, idx, unit) {
     GSM: r2(calc.gsm, 1),
     'RM cost ₹/m': r2(calc.rmCost),
     'Selling price ₹/m': calc.price ?? '',
+    ...(calc.priceTemp ? { 'Price basis': `Temporary (master ${calc.masterPrice ?? '—'})` } : {}),
     'Sale date': String(fabric.sale_date || '').slice(0, 10),
     'VATAV %': calc.vatavPct || '',
     'RFD shortage %': calc.finish === 'RFD' ? num(fabric.rfd_shortage_pct) ?? '' : '',

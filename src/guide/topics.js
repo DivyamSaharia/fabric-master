@@ -76,7 +76,7 @@ export const TOPICS = [
       'Realisation per pick = (selling price − yarn cost with shortage − finishing cost) ÷ picks.',
       'Profit per pick = realisation per pick − the unit\'s cost per pick.',
     ],
-    related: ['edit-fabric', 'temp-rates', 'share'],
+    related: ['edit-fabric', 'temp-sale-rate', 'temp-rates', 'share'],
   },
   {
     id: 'edit-fabric',
@@ -119,6 +119,26 @@ export const TOPICS = [
       'Tap **Save to master** in that strip to make it the real rate for everyone.',
     ],
     related: ['fabric', 'yarns'],
+  },
+  {
+    id: 'temp-sale-rate',
+    title: 'Try a different sale rate',
+    purpose: 'See what a fabric earns at another selling price, and save it if you like it.',
+    steps: [
+      'Open a fabric and scroll to **Try a sale rate**.',
+      'Type a price, or tap **+₹1**, **−₹1**, **+₹0.25** or **−₹0.25**.',
+      'Tap **No profit** to jump to the rate where profit is zero at the unit.',
+      'Below, see realisation, profit and loom realisation, each against the master rate.',
+      'Tap **Save to master** to make it the real selling price. The sale date is set to today.',
+      'Or tap **Reset to master** to go back.',
+    ],
+    tips: [
+      'A temporary sale rate stays on this phone or laptop only, for that fabric. Others do not see it.',
+      'The fabric list, Ranking and the Planner use it too, until you reset it.',
+      'An amber strip at the top reminds you while one is on.',
+      'Files you share while it is on say a temporary sale rate was used.',
+    ],
+    related: ['fabric', 'temp-rates'],
   },
   {
     id: 'yarns',
@@ -262,6 +282,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.21.0', 'Temporary sale rate: try another selling price on a fabric, see what changes, and save it to the master with today\'s date.'],
   ['1.20.0', 'The Planner works for every unit with loom groups. It shows profit, and All units adds up each unit\'s latest plan. New Guide, with a ? button on each screen.'],
   ['1.19.0', 'Temporary yarn rates: try another yarn price on this device only.'],
   ['1.18.0', 'The Planner can hide all ₹ figures, on screen and in shared files.'],

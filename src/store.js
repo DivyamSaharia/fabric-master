@@ -11,10 +11,11 @@ const SETTINGS_KEY = 'fm.settings.v1';
 const CACHE_KEY = 'fm.cache.v1';
 const FILTERS_KEY = 'fm.savedFilters.v1';
 const TEMP_RATES_KEY = 'fm.tempRates.v1';
+const TEMP_PRICES_KEY = 'fm.tempPrices.v1';
 
 const listeners = new Set();
-function readTempRates() {
-  const raw = local.get(TEMP_RATES_KEY, {});
+function readTempRates(key = TEMP_RATES_KEY) {
+  const raw = local.get(key, {});
   const out = {};
   for (const [k, v] of Object.entries(raw && typeof raw === 'object' ? raw : {})) {
     const n = num(v);
@@ -30,6 +31,8 @@ let state = {
   settings: { mode: 'demo', url: '', key: '', ...(local.get(SETTINGS_KEY, {}) || {}) },
   // temporary yarn rates, this device only: { yarnId: rate }. Never sent to the Sheet.
   tempRates: readTempRates(),
+  // temporary sale rates, this device only: { fabricId: price }. Never sent to the Sheet.
+  tempPrices: readTempRates(TEMP_PRICES_KEY),
   status: { loading: true, error: null, lastSync: null },
   syncing: false,
   toast: null,
@@ -39,7 +42,7 @@ let backend = demoBackend();
 // can't put back the old rows when it lands after the save.
 let mutationSeq = 0;
 let inflight = 0;
-let indexCache = { tables: null, temp: null, idx: null };
+let indexCache = { tables: null, temp: null, tp: null, idx: null };
 
 function set(patch) {
   state = { ...state, ...patch };
@@ -49,8 +52,8 @@ function set(patch) {
 export const getState = () => state;
 
 export function getIndex() {
-  if (indexCache.tables !== state.tables || indexCache.temp !== state.tempRates) {
-    indexCache = { tables: state.tables, temp: state.tempRates, idx: buildIndex(state.tables, state.tempRates) };
+  if (indexCache.tables !== state.tables || indexCache.temp !== state.tempRates || indexCache.tp !== state.tempPrices) {
+    indexCache = { tables: state.tables, temp: state.tempRates, tp: state.tempPrices, idx: buildIndex(state.tables, state.tempRates, state.tempPrices) };
   }
   return indexCache.idx;
 }
@@ -102,6 +105,56 @@ export async function saveTempRateToMaster(yarnId) {
   if (!yarn || !rate) return;
   await saveYarn(yarn, rate, today());
   clearTempRate(yarnId);
+}
+
+// ---------- temporary sale rates (this device only) ----------
+function writeTempPrices(next) {
+  if (Object.keys(next).length) local.set(TEMP_PRICES_KEY, next);
+  else local.remove(TEMP_PRICES_KEY);
+  set({ tempPrices: next });
+}
+
+export function setTempPrice(fabricId, price) {
+  const n = num(price);
+  if (n === null || n <= 0) return false;
+  writeTempPrices({ ...state.tempPrices, [fabricId]: Math.round(n * 100) / 100 });
+  return true;
+}
+
+export function clearTempPrice(fabricId) {
+  if (!(fabricId in state.tempPrices)) return;
+  const next = { ...state.tempPrices };
+  delete next[fabricId];
+  writeTempPrices(next);
+}
+
+export function clearAllTempPrices() {
+  if (Object.keys(state.tempPrices).length) writeTempPrices({});
+}
+
+// Temporary sale rates whose fabric still exists, as [{ fabric, price, masterPrice }].
+export function activeTempPrices() {
+  const idx = getIndex();
+  return Object.entries(state.tempPrices)
+    .map(([id, price]) => ({ fabric: idx.fabricsById[id], price }))
+    .filter((x) => x.fabric)
+    .map((x) => ({ ...x, masterPrice: num(x.fabric.price) }))
+    .sort((a, b) => String(a.fabric.name).localeCompare(String(b.fabric.name)));
+}
+
+// Sale date for a price saved today: India time, whatever the device clock's zone.
+export const todayIst = (now = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+
+// Makes a temporary sale rate the fabric's selling price, with today's sale date, then drops it.
+export async function saveTempPriceToMaster(fabricId) {
+  const idx = getIndex();
+  const fabric = idx.fabricsById[fabricId];
+  const price = state.tempPrices[fabricId];
+  if (!fabric || !price) return;
+  const lines = idx.linesByFabric[fabricId] || [];
+  const units = (idx.assignmentsByFabric[fabricId] || []).map((a) => a.unit_id);
+  await saveFabric({ ...fabric, price, sale_date: todayIst() }, lines, units);
+  clearTempPrice(fabricId);
 }
 
 export function useStore() {

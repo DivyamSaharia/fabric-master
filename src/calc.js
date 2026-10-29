@@ -20,7 +20,8 @@ export function num(v) {
 const pct = (v) => (num(v) ?? 0) / 100;
 
 // tempRates: { yarnId: rate } set on this device only (never in the Sheet); see yarnRate.
-export function buildIndex(tables, tempRates) {
+// tempPrices: { fabricId: price } temporary sale rates, also this device only; see fabricCalc.
+export function buildIndex(tables, tempRates, tempPrices) {
   const t = tables || {};
   const by = (rows) => Object.fromEntries((rows || []).map((r) => [r.id, r]));
   const group = (rows, key) => {
@@ -43,6 +44,7 @@ export function buildIndex(tables, tempRates) {
   return {
     tables: t,
     tempRates: tempRates || {},
+    tempPrices: tempPrices || {},
     yarnsById: by(t.Yarns),
     unitsById: by(t.Units),
     // name shown everywhere = stored name + RS; base_name keeps the stored name
@@ -151,6 +153,12 @@ export function tempRateOf(idx, yarnId) {
   return v !== null && v > 0 ? v : null;
 }
 
+// The temporary sale rate set on this device for a fabric, or null.
+export function tempPriceOf(idx, fabricId) {
+  const v = idx && idx.tempPrices && fabricId ? num(idx.tempPrices[fabricId]) : null;
+  return v !== null && v > 0 ? v : null;
+}
+
 // Master (sheet) rate of a base yarn, ignoring any temporary rate.
 function yarnMasterRate(yarn, idx, asOf, picks) {
   const on = (picks && picks[yarn.id]) || asOf;
@@ -217,7 +225,10 @@ export function fabricCalc(fabric, idx, asOf, picks) {
   const tpmValues = tpmLines.map((x) => num(x.yarn.tpm)).filter((v) => v !== null);
 
   const finish = fabric.finish === 'RFD' ? 'RFD' : 'Greige';
-  const price = num(fabric.price);
+  // A temporary sale rate (device only, idx.tempPrices) beats the fabric's selling price until it is reset.
+  const masterPrice = num(fabric.price);
+  const tempPrice = tempPriceOf(idx, fabric.id);
+  const price = tempPrice ?? masterPrice;
   if (price === null) missing.push('selling price');
   let g = 1;
   let finishingCost = 0;
@@ -254,10 +265,29 @@ export function fabricCalc(fabric, idx, asOf, picks) {
     ppi, rs, width, sw, sf, warp, weft, totalEnds, warpGpm, weftGpm, totalGpm,
     kgPer100: totalGpm === null ? null : totalGpm / 10, gsm, rmCost,
     tfoClass, tpmLines, tpmMin: tpmValues.length ? Math.min(...tpmValues) : null, tpmMax: tpmValues.length ? Math.max(...tpmValues) : null,
-    finish, price, g, finishingCost: finish === 'RFD' ? finishingCost : null, transport, rfdCost, rmPerSaleM,
+    finish, price, priceTemp: tempPrice !== null, masterPrice, g, finishingCost: finish === 'RFD' ? finishingCost : null, transport, rfdCost, rmPerSaleM,
     realisationPerM, realisationPerPick, vatavPct, vatavAmount, netPrice, realisationNetPerM, realisationNetPerPick,
     picksPerSaleM, loomMPerDay, missing,
   };
+}
+
+// Selling price at which realisation with VATAV per pick equals target (₹ per pick; 0 = no realisation).
+// Brokering (RFD) and VATAV are % of the price, so: price = (fixed cost + target × picks) / (1 − VATAV − brokering).
+export function priceForPick(calc, fabric, target = 0) {
+  if (!calc || calc.picksPerSaleM === null || calc.picksPerSaleM === undefined) return null;
+  const v = (calc.vatavPct || 0) / 100;
+  let fixed;
+  let b = 0;
+  if (calc.finish === 'RFD') {
+    if (calc.rmPerSaleM === null || calc.g === null) return null;
+    b = pct(fabric.brokering_pct);
+    fixed = calc.rmPerSaleM + (num(fabric.processing_charge) ?? 0) * calc.g + (calc.transport ?? 0);
+  } else {
+    if (calc.rmCost === null) return null;
+    fixed = calc.rmCost;
+  }
+  const d = 1 - v - b;
+  return d > 0 ? (fixed + (target || 0) * calc.picksPerSaleM) / d : null;
 }
 
 // Profit per pick at a unit, on realisation after VATAV.
