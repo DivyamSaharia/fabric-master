@@ -11,6 +11,7 @@ import { Planner } from './screens/planner.jsx';
 import { Settings } from './screens/settings.jsx';
 import { Changes } from './screens/changes.jsx';
 import { TempRatesStrip } from './screens/tempRates.jsx';
+import { Guide } from './screens/guide.jsx';
 
 function resolve({ path, query }) {
   const [a, b, c] = path;
@@ -33,6 +34,8 @@ function resolve({ path, query }) {
       return { tab: 'ranking', el: <Ranking /> };
     case 'planner':
       return { tab: 'planner', el: <Planner /> };
+    case 'guide':
+      return { tab: 'guide', modal: true, el: <Guide key={b || 'home'} topic={b} /> };
     case 'settings':
       return { tab: 'fabrics', modal: true, el: <Settings /> };
     case 'changes':

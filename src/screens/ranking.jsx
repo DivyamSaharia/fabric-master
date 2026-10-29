@@ -3,6 +3,7 @@ import { fmt } from '../calc.js';
 import { getIndex, useStore } from '../store.js';
 import { go } from '../router.js';
 import { Chip, Empty, NavBar } from '../ui.jsx';
+import { HelpButton } from './guide.jsx';
 import { computeRows } from './fabrics.jsx';
 
 export function Ranking() {
@@ -19,7 +20,7 @@ export function Ranking() {
   const max = Math.max(0, ...rows.map((r) => r.v ?? 0));
   return (
     <div>
-      <NavBar large title="Ranking" />
+      <NavBar large title="Ranking" right={<HelpButton screen="ranking" />} />
       <div class="chips">
         <Chip on={unitId === 'all'} onClick={() => setUnitId('all')}>Realisation · all</Chip>
         {units.map((u) => <Chip on={unitId === u.id} onClick={() => setUnitId(u.id)}>Profit · {u.name}</Chip>)}

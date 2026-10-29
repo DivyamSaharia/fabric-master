@@ -13,7 +13,7 @@ const plan = {
   settings: { 'rpm:f_crepe:lg2': 650, 'tfoEff:tt2': 75 },
 };
 
-const MONEY = /₹|realis|per pick/i;
+const MONEY = /₹|realis|per pick|profit/i;
 
 it('builds the plan workbook rows and file names', () => {
   const idx = buildIndex(sampleTables());
@@ -29,9 +29,9 @@ it('builds the plan workbook rows and file names', () => {
   const totalRow = rows.Production.find((x) => x.Quality === 'Total');
   expect(totalRow['Metres/day']).toBeCloseTo(made.reduce((a, x) => a + x['Metres/day'], 0), -1);
   expect(rows.Looms.every((x) => 'm/day all looms' in x)).toBe(true);
-  expect(planFileName(meta, 'pdf')).toBe('2026-10-25_tfo-plan_diwali-plan.pdf');
-  expect(planFileName(meta, 'pdf', false)).toBe('2026-10-25_tfo-plan_diwali-plan_no-revenue.pdf');
-  expect(planFileName({ name: 'Unsaved plan', date: '2026-10-25' }, 'xlsx')).toBe('2026-10-25_tfo-plan_unsaved-plan.xlsx');
+  expect(planFileName(meta, 'pdf')).toBe('2026-10-25_plan_diwali-plan.pdf');
+  expect(planFileName({ ...meta, unit: 'Weavelon 1' }, 'pdf', false)).toBe('2026-10-25_plan_weavelon-1_diwali-plan_no-revenue.pdf');
+  expect(planFileName({ name: 'Unsaved plan', date: '2026-10-25' }, 'xlsx')).toBe('2026-10-25_plan_unsaved-plan.xlsx');
 });
 
 it('never shows edited markers, with or without revenue', () => {
@@ -71,10 +71,21 @@ it('writes the PDF and the Excel file, full and without revenue', async () => {
   await exportPlanPdf(model, meta, { money: false });
   await exportPlanXlsx(model, meta, { money: false });
   expect(names).toEqual([
-    '2026-10-25_tfo-plan_diwali-plan.pdf', '2026-10-25_tfo-plan_diwali-plan.xlsx',
-    '2026-10-25_tfo-plan_diwali-plan_no-revenue.pdf', '2026-10-25_tfo-plan_diwali-plan_no-revenue.xlsx',
+    '2026-10-25_plan_unit-2_diwali-plan.pdf', '2026-10-25_plan_unit-2_diwali-plan.xlsx',
+    '2026-10-25_plan_unit-2_diwali-plan_no-revenue.pdf', '2026-10-25_plan_unit-2_diwali-plan_no-revenue.xlsx',
   ]);
   expect(saved[0].size).toBeGreaterThan(5000);
   const out = process.env.EXPORT_OUT;
   if (out) for (let i = 0; i < saved.length; i++) fs.writeFileSync(`${out}/${names[i]}`, Buffer.from(await saved[i].arrayBuffer()));
 }, 90000);
+
+it('a unit without TFO exports no TFO sheets and still has profit', () => {
+  const tables = sampleTables();
+  tables.LoomGroups.push({ id: 'lg_caj', unit_id: 'u_caj', make: 'Chinese', reed_width_cm: 190, shedding: 'Plain', looms: 32 });
+  const idx = buildIndex(tables);
+  const model = computePlan({ ...emptyPlan('u_caj'), looms: [{ fabricId: 'f_pv', groupId: 'lg_caj', looms: '8' }], settings: { 'rpm:f_pv:lg_caj': 700 } }, idx);
+  const rows = planWorkbookRows(model, { name: 'x', date: '2026-10-29' });
+  expect(Object.keys(rows)).toEqual(['Summary', 'Looms', 'Production', 'Yarn consumption']);
+  expect(rows.Summary.find((r) => r.Field === 'Plant profit ₹/day').Value).not.toBe('');
+  expect(rows.Summary.some((r) => /TFO|TPM/.test(r.Field))).toBe(false);
+});

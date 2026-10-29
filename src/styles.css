@@ -537,3 +537,42 @@ button.row:active { background: var(--fill-2); }
 .temp-actions .text-btn { height: 36px; font-size: 15px; }
 .tag-temp { margin-left: 6px; vertical-align: middle; }
 .field-input .text-btn { height: 32px; font-size: 15px; padding: 0 0 0 6px; flex: none; }
+
+/* ---------- Guide ---------- */
+.guide { padding-bottom: 32px; }
+.guide-hint { display: flex; align-items: center; gap: 8px; margin: 10px 16px 0; padding: 10px 12px; background: var(--accent-tint); border-radius: 12px; }
+.guide-hint-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 0; text-align: left; color: var(--text); }
+.guide-hint-icon { flex: none; color: var(--accent); display: flex; }
+.guide-hint-title { display: block; font-weight: 600; font-size: 15px; }
+.guide-hint-sub { display: block; font-size: 13px; color: var(--text-2); }
+.guide-start { display: block; width: calc(100% - 32px); margin: 16px 16px 0; padding: 14px 16px; border: 0; border-radius: 12px; background: var(--btn-bg); color: var(--btn-text); text-align: left; }
+.guide-start-title { display: block; font-size: 17px; font-weight: 700; }
+.guide-start-sub { display: block; margin-top: 2px; font-size: 14px; opacity: 0.85; }
+.guide-page { padding: 4px 16px 0; max-width: 680px; }
+.guide-h1 { font-size: 28px; line-height: 1.15; font-weight: 700; margin: 8px 0 6px; letter-spacing: -0.01em; }
+.guide-h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; color: var(--text-2); margin: 22px 0 8px; }
+.guide-purpose { font-size: 17px; line-height: 1.45; margin: 0 0 10px; }
+.guide-p { font-size: 16px; line-height: 1.5; margin: 0 0 8px; }
+.guide-shot { margin: 14px 0 4px; text-align: center; }
+.guide-shot img { width: 100%; max-width: 300px; border-radius: 18px; border: 1px solid var(--sep); box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08); background: var(--card); }
+.guide-steps, .guide-tips { margin: 0; padding: 0; list-style: none; background: var(--card); border-radius: 12px; overflow: hidden; }
+.guide-steps { counter-reset: step; }
+.guide-steps li, .guide-tips li { position: relative; padding: 12px 14px 12px 48px; font-size: 16px; line-height: 1.45; }
+.guide-steps li + li::before, .guide-tips li + li::before { content: ''; position: absolute; top: 0; left: 48px; right: 0; border-top: 0.5px solid var(--sep); }
+.guide-steps li { counter-increment: step; }
+.guide-steps li::after { content: counter(step); position: absolute; left: 14px; top: 12px; width: 24px; height: 24px; border-radius: 12px; background: var(--btn-bg); color: var(--btn-text); font-size: 13px; font-weight: 700; line-height: 24px; text-align: center; }
+.guide-tips li::after { content: ''; position: absolute; left: 22px; top: 21px; width: 7px; height: 7px; border-radius: 4px; background: var(--brand-lime); }
+.guide-faq { display: flex; flex-direction: column; gap: 10px; margin-top: 8px; }
+.guide-faq-item { background: var(--card); border-radius: 12px; padding: 12px 14px; }
+.guide-faq-q { font-weight: 600; font-size: 16px; }
+.guide-faq-a { margin-top: 4px; font-size: 15px; line-height: 1.45; color: var(--text-2); }
+.guide-words { margin: 8px 0 0; background: var(--card); border-radius: 12px; overflow: hidden; }
+.guide-word { position: relative; padding: 11px 14px; }
+.guide-word + .guide-word::before { content: ''; position: absolute; top: 0; left: 14px; right: 0; border-top: 0.5px solid var(--sep); }
+.guide-word dt { font-weight: 700; font-size: 16px; }
+.guide-word dd { margin: 2px 0 0; font-size: 15px; line-height: 1.45; color: var(--text-2); }
+.guide-how { margin-top: 18px; background: var(--card); border-radius: 12px; padding: 12px 14px; }
+.guide-how summary { font-weight: 600; cursor: pointer; color: var(--accent); }
+.guide-how ul { margin: 10px 0 0; padding-left: 18px; font-size: 14px; line-height: 1.5; color: var(--text-2); }
+.guide-related { padding: 0 !important; flex-wrap: wrap; }
+.term { border: 0; background: none; padding: 0; font: inherit; color: var(--accent); text-decoration: underline dotted; text-underline-offset: 3px; cursor: pointer; }

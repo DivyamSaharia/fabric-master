@@ -2,10 +2,11 @@ import { useEffect, useState } from 'preact/hooks';
 import { getIndex, me, people, refresh, resetDemo, saveSettings, testConnection, toast, useStore } from '../store.js';
 import { back, go } from '../router.js';
 import { Button, Field, Icon, NavBar, Row, Section, Segmented, Sheet, useWide, whenText } from '../ui.jsx';
+import { HelpButton } from './guide.jsx';
 import { exportListXlsx, openWhatsAppText } from '../export/exports.js';
 import { computeRows } from './fabrics.jsx';
 
-export const APP_VERSION = '1.19.0';
+export const APP_VERSION = '1.20.0';
 
 // What to send someone so they can open the app on their own phone or laptop.
 export function inviteText(person, url, appUrl) {
@@ -207,7 +208,11 @@ export function Settings() {
   const sync = st.status.lastSync ? new Date(st.status.lastSync).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : 'Never';
   return (
     <div>
-      <NavBar title="Settings" backLabel="Fabrics" backTo="/fabrics" />
+      <NavBar title="Settings" backLabel="Fabrics" backTo="/fabrics" right={<HelpButton screen="settings" />} />
+      <Section header="Help">
+        <Row label="Guide" sub="How every screen works, in plain words" onClick={() => go('/guide')} chevron />
+        <Row label="What's new" sub={`Version ${APP_VERSION}`} onClick={() => go('/guide/new')} chevron />
+      </Section>
       <Section header="Data source" footer={mode === 'demo' ? 'Demo keeps sample data on this device only. Nothing reaches your Drive.' : 'Paste the URL and key shown after deploying the script in your Sheet (see SETUP.md).'}>
         <div class="row"><div style={{ width: '100%' }}><Segmented label="Data source" options={[{ value: 'demo', label: 'Demo on this device' }, { value: 'sheet', label: 'Google Sheet' }]} value={mode} onChange={setMode} /></div></div>
         {mode === 'sheet' ? (

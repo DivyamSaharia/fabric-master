@@ -5,6 +5,7 @@ import { clearTempRate, deleteRates, deleteYarn, getIndex, saveYarn, toast, useS
 import { today } from '../schema.js';
 import { back, go, replace } from '../router.js';
 import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, SearchBox, Section, Segmented, SelectField, TextButton, useWide, History } from '../ui.jsx';
+import { HelpButton } from './guide.jsx';
 
 function YarnTable({ yarns, idx }) {
   const used = {};
@@ -66,7 +67,7 @@ export function YarnList() {
   }, [st.tables, kind, search]);
   return (
     <div>
-      <NavBar large title="Yarns" right={<IconButton label="Add yarn" onClick={() => go(`/yarn/new${kind === 'tpm' ? '?kind=tpm' : ''}`)}><Icon.plus size={26} /></IconButton>} />
+      <NavBar large title="Yarns" left={<HelpButton screen="yarns" />} right={<IconButton label="Add yarn" onClick={() => go(`/yarn/new${kind === 'tpm' ? '?kind=tpm' : ''}`)}><Icon.plus size={26} /></IconButton>} />
       <div class="stack" style={{ padding: 0 }}>
         <SearchBox value={search} onInput={setSearch} placeholder="Search yarns" />
         <div class="pad"><Segmented small label="Yarn kind" options={[{ value: 'all', label: 'All' }, { value: 'base', label: 'Base' }, { value: 'tpm', label: 'TPM' }]} value={kind} onChange={setKind} /></div>

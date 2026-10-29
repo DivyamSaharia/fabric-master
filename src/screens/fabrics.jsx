@@ -8,6 +8,7 @@ import {
 import { back, go, replace } from '../router.js';
 import { loadListState, saveListState, savedScroll, saveScroll } from '../listState.js';
 import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, SearchPicker, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
+import { GuideHint, HelpButton } from './guide.jsx';
 import { TempRateRow } from './tempRates.jsx';
 import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
 
@@ -284,7 +285,7 @@ export function FabricList({ query }) {
         large
         title={wide ? 'Fabrics' : 'Fabric Database'}
         hero={wide ? null : <BrandHero />}
-        left={<IconButton label="Settings" onClick={() => go('/settings')}><Icon.gear /></IconButton>}
+        left={<><IconButton label="Settings" onClick={() => go('/settings')}><Icon.gear /></IconButton><HelpButton screen="fabrics" /></>}
         right={
           <>
             <IconButton label="Export list to Excel" onClick={exportList} disabled={busy || !rows.length}><Icon.share /></IconButton>
@@ -294,6 +295,7 @@ export function FabricList({ query }) {
         }
       />
       <StatusBanner />
+      <GuideHint />
       <div class="stack" style={{ padding: 0, gap: '10px', marginTop: '10px' }}>
         <SearchBox value={search} onInput={setSearch} placeholder="Search quality or yarn" />
         <div class="pad">
@@ -540,6 +542,7 @@ export function FabricDetail({ id }) {
         backTo="/fabrics"
         right={
           <>
+            <HelpButton screen="fabric" />
             <IconButton label="Export" onClick={() => setExportOpen(true)}><Icon.share /></IconButton>
             <TextButton onClick={() => go(`/fabric/${id}/edit`)}>Edit</TextButton>
           </>

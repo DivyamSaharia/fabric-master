@@ -1,5 +1,6 @@
-// TFO planner: one typical day at a unit. Looms per quality per loom group → yarn consumed;
-// TFO sides per TPM yarn per TFO type → yarn made; plus yarn bought in → balance per TPM yarn (kg).
+// Planner: one typical day at a unit. Looms per quality per loom group → yarn consumed, realisation and profit;
+// at a unit with a TFO division also TFO sides per TPM yarn per TFO type → yarn made; plus yarn bought in →
+// balance per TPM yarn (kg). Every unit with loom groups can be planned; the TFO parts only exist where has_tfo.
 // Pure functions over the index (calc.buildIndex) and a plan object. Never writes master tabs.
 //
 // Plan (the working plan on the device, and what a saved plan holds):
@@ -204,13 +205,15 @@ export function computePlan(plan, idx) {
     .slice()
     .sort((a, b) => (num(a.reed_width_cm) ?? 0) - (num(b.reed_width_cm) ?? 0) || String(a.shedding || '').localeCompare(String(b.shedding || '')));
   // most machines first (Old machines (1-12) before New machines (13-16)), then by name
-  const types = (idx.tfoTypesByUnit[unitId] || []).slice().sort((a, b) => (num(b.machines) ?? -1) - (num(a.machines) ?? -1) || String(a.name || '').localeCompare(String(b.name || ''), 'en', { numeric: true }));
+  const hasTfo = !!(unit && truthy(unit.has_tfo));
+  const costPerPick = num(unit && unit.cost_per_pick);
+  const types = (hasTfo ? idx.tfoTypesByUnit[unitId] || [] : []).slice().sort((a, b) => (num(b.machines) ?? -1) - (num(a.machines) ?? -1) || String(a.name || '').localeCompare(String(b.name || ''), 'en', { numeric: true }));
   const yarnUse = new Map(); // yarnId → { yarn, warp, weft, used: Set }
-  const notes = { needRpm: [], needEff: [], noReal: [], noCount: new Set(), needTfo: [] };
+  const notes = { needRpm: [], needEff: [], noReal: [], noCount: new Set(), needTfo: [], noCost: false };
   const calcs = {};
   const calcOf = (f) => (calcs[f.id] ||= fabricCalc(f, idx));
 
-  let loomsTotal = 0, realTotal = 0, realLooms = 0, pickOutput = 0, metresTotal = 0;
+  let loomsTotal = 0, realTotal = 0, realLooms = 0, pickOutput = 0, metresTotal = 0, profitTotal = 0;
   const production = new Map(); // fabric id → metres per day summed over every loom group
 
   const groupBlocks = groups.map((group) => {
@@ -232,6 +235,9 @@ export function computePlan(plan, idx) {
       const calc = calcOf(record);
       const perPick = calc.realisationNetPerPick;
       const realPerLoom = mPerDay !== null && perPick !== null && ppi ? perPick * mPerDay * ppi : null;
+      // profit per pick = realisation with VATAV − the unit's cost per pick (same as the fabric page), × the loom's picks
+      const profitPerPick = perPick !== null && costPerPick !== null ? perPick - costPerPick : null;
+      const profitPerLoom = realPerLoom !== null && profitPerPick !== null ? profitPerPick * mPerDay * ppi : null;
       const lines = qualityLines(q, idx);
       let tpmKg = mPerDay === null ? null : 0;
       if (mPerDay !== null) {
@@ -249,7 +255,7 @@ export function computePlan(plan, idx) {
         for (const x of lines) if (x.noCount) notes.noCount.add(x.yarn.id);
       }
       const mTotal = mPerDay !== null ? mPerDay * looms : null;
-      const row = { q, fabricId: fid, group, looms, loomsRaw: entry.looms ?? '', panna, rpm, eff, ppi, mPerDay, mTotal, soldAs, soldKey, record, perPick, realPerLoom, realTotal: realPerLoom !== null ? realPerLoom * looms : null, tpmKg, tpm: usesTpm(q, idx) };
+      const row = { q, fabricId: fid, group, looms, loomsRaw: entry.looms ?? '', panna, rpm, eff, ppi, mPerDay, mTotal, soldAs, soldKey, record, perPick, realPerLoom, realTotal: realPerLoom !== null ? realPerLoom * looms : null, profitPerPick, profitPerLoom, profitTotal: profitPerLoom !== null ? profitPerLoom * looms : null, tpmKg, tpm: usesTpm(q, idx) };
       if (rpm.missing) notes.needRpm.push(row);
       else if (eff.missing) notes.needEff.push(row);
       if (looms > 0) {
@@ -267,6 +273,8 @@ export function computePlan(plan, idx) {
           realTotal += realPerLoom * looms;
           realLooms += looms;
           pickOutput += looms * mPerDay * ppi;
+          if (profitPerLoom !== null) profitTotal += profitPerLoom * looms;
+          else notes.noCost = true;
         } else if (mPerDay !== null) notes.noReal.push(row);
       }
       rows.push(row);
@@ -315,7 +323,7 @@ export function computePlan(plan, idx) {
     .filter((u) => u.total > 0 || u.used.length)
     .sort((a, b) => b.total - a.total || String(a.yarn.name).localeCompare(String(b.yarn.name)));
 
-  const tpmIds = new Set([...consumption.filter((c) => c.tpm).map((c) => c.yarn.id), ...made.keys(), ...received.keys()]);
+  const tpmIds = hasTfo ? new Set([...consumption.filter((c) => c.tpm).map((c) => c.yarn.id), ...made.keys(), ...received.keys()]) : new Set();
   const balance = [...tpmIds]
     .map((id) => {
       const yarn = idx.yarnsById[id];
@@ -329,8 +337,11 @@ export function computePlan(plan, idx) {
     .sort((a, b) => a.balance - b.balance || String(a.yarn.name).localeCompare(String(b.yarn.name)));
 
   const sum = (k) => balance.reduce((s, b) => s + b[k], 0);
+  const capacity = groupBlocks.reduce((s2, b) => s2 + (b.capacity ?? 0), 0);
+  const profitOk = realLooms > 0 && costPerPick !== null;
   const totals = {
-    tpmConsumption: sum('consumption'),
+    tpmConsumption: consumption.filter((c) => c.tpm).reduce((s2, c) => s2 + c.total, 0),
+    yarnKg: consumption.reduce((s2, c) => s2 + c.total, 0),
     tfoOutput: sum('output'),
     received: sum('received'),
     net: sum('balance'),
@@ -340,11 +351,17 @@ export function computePlan(plan, idx) {
     plantRealisation: realLooms ? realTotal : null,
     avgLoomRealisation: realLooms ? realTotal / realLooms : null,
     avgPerPick: pickOutput ? realTotal / pickOutput : null,
+    plantProfit: profitOk ? profitTotal : null,
+    avgLoomProfit: profitOk ? profitTotal / realLooms : null,
+    avgProfitPerPick: profitOk && pickOutput ? profitTotal / pickOutput : null,
+    costPerPick,
+    capacity,
     realLooms,
   };
 
   return {
     unit,
+    hasTfo,
     groups: groupBlocks,
     types: typeBlocks,
     receipts: receiptRows,
@@ -361,7 +378,7 @@ export function computePlan(plan, idx) {
 export function planSummary(model) {
   const t = model.totals;
   const r = (v, dp = 2) => (v === null || v === undefined ? null : Math.round(v * 10 ** dp) / 10 ** dp);
-  return { tpmConsumption: r(t.tpmConsumption, 1), tfoOutput: r(t.tfoOutput, 1), received: r(t.received, 1), net: r(t.net, 1), short: t.short, looms: t.looms, metresPerDay: r(t.metresPerDay, 0), plantRealisation: r(t.plantRealisation, 0), avgLoomRealisation: r(t.avgLoomRealisation, 0), avgPerPick: r(t.avgPerPick, 4) };
+  return { tpmConsumption: r(t.tpmConsumption, 1), tfoOutput: r(t.tfoOutput, 1), received: r(t.received, 1), net: r(t.net, 1), short: t.short, looms: t.looms, metresPerDay: r(t.metresPerDay, 0), plantRealisation: r(t.plantRealisation, 0), avgLoomRealisation: r(t.avgLoomRealisation, 0), avgPerPick: r(t.avgPerPick, 4), plantProfit: r(t.plantProfit, 0), yarnKg: r(t.yarnKg, 1), hasTfo: !!model.hasTfo };
 }
 
 // ---------- plan ↔ Sheet lines ----------
@@ -436,6 +453,9 @@ export function tpmYarns(idx) {
     .sort((a, b) => String(a.yarn.name).localeCompare(String(b.yarn.name), 'en', { numeric: true }));
 }
 
+// Units the planner offers: every unit with at least one loom group, in the Sheet's order.
+export const plannerUnits = (idx) => Object.values(idx.unitsById).filter((u) => (idx.loomGroupsByUnit[u.id] || []).length);
+
 export const tfoUnits = (idx) => Object.values(idx.unitsById).filter((u) => truthy(u.has_tfo)).sort((a, b) => String(a.name).localeCompare(String(b.name)));
 
 // "Plan 25 Oct 2026" from 2026-10-25.
@@ -478,4 +498,53 @@ export function editedSettings(plan, idx) {
     }
   }
   return out;
+}
+
+// ---------- All units: the latest saved plan of each unit, added up ----------
+// Read-only. "Latest" = newest plan date, then last updated. A unit with no saved plan is listed without figures.
+export function latestPlanRow(plans, unitId) {
+  return (plans || [])
+    .filter((p) => p.unit_id === unitId)
+    .sort((a, b) => String(b.plan_date || '').slice(0, 10).localeCompare(String(a.plan_date || '').slice(0, 10)) || String(b.updated_at || '').localeCompare(String(a.updated_at || '')))[0] || null;
+}
+
+export function allUnitsRollup(idx) {
+  const plans = idx.tables.TfoBalancePlans || [];
+  const lines = idx.tables.TfoBalanceLines || [];
+  const units = plannerUnits(idx).map((unit) => {
+    const row = latestPlanRow(plans, unit.id);
+    if (!row) return { unit, row: null, model: null };
+    const plan = cleanPlan(linesToPlan(unit.id, lines.filter((l) => l.plan_id === row.id)), idx);
+    return { unit, row, model: computePlan(plan, idx) };
+  });
+  const withPlan = units.filter((u) => u.model);
+  const add = (k) => {
+    const vals = withPlan.map((u) => u.model.totals[k]).filter((v) => v !== null && v !== undefined);
+    return vals.length ? vals.reduce((s, v) => s + v, 0) : null;
+  };
+  const yarns = new Map();
+  for (const u of withPlan) {
+    for (const c of u.model.consumption) {
+      const y = yarns.get(c.yarn.id) || { yarn: c.yarn, tpm: c.tpm, warp: 0, weft: 0, total: 0, byUnit: [] };
+      y.warp += c.warp;
+      y.weft += c.weft;
+      y.total += c.total;
+      y.byUnit.push({ unit: u.unit, kg: c.total });
+      yarns.set(c.yarn.id, y);
+    }
+  }
+  const consumption = [...yarns.values()].sort((a, b) => b.total - a.total || String(a.yarn.name).localeCompare(String(b.yarn.name)));
+  return {
+    units,
+    consumption,
+    totals: {
+      plans: withPlan.length,
+      looms: add('looms'),
+      capacity: units.reduce((s, u) => s + (idx.loomGroupsByUnit[u.unit.id] || []).reduce((t, g) => t + (num(g.looms) ?? 0), 0), 0),
+      metresPerDay: add('metresPerDay'),
+      yarnKg: consumption.reduce((s, c) => s + c.total, 0),
+      plantRealisation: add('plantRealisation'),
+      plantProfit: add('plantProfit'),
+    },
+  };
 }

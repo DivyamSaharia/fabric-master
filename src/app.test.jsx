@@ -6,7 +6,7 @@ import { whatsappText, fileName } from './export/exports.js';
 import { buildIndex, fabricCalc, fmt, loomRealisationForUnit } from './calc.js';
 import { computeRows, defaultFilters, sortOptions } from './screens/fabrics.jsx';
 import { resetListState } from './listState.js';
-import { getIndex, getState, resetDemo, saveTempRateToMaster, setTempRate } from './store.js';
+import { getIndex, getState, resetDemo, saveTempRateToMaster, saveUnit, setTempRate } from './store.js';
 import { local } from './storage.js';
 
 beforeAll(() => {
@@ -499,7 +499,7 @@ describe('fabric list state sticks', () => {
   });
 });
 
-describe('TFO planner', () => {
+describe('Planner', () => {
   const box = (label) => screen.getByLabelText(label);
   async function addQuality(group, name) {
     fireEvent.click(screen.getByRole('button', { name: `Add a quality to ${group}` }));
@@ -508,7 +508,7 @@ describe('TFO planner', () => {
 
   it('adds qualities, TFO sides and a receipt, edits and resets a setting, saves and reopens a plan', async () => {
     await open('#/planner');
-    await screen.findByRole('heading', { name: 'TFO planner' });
+    await screen.findByRole('heading', { name: 'Planner' });
     expect(document.querySelector('.tabbar').textContent).toContain('Planner');
     // dobby fabrics only under dobby groups
     fireEvent.click(screen.getByRole('button', { name: 'Add a quality to 280 cm Plain' }));
@@ -566,7 +566,7 @@ describe('TFO planner', () => {
     await resetDemo();
     local.remove('fm.planner.v1');
     await open('#/planner');
-    await screen.findByRole('heading', { name: 'TFO planner' });
+    await screen.findByRole('heading', { name: 'Planner' });
     await addQuality('190 cm Dobby', 'Poly Crepe 60 (RFD)');
     fireEvent.input(box('Looms Poly Crepe 60 (RFD) 190 cm Dobby'), { target: { value: '10' } });
     await screen.findByText(/311 m\/day per loom/);
@@ -583,11 +583,43 @@ describe('TFO planner', () => {
     expect(document.body.textContent).not.toMatch(/\/loom\/day/);
     // production and balance stay
     expect(screen.getByText('Production')).toBeTruthy();
-    expect(screen.getByText('Net balance')).toBeTruthy();
+    expect(screen.getByText('Net TPM balance')).toBeTruthy();
     // the choice is kept on this device
     expect(local.get('fm.planner.v1').showMoney).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: 'Show revenue and ₹ figures' }));
     await screen.findByText('Plant realisation');
+  });
+  it('plans a unit without TFO: no TFO parts, profit at its own cost per pick, and All units adds up saved plans', async () => {
+    await resetDemo();
+    local.remove('fm.planner.v1');
+    const caj = getIndex().unitsById.u_caj;
+    await saveUnit(caj, [{ make: 'Chinese', reed_width_cm: 190, shedding: 'Plain', looms: 32 }], []);
+    await open('#/planner');
+    await screen.findByRole('heading', { name: 'Planner' });
+    // units with loom groups, plus All units
+    fireEvent.click(screen.getByRole('button', { name: 'Chinese AJ' }));
+    await screen.findByText('190 cm Plain');
+    expect(screen.queryByRole('heading', { name: 'TFO' })).toBeNull();
+    expect(screen.queryByRole('heading', { name: 'TPM balance' })).toBeNull();
+    expect(screen.queryByText('Net TPM balance')).toBeNull();
+    await addQuality('190 cm Plain', 'Poly Crepe 60 (RFD)');
+    fireEvent.input(box('Looms Poly Crepe 60 (RFD) 190 cm Plain'), { target: { value: '10' } });
+    await screen.findByText(/m\/day per loom/);
+    expect(screen.getByText('Plant profit')).toBeTruthy();
+    expect(screen.getByText(/at ₹0\.185 a pick/)).toBeTruthy();
+    // TPM yarn is still counted, tagged as coming from outside
+    expect(screen.getAllByText('TPM · no TFO here').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    fireEvent.input(await screen.findByLabelText('Plan name'), { target: { value: 'CAJ plan' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save plan' }));
+    await screen.findByText('CAJ plan');
+    // All units: read-only, the saved plan is counted
+    fireEvent.click(screen.getByRole('button', { name: 'All units' }));
+    await screen.findByText('Latest saved plan of each unit');
+    expect(screen.getByText(/CAJ plan ·/)).toBeTruthy();
+    expect(screen.getByText('Group profit')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    expect(screen.getByText('No saved plan yet')).toBeTruthy();
   });
   it('temporary yarn rates: set on a fabric, shown everywhere, kept on the device, reset from the strip', async () => {
     await resetDemo();

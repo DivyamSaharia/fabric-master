@@ -5,6 +5,7 @@ import { back, go, replace } from '../router.js';
 import { PanBlocks } from './fabrics.jsx';
 import { DEFAULT_SPINDLES_PER_SIDE, typeCapacity } from '../machines.js';
 import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, Section, Segmented, SelectField, Sheet, TextButton, Toggle, classBadge, History } from '../ui.jsx';
+import { HelpButton } from './guide.jsx';
 
 export function UnitList() {
   const st = useStore();
@@ -12,7 +13,7 @@ export function UnitList() {
   const units = (st.tables.Units || []).slice().sort((a, b) => String(a.name).localeCompare(String(b.name)));
   return (
     <div>
-      <NavBar large title="Units" right={<IconButton label="Add unit" onClick={() => go('/unit/new')}><Icon.plus size={26} /></IconButton>} />
+      <NavBar large title="Units" left={<HelpButton screen="units" />} right={<IconButton label="Add unit" onClick={() => go('/unit/new')}><Icon.plus size={26} /></IconButton>} />
       <div class="list-meta"><span>{units.length} units</span><span>Cost per pick</span></div>
       {units.length ? (
         <div class="group">
@@ -70,7 +71,7 @@ export function UnitDetail({ id }) {
 
   return (
     <div>
-      <NavBar title={unit.name} backLabel="Units" backTo="/units" right={<TextButton onClick={() => go(`/unit/${id}/edit`)}>Edit</TextButton>} />
+      <NavBar title={unit.name} backLabel="Units" backTo="/units" right={<><HelpButton screen="units" /><TextButton onClick={() => go(`/unit/${id}/edit`)}>Edit</TextButton></>} />
       <div class="title-block" style={{ paddingTop: '4px' }}>
         <h1>{unit.name}</h1>
         <div class="title-sub">{[unit.type, unit.notes].filter(Boolean).join(' · ') || 'Unit'}</div>
@@ -84,7 +85,7 @@ export function UnitDetail({ id }) {
         <Row label="Fabric database" value={`${fabrics.length} ${fabrics.length === 1 ? 'fabric' : 'fabrics'}`} onClick={() => go(`/fabrics?unit=${id}`)} chevron />
       </Section>
 
-      <Section header="Loom groups · for reference">
+      <Section header="Loom groups" footer={groups.length ? 'The Planner uses these groups and loom counts.' : 'Add loom groups to plan this unit in the Planner.'}>
         {groups.map((g) => <Row label={[g.make, g.reed_width_cm ? `${g.reed_width_cm} cm` : null, g.shedding].filter(Boolean).join(' · ') || 'Loom group'} value={num(g.looms) ? `${g.looms} looms` : '—'} />)}
         {!groups.length ? <Row label="None added" sub="Add them from Edit." /> : null}
       </Section>
@@ -302,7 +303,7 @@ function UnitEditForm({ id }) {
         <Field label="Notes" value={u.notes} onInput={up('notes')} placeholder="e.g. Toyota airjet" />
       </Section>
 
-      <Section header="Loom groups · for reference">
+      <Section header="Loom groups" footer="One group per loom width and shedding (Plain, Cam or Dobby). The Planner offers each group with its loom count.">
         {groups.map((g, i) => (
           <div class="line">
             <div class="line-top">

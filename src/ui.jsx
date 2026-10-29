@@ -46,6 +46,7 @@ export const Icon = {
   units: (p) => <S {...p}><path d="M3 21V11l5 3v-3l5 3v-3l5 3V4h3v17z" /></S>,
   ranking: (p) => <S {...p} w={2.2}><path d="M5 20v-8M12 20V5M19 20v-5" /></S>,
   spindle: (p) => <S {...p}><path d="M12 2.5v19" /><path d="M8 6.5h8l-1.2 3H9.2zM7.5 9.5h9l-1 8h-7z" /><path d="M9 12.5h6M8.8 15h6.4" /></S>,
+  help: (p) => <S {...p}><circle cx="12" cy="12" r="9" /><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.3c-.6.3-1 .8-1 1.5v.6" /><path d="M12 16.8v.2" /></S>,
   refresh: (p) => <S {...p}><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8M4 4v4h4M4 13a8 8 0 0 0 14.3 4.9L20 16M20 20v-4h-4" /></S>,
 };
 
@@ -370,6 +371,10 @@ export function Sidebar({ active, settingsOpen }) {
         ))}
       </nav>
       <div class="sb-foot">
+        <button type="button" class={`sb-item ${active === 'guide' && !settingsOpen ? 'on' : ''}`} aria-current={active === 'guide' && !settingsOpen ? 'page' : undefined} onClick={() => tab('/guide')}>
+          <Icon.help size={20} />
+          <span class="sb-label">Guide</span>
+        </button>
         <button type="button" class={`sb-item ${settingsOpen ? 'on' : ''}`} onClick={() => go('/settings')}>
           <Icon.gear size={20} />
           <span class="sb-label">Settings</span>

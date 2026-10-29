@@ -1,11 +1,13 @@
-// TFO planner exports: a PDF and an Excel workbook of the plan on screen (saved or not).
+// Planner exports: a PDF and an Excel workbook of the plan on screen (saved or not).
 import { fmt } from '../calc.js';
 import { groupLabel } from '../planner.js';
 import { deliver, preloadExports, sheetFromRows, slug, tempRatesText, writeBook } from './exports.js';
 import { getIndex } from '../store.js';
 import { today } from '../schema.js';
 
-export const planFileName = (meta, ext, money = true) => `${meta.date}_tfo-plan_${slug(meta.name || 'plan')}${money ? '' : '_no-revenue'}.${ext}`;
+// YYYY-MM-DD_plan_<unit>_<name>.pdf (unit left out when unknown).
+export const planFileName = (meta, ext, money = true) => `${meta.date}_plan_${meta.unit ? `${slug(meta.unit)}_` : ''}${slug(meta.name || 'plan')}${money ? '' : '_no-revenue'}.${ext}`;
+const withUnit = (model, meta) => ({ ...meta, unit: meta.unit || (model.unit ? model.unit.name : '') });
 
 const r = (v, dp = 2) => (v === null || v === undefined ? '' : Math.round(v * 10 ** dp) / 10 ** dp);
 const n1 = (v) => (v === null || v === undefined ? '—' : fmt.n(v, 1));
@@ -20,24 +22,33 @@ function summaryRows(model, meta, money) {
     ['Plan', meta.name],
     ['Plan date', meta.date],
     ['Unit', model.unit ? model.unit.name : ''],
-    ['TPM consumption kg/day', r(t.tpmConsumption, 1)],
-    ['TFO output kg/day', r(t.tfoOutput, 1)],
-    ['From outside kg/day', r(t.received, 1)],
-    ['Net TPM balance kg/day', r(t.net, 1)],
-    ['TPM yarns short', t.short],
     ['Looms entered', t.looms],
+    ['Looms in unit', t.capacity],
     ['Production m/day', r(t.metresPerDay, 0)],
+    ['Yarn used kg/day (all yarns, shortage included)', r(t.yarnKg, 1)],
+    ...(model.hasTfo ? [
+      ['TPM consumption kg/day', r(t.tpmConsumption, 1)],
+      ['TFO output kg/day', r(t.tfoOutput, 1)],
+      ['From outside kg/day', r(t.received, 1)],
+      ['Net TPM balance kg/day', r(t.net, 1)],
+      ['TPM yarns short', t.short],
+    ] : []),
     ...(money ? [
       ['Plant realisation ₹/day', r(t.plantRealisation, 0)],
+      ['Plant profit ₹/day', r(t.plantProfit, 0)],
+      ['Cost per pick ₹', r(t.costPerPick, 4)],
       ['Average loom realisation ₹/loom/day', r(t.avgLoomRealisation, 0)],
+      ['Average loom profit ₹/loom/day', r(t.avgLoomProfit, 0)],
       ['Average realisation ₹/pick (with VATAV, weighted by output)', r(t.avgPerPick, 4)],
+      ['Average profit ₹/pick (weighted by output)', r(t.avgProfitPerPick, 4)],
       ...(tempRatesText(getIndex()) ? [['Note', tempRatesText(getIndex())]] : []),
     ] : []),
   ];
 }
 
 // money: false leaves out every rupee figure (realisation, per pick, per loom). The edited-settings markers are never shown.
-export async function exportPlanPdf(model, meta, { money = true } = {}) {
+export async function exportPlanPdf(model, metaIn, { money = true } = {}) {
+  const meta = withUnit(model, metaIn);
   const { jsPDF, autoTable, font } = await preloadExports();
   const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
   doc.addFileToVFS('DejaVuSans.ttf', font.DEJAVU_REGULAR);
@@ -55,20 +66,25 @@ export async function exportPlanPdf(model, meta, { money = true } = {}) {
   doc.setFont('DejaVu', 'bold');
   doc.setFontSize(18);
   doc.setTextColor(...ink);
-  doc.text(`TFO plan · ${meta.name} · ${fmt.date(meta.date)}`, M, 20);
+  doc.text(`Plan · ${meta.name} · ${fmt.date(meta.date)}${meta.unit ? ` · ${meta.unit}` : ''}`, M, 20);
 
   // tiles
   const tiles = [
-    ['TPM consumption', `${n1(t.tpmConsumption)} kg/day`, ink],
-    ['TFO output', `${n1(t.tfoOutput)} kg/day`, ink],
-    ['From outside', `${n1(t.received)} kg/day`, ink],
-    ['Net balance', `${signed(t.net)} kg/day`, t.net < -0.05 ? red : accent],
-    ['Yarns short', `${t.short} of ${model.balance.length}`, t.short ? red : ink],
     ...(money ? [
       ['Plant realisation', `${fmt.rs(t.plantRealisation, 0)} / day`, accent],
+      ['Plant profit', `${fmt.rs(t.plantProfit, 0)} / day`, t.plantProfit !== null && t.plantProfit < 0 ? red : accent],
       ['Average loom', `${fmt.rs(t.avgLoomRealisation, 0)} / loom / day`, ink],
-      ['Average per pick', `${fmt.pick(t.avgPerPick)} with VATAV`, ink],
-    ] : [['Looms entered', `${t.looms}`, ink]]),
+      ['Per pick', `${fmt.pick(t.avgPerPick)} · profit ${fmt.pick(t.avgProfitPerPick)}`, ink],
+    ] : []),
+    ['Yarn used', `${n1(t.yarnKg)} kg/day`, ink],
+    ['Looms planned', `${t.looms} of ${t.capacity}`, t.looms > t.capacity ? red : ink],
+    ...(model.hasTfo ? [
+      ['TPM consumption', `${n1(t.tpmConsumption)} kg/day`, ink],
+      ['TFO output', `${n1(t.tfoOutput)} kg/day`, ink],
+      ['From outside', `${n1(t.received)} kg/day`, ink],
+      ['Net TPM balance', `${signed(t.net)} kg/day`, t.net < -0.05 ? red : accent],
+      ['Yarns short', `${t.short} of ${model.balance.length}`, t.short ? red : ink],
+    ] : []),
   ];
   const tw = W / 4;
   tiles.forEach((x, i) => {
@@ -83,7 +99,7 @@ export async function exportPlanPdf(model, meta, { money = true } = {}) {
     doc.setTextColor(...x[2]);
     doc.text(x[1], tx, ty + 9);
   });
-  let y = 62;
+  let y = 27 + Math.ceil(tiles.length / 4) * 15 + 5;
 
   const table = (title, head, body, opts = {}) => {
     if (!body.length) return;
@@ -118,8 +134,8 @@ export async function exportPlanPdf(model, meta, { money = true } = {}) {
 
   for (const b of model.groups) {
     if (!b.rows.length) continue;
-    table(`Looms · ${groupLabel(b.group)}`, ['Quality', 'Sold as', 'Looms', 'Panna', 'RPM', 'Eff %', 'm/day per loom', 'm/day all looms', 'TPM kg/day', ...(money ? ['₹ / loom / day'] : [])], b.rows.map((x) => [
-      x.q.label, soldText(x), n0(x.looms), x.panna === 2 ? 'double' : 'single', setText(x.rpm), setText(x.eff), n0(x.mPerDay), n0(x.mTotal), x.tpm ? n1(x.tpmKg) : '—', ...(money ? [x.realPerLoom === null ? '—' : fmt.rs(x.realPerLoom, 0)] : []),
+    table(`Looms · ${groupLabel(b.group)}`, ['Quality', 'Sold as', 'Looms', 'Panna', 'RPM', 'Eff %', 'm/day per loom', 'm/day all looms', 'TPM kg/day', ...(money ? ['₹ / loom / day', 'Profit / loom / day'] : [])], b.rows.map((x) => [
+      x.q.label, soldText(x), n0(x.looms), x.panna === 2 ? 'double' : 'single', setText(x.rpm), setText(x.eff), n0(x.mPerDay), n0(x.mTotal), x.tpm ? n1(x.tpmKg) : '—', ...(money ? [x.realPerLoom === null ? '—' : fmt.rs(x.realPerLoom, 0), x.profitPerLoom === null ? '—' : fmt.rs(x.profitPerLoom, 0)] : []),
     ]), { note: `${n0(b.used)} of ${b.capacity === null ? '—' : n0(b.capacity)} looms${b.over ? ' · over capacity' : ''}`, left: [1, 3] });
   }
   table('Production by quality', ['Quality', 'Looms', 'Metres / day', 'Share', 'Running on'], [
@@ -139,10 +155,10 @@ export async function exportPlanPdf(model, meta, { money = true } = {}) {
   doc.setFont('DejaVu', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...grey);
-  const foot = 'Metres per loom per day = RPM × 1440 × efficiency / (PPI × 39.37) × panna. TFO kg per side per day = RPM / TPM × 60 × denier / 9000 × efficiency × 24 × spindles / 1000 (RPM as stored, already × 2).' + (money ? ' Loom realisation = realisation per pick with VATAV × metres × PPI.' : '') + (money && tempRatesText(getIndex()) ? ` ${tempRatesText(getIndex())}` : '');
+  const foot = 'Metres per loom per day = RPM × 1440 × efficiency / (PPI × 39.37) × panna.' + (model.hasTfo ? ' TFO kg per side per day = RPM / TPM × 60 × denier / 9000 × efficiency × 24 × spindles / 1000 (RPM as stored, already × 2).' : '') + (money ? " Loom realisation = realisation per pick with VATAV × metres × PPI. Profit = (realisation per pick − the unit's cost per pick) × metres × PPI." : '') + (money && tempRatesText(getIndex()) ? ` ${tempRatesText(getIndex())}` : '');
   if (y > PH - 14) doc.addPage();
   doc.text(doc.splitTextToSize(foot, W), M, PH - 9);
-  await deliver(doc.output('blob'), planFileName(meta, 'pdf', money), `TFO plan ${meta.name}`);
+  await deliver(doc.output('blob'), planFileName(meta, 'pdf', money), `Plan ${meta.name}`);
 }
 
 export function planWorkbookRows(model, meta, { money = true } = {}) {
@@ -162,6 +178,9 @@ export function planWorkbookRows(model, meta, { money = true } = {}) {
       '₹/pick with VATAV': r(x.perPick, 4),
       '₹/loom/day': r(x.realPerLoom, 0),
       '₹/day all looms': r(x.realTotal, 0),
+      'Profit ₹/pick': r(x.profitPerPick, 4),
+      'Profit ₹/loom/day': r(x.profitPerLoom, 0),
+      'Profit ₹/day all looms': r(x.profitTotal, 0),
     } : {}),
   })));
   const tfo = model.types.flatMap((b) => b.rows.map((x) => ({
@@ -182,18 +201,23 @@ export function planWorkbookRows(model, meta, { money = true } = {}) {
       ...model.production.map((x) => ({ Quality: x.q.label, Looms: x.looms, 'Metres/day': r(x.metres, 0), 'Share %': model.totals.metresPerDay ? r((x.metres / model.totals.metresPerDay) * 100, 1) : '', 'Running on': x.byGroup.map((g) => `${groupLabel(g.group)} ${g.looms}`).join(', ') })),
       ...(model.production.length ? [{ Quality: 'Total', Looms: model.production.reduce((s, x) => s + x.looms, 0), 'Metres/day': r(model.totals.metresPerDay, 0), 'Share %': '', 'Running on': '' }] : []),
     ],
-    TFO: tfo,
-    Received: model.receipts.map((x) => ({ Yarn: x.yarn.name, 'kg/day': x.kg })),
+    ...(model.hasTfo ? {
+      TFO: tfo,
+      Received: model.receipts.map((x) => ({ Yarn: x.yarn.name, 'kg/day': x.kg })),
+    } : {}),
     'Yarn consumption': model.consumption.map((x) => ({ Yarn: x.yarn.name, Kind: x.tpm ? 'TPM' : 'Base', 'Warp kg/day': r(x.warp, 2), 'Weft kg/day': r(x.weft, 2), 'Total kg/day': r(x.total, 2), 'Used in': x.used.join(', ') })),
-    'TPM balance': model.balance.map((x) => ({ 'TPM yarn': x.yarn.name, 'Consumption kg/day': r(x.consumption, 2), 'TFO output kg/day': r(x.output, 2), 'From outside kg/day': r(x.received, 2), 'Balance kg/day': r(x.balance, 2) })),
+    ...(model.hasTfo ? {
+      'TPM balance': model.balance.map((x) => ({ 'TPM yarn': x.yarn.name, 'Consumption kg/day': r(x.consumption, 2), 'TFO output kg/day': r(x.output, 2), 'From outside kg/day': r(x.received, 2), 'Balance kg/day': r(x.balance, 2) })),
+    } : {}),
   };
 }
 
-export async function exportPlanXlsx(model, meta, { money = true } = {}) {
+export async function exportPlanXlsx(model, metaIn, { money = true } = {}) {
+  const meta = withUnit(model, metaIn);
   const { XLSX } = await preloadExports();
   const wb = XLSX.utils.book_new();
   const sheets = planWorkbookRows(model, meta, { money });
   const empty = { Looms: { Note: 'No looms entered' }, Production: { Note: 'No looms entered' }, TFO: { Note: 'No TFO sides entered' }, Received: { Note: 'Nothing received from outside' }, 'Yarn consumption': { Note: 'No consumption' }, 'TPM balance': { Note: 'No TPM yarn' } };
   for (const [name, rows] of Object.entries(sheets)) XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, rows.length ? rows : [empty[name] || {}]), name);
-  await deliver(writeBook(XLSX, wb), planFileName(meta, 'xlsx', money), `TFO plan ${meta.name}`);
+  await deliver(writeBook(XLSX, wb), planFileName(meta, 'xlsx', money), `Plan ${meta.name}`);
 }

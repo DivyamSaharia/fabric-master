@@ -1,5 +1,6 @@
-// TFO planner: an average day at a unit. Looms per quality per loom group, TFO sides per TPM yarn per TFO type
-// and yarn bought in → consumption of every yarn, balance per TPM yarn (kg) and the plant's realisation.
+// Planner: an average day at a unit. Looms per quality per loom group → consumption of every yarn, realisation and
+// profit. At a unit with a TFO division also TFO sides per TPM yarn per TFO type and yarn bought in → balance per
+// TPM yarn (kg). "All units" adds up the latest saved plan of each unit (read-only).
 // The open plan is a working draft kept on this device; plans are saved by date to the Sheet (TfoBalancePlans/Lines).
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { fmt, num } from '../calc.js';
@@ -7,12 +8,14 @@ import { deletePlan, duplicatePlan, getIndex, savePlan, toast, useStore } from '
 import { local } from '../storage.js';
 import {
   cleanPlan, computePlan, defaultPlanName, emptyPlan, groupLabel, groupOptions, keys, linesToPlan,
-  planSig, planSummary, planToLines, resetAll, tfoUnits, todayIst, tpmYarns, withSetting,
+  allUnitsRollup, planSig, planSummary, planToLines, plannerUnits, resetAll, todayIst, tpmYarns, withSetting,
 } from '../planner.js';
-import { Badge, Button, Empty, Icon, IconButton, NavBar, SearchPicker, Segmented, Sheet, TextButton, Toggle, useWide } from '../ui.jsx';
+import { HelpButton } from './guide.jsx';
+import { Badge, Button, Chip, Empty, Icon, IconButton, NavBar, SearchPicker, Segmented, Sheet, TextButton, Toggle, useWide } from '../ui.jsx';
 import { SheetImport } from './sheetImport.jsx';
 
 const KEY = 'fm.planner.v1';
+export const ALL = 'all';
 
 // ---------- the working draft, per unit, on this device ----------
 function readStore() {
@@ -126,8 +129,9 @@ export function Planner() {
   const st = useStore();
   const idx = getIndex();
   const wide = useWide();
-  const units = tfoUnits(idx);
+  const units = plannerUnits(idx);
   const [store, setStore] = useState(readStore);
+  const showAll = units.length > 1 && store.unitId === ALL;
   const unitId = units.some((u) => u.id === store.unitId) ? store.unitId : units[0] ? units[0].id : '';
   const draft = normalDraft(store.drafts[unitId], unitId);
   const savedPlans = (idx.tables.TfoBalancePlans || []).filter((p) => p.unit_id === unitId);
@@ -150,9 +154,36 @@ export function Planner() {
   if (!units.length) {
     return (
       <div>
-        <NavBar large title="TFO planner" />
-        <Empty title={st.status.loading ? 'Loading…' : 'No unit with a TFO division'} text={st.status.loading ? '' : 'Turn on TFO for a unit and add its TFO types on the Units tab.'} />
+        <NavBar large title="Planner" right={<HelpButton topic="planner" />} />
+        <Empty title={st.status.loading ? 'Loading…' : 'No unit has loom groups yet'} text={st.status.loading ? '' : 'Open a unit on the Units tab, tap Edit and add its loom groups. The unit then shows here.'} />
       </div>
+    );
+  }
+
+  const unitPicker = units.length > 1 ? (
+    // chips, not a segmented control: full unit names (e.g. Hanuman Polyester) never get cut off on a phone
+    <div class="chips" role="group" aria-label="Unit">
+      {[...units.map((u) => ({ value: u.id, label: u.name })), { value: ALL, label: 'All units' }].map((o) => (
+        <Chip on={(showAll ? ALL : unitId) === o.value} onClick={() => setStore((s) => ({ ...s, unitId: o.value }))}>{o.label}</Chip>
+      ))}
+    </div>
+  ) : null;
+  const showMoney = store.showMoney !== false;
+  const moneyToggle = (
+    <div class="group">
+      <Toggle label="Show revenue and ₹ figures" value={showMoney} onChange={(v) => setStore((x) => ({ ...x, showMoney: v }))} />
+    </div>
+  );
+
+  if (showAll) {
+    return (
+      <AllUnits
+        idx={idx}
+        wide={wide}
+        showMoney={showMoney}
+        top={<div class="stack" style={{ padding: 0, gap: '10px' }}>{unitPicker}{moneyToggle}</div>}
+        onOpenUnit={(id) => setStore((s) => ({ ...s, unitId: id }))}
+      />
     );
   }
 
@@ -208,7 +239,7 @@ export function Planner() {
   const nSettings = Object.keys(plan.settings || {}).length;
   const hasInputs = plan.looms.length || plan.sides.length || plan.receipts.length || nSettings;
   const t = model.totals;
-  const showMoney = store.showMoney !== false;
+  const hasTfo = model.hasTfo;
   const tpmList = tpmYarns(idx);
   const yarnOptions = (exclude) => [
     { group: 'TPM yarns', options: tpmList.filter((y) => !exclude.includes(y.yarn.id)).map((y) => ({ value: y.yarn.id, label: y.yarn.name })) },
@@ -218,10 +249,10 @@ export function Planner() {
     <div class="planner">
       <NavBar
         large
-        title="TFO planner"
+        title="Planner"
         right={
           <>
-            <IconButton label="Import from sheet photo" onClick={() => setSheet('import')}><Icon.camera /></IconButton>
+            <HelpButton topic="planner" />
             <IconButton label="Saved plans" onClick={() => setSheet('plans')}><Icon.grid /></IconButton>
             <IconButton label="Share plan" onClick={() => setSheet('export')}><Icon.share /></IconButton>
             <TextButton bold onClick={() => setSheet('save')}>Save</TextButton>
@@ -229,9 +260,7 @@ export function Planner() {
         }
       />
       <div class="stack" style={{ padding: 0, gap: '10px' }}>
-        {units.length > 1 ? (
-          <div class="pad"><Segmented small label="Unit" options={units.map((u) => ({ value: u.id, label: u.name }))} value={unitId} onChange={(v) => setStore((s) => ({ ...s, unitId: v }))} /></div>
-        ) : null}
+        {unitPicker}
         <div class="plan-head">
           <div class="plan-title">
             <div class="plan-name">{planRow ? planRow.name || 'Plan' : 'Working plan'}</div>
@@ -248,31 +277,35 @@ export function Planner() {
             <button type="button" class="chip" disabled={!hasInputs && !planRow} onClick={() => setSheet('clear')}>Clear plan</button>
           </div>
         </div>
-        <div class="group">
-          <Toggle label="Show revenue and ₹ figures" value={showMoney} onChange={(v) => setStore((x) => ({ ...x, showMoney: v }))} />
-        </div>
+        {moneyToggle}
       </div>
 
       <div class="ptiles">
-        <Tile label="TPM consumption" value={kg(t.tpmConsumption, 0)} sub="per day, shortage included" />
-        <Tile label="TFO output" value={kg(t.tfoOutput, 0)} sub="per day from the sides entered" />
-        <Tile label="From outside" value={kg(t.received, 0)} sub="average per day" />
-        <Tile label="Net balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} accent />
-        <Tile label="Yarns short" value={String(t.short)} sub={`of ${model.balance.length} TPM ${model.balance.length === 1 ? 'yarn' : 'yarns'}`} tone={t.short ? 'bad' : ''} />
-        <Tile label="Production" value={mtr(t.metresPerDay)} sub={`per day · ${fmt.int(t.looms)} looms`} />
         {showMoney ? <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={t.realLooms ? `per day · ${fmt.int(t.realLooms)} looms` : 'enter looms with a price'} accent /> : null}
-        {showMoney ? <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub="per loom per day" /> : null}
-        {showMoney ? <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="with VATAV, weighted by output" /> : null}
+        {showMoney ? <Tile label="Plant profit" value={rs0(t.plantProfit)} sub={t.costPerPick === null ? 'set cost per pick on the unit' : `per day · at ${fmt.pick(t.costPerPick)} a pick`} tone={t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : ''} accent /> : null}
+        {showMoney ? <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub={t.avgLoomProfit !== null ? `per loom per day · profit ${rs0(t.avgLoomProfit)}` : 'per loom per day'} /> : null}
+        {showMoney ? <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="realisation with VATAV, weighted by output" /> : null}
+        {showMoney ? <Tile label="Profit per pick" value={fmt.pick(t.avgProfitPerPick)} sub="average, weighted by output" tone={t.avgProfitPerPick !== null && t.avgProfitPerPick < 0 ? 'bad' : ''} /> : null}
+        <Tile label="Yarn used" value={kg(t.yarnKg, 0)} sub="per day, all yarns, shortage included" accent={!showMoney} />
+        <Tile label="Looms planned" value={`${fmt.int(t.looms)} of ${fmt.int(t.capacity)}`} sub={t.looms > t.capacity ? 'more than the unit has' : 'looms in this unit'} tone={t.looms > t.capacity ? 'bad' : ''} />
+        <Tile label="Production" value={mtr(t.metresPerDay)} sub="greige metres per day" />
+        {hasTfo ? <Tile label="TPM consumption" value={kg(t.tpmConsumption, 0)} sub="per day, shortage included" /> : null}
+        {hasTfo ? <Tile label="TFO output" value={kg(t.tfoOutput, 0)} sub="per day from the sides entered" /> : null}
+        {hasTfo ? <Tile label="From outside" value={kg(t.received, 0)} sub="average per day" /> : null}
+        {hasTfo ? <Tile label="Net TPM balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} /> : null}
+        {hasTfo ? <Tile label="Yarns short" value={String(t.short)} sub={`of ${model.balance.length} TPM ${model.balance.length === 1 ? 'yarn' : 'yarns'}`} tone={t.short ? 'bad' : ''} /> : null}
       </div>
 
       <Notes model={model} showMoney={showMoney} />
 
-      <section class="section">
-        <h2 class="section-header">Balance by TPM yarn</h2>
-        <BalanceChart balance={model.balance} />
-      </section>
+      {hasTfo ? (
+        <section class="section">
+          <h2 class="section-header">Balance by TPM yarn</h2>
+          <BalanceChart balance={model.balance} />
+        </section>
+      ) : null}
 
-      <section class="section">
+      {hasTfo ? <section class="section">
         <h2 class="section-header">TFO settings</h2>
         <div class="group">
           {model.types.map((b) => (
@@ -289,7 +322,7 @@ export function Planner() {
           ))}
           {!model.types.length ? <div class="pline"><div class="pline-meta">This unit has no TFO types. Add them on the Units tab.</div></div> : null}
         </div>
-      </section>
+      </section> : null}
 
       <section class="section">
         <div class="psec-head">
@@ -318,7 +351,7 @@ export function Planner() {
         {!model.groups.length ? <p class="section-footer">This unit has no loom groups. Add them on the Units tab.</p> : null}
       </section>
 
-      <section class="section">
+      {hasTfo ? <section class="section">
         <h2 class="section-header">TFO</h2>
         {model.types.map((b) => (
           <div class="pcard">
@@ -388,7 +421,7 @@ export function Planner() {
             <SearchPicker value="" label="Add yarn received from outside" title="Received from outside" placeholder="+ Add a TPM yarn" searchHint="Search TPM yarns" options={yarnOptions(model.receipts.map((r) => r.yarn.id))} onChange={addReceipt} />
           </div>
         </div>
-      </section>
+      </section> : null}
 
       <section class="section">
         <h2 class="section-header">Production by quality</h2>
@@ -398,17 +431,20 @@ export function Planner() {
 
       <section class="section">
         <h2 class="section-header">Yarn consumption · all yarns</h2>
-        <ConsumptionTable rows={model.consumption} wide={wide} />
+        <ConsumptionTable rows={model.consumption} wide={wide} noTfo={!hasTfo} />
+        {!hasTfo && model.consumption.some((c) => c.tpm) ? <p class="section-footer">This unit has no TFO division, so its TPM yarn has to come from outside.</p> : null}
       </section>
 
-      <section class="section">
-        <h2 class="section-header">TPM balance</h2>
-        <BalanceTable rows={model.balance} wide={wide} />
-        <p class="section-footer">Balance = TFO output + received from outside − consumption (warp and weft, shortage included), kg per day.</p>
-      </section>
+      {hasTfo ? (
+        <section class="section">
+          <h2 class="section-header">TPM balance</h2>
+          <BalanceTable rows={model.balance} wide={wide} />
+          <p class="section-footer">Balance = TFO output + received from outside − consumption (warp and weft, shortage included), kg per day.</p>
+        </section>
+      ) : null}
 
       <SaveSheet open={sheet === 'save'} onClose={() => setSheet(null)} draft={draft} planRow={planRow} unitId={unitId} model={model} onSaved={(d) => setDraft(d)} />
-      <PlansSheet open={sheet === 'plans'} onClose={() => setSheet(null)} idx={idx} unitId={unitId} plans={savedPlans} currentId={planRow ? planRow.id : null} unsaved={!!(unsaved && hasInputs)} showMoney={showMoney} onOpen={openSaved} onDeleted={(id) => { if (id === draft.planId) setDraft((d) => ({ ...d, planId: null, savedSig: '' })); }} />
+      <PlansSheet open={sheet === 'plans'} onClose={() => setSheet(null)} idx={idx} unitId={unitId} hasTfo={hasTfo} plans={savedPlans} currentId={planRow ? planRow.id : null} unsaved={!!(unsaved && hasInputs)} showMoney={showMoney} onOpen={openSaved} onDeleted={(id) => { if (id === draft.planId) setDraft((d) => ({ ...d, planId: null, savedSig: '' })); }} />
       <ExportSheet open={sheet === 'export'} onClose={() => setSheet(null)} model={model} planRow={planRow} unsaved={unsaved} showMoney={showMoney} />
       <SheetImport
         open={sheet === 'import'}
@@ -448,6 +484,7 @@ function Notes({ model, showMoney }) {
   if (n.needEff.length) items.push(`Enter the loom efficiency for ${n.needEff.map(where).join(', ')}.`);
   if (n.needTfo.length) items.push(`Enter the TFO RPM for ${n.needTfo.map((r) => `${r.yarn.name} on ${r.type.name}`).join(', ')}. Until then that output is left out.`);
   if (showMoney && n.noReal.length) items.push(`No realisation for ${[...new Set(n.noReal.map((r) => r.q.label + (r.soldAs === 'rfd' && r.q.both ? ' (RFD)' : '')))].join(', ')} (no selling price or cost): left out of the realisation tiles.`);
+  if (showMoney && n.noCost) items.push(`Set the cost per pick on ${model.unit ? model.unit.name : 'this unit'} (Units tab) to see profit.`);
   if (n.noCount.length) items.push(`${n.noCount.map((y) => y.name).join(', ')} ${n.noCount.length === 1 ? 'has' : 'have'} no count, so ${n.noCount.length === 1 ? 'it is' : 'they are'} left out of the kg.`);
   if (!items.length) return null;
   return <div class="notice"><ul class="pnotes">{items.map((x) => <li>{x}</li>)}</ul></div>;
@@ -508,6 +545,7 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, showMoney
                 <th><span class="th">m / day, all looms</span></th>
                 <th><span class="th">TPM kg/day</span></th>
                 {showMoney ? <th><span class="th">₹ / loom / day</span></th> : null}
+                {showMoney ? <th><span class="th">Profit / loom / day</span></th> : null}
                 <th><span class="th" /></th>
               </tr>
             </thead>
@@ -526,6 +564,7 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, showMoney
                   <td class="strong">{fmt.int(r.mTotal)}</td>
                   <td>{r.tpm ? kg(r.tpmKg) : '—'}</td>
                   {showMoney ? <td class="strong" title={r.realPerLoom !== null ? `${fmt.pick(r.perPick)} per pick × ${fmt.int(r.mPerDay)} m × ${r.ppi} PPI` : undefined}>{rs0(r.realPerLoom)}</td> : null}
+                  {showMoney ? <td class={r.profitPerLoom !== null && r.profitPerLoom < 0 ? 'bad' : ''} title={r.profitPerLoom !== null ? `${fmt.pick(r.profitPerPick)} profit per pick × ${fmt.int(r.mPerDay)} m × ${r.ppi} PPI` : undefined}>{rs0(r.profitPerLoom)}</td> : null}
                   <td><button type="button" class="link-btn danger" onClick={() => onRemove(r.fabricId, g.id)}>Remove</button></td>
                 </tr>
               ))}
@@ -550,7 +589,7 @@ function LoomGroupCard({ block, wide, idx, list, unitId, assignedOnly, showMoney
               <div class="pline-out">
                 {r.mPerDay === null ? 'm/day needs RPM and efficiency' : `${fmt.int(r.mPerDay)} m/day per loom · ${fmt.int(r.mTotal)} m/day for ${fmt.int(r.looms)} ${r.looms === 1 ? 'loom' : 'looms'}`}
                 {r.tpm ? ` · TPM ${kg(r.tpmKg)}/day` : ''}
-                {showMoney ? <>{' · '}<b>{r.realPerLoom === null ? '₹ —' : `${rs0(r.realPerLoom)}/loom/day`}</b></> : null}
+                {showMoney ? <>{' · '}<b>{r.realPerLoom === null ? '₹ —' : `${rs0(r.realPerLoom)}/loom/day`}</b>{r.profitPerLoom !== null ? ` · profit ${rs0(r.profitPerLoom)}` : ''}</> : null}
               </div>
             </div>
           ))
@@ -605,7 +644,8 @@ function ProductionTable({ rows, total, wide }) {
   );
 }
 
-function ConsumptionTable({ rows, wide }) {
+function ConsumptionTable({ rows, wide, noTfo }) {
+  const tag = (r) => (r.tpm ? <Badge kind="amber">{noTfo ? 'TPM · no TFO here' : 'TPM'}</Badge> : null);
   if (!rows.length) return <div class="group"><div class="pline"><div class="pline-meta">Enter looms to see what they consume.</div></div></div>;
   const tot = (k) => rows.reduce((s, r) => s + r[k], 0);
   if (!wide) {
@@ -614,7 +654,7 @@ function ConsumptionTable({ rows, wide }) {
         {rows.map((r) => (
           <div class="pline">
             <div class="pline-top">
-              <div class="pline-name">{r.yarn.name} {r.tpm ? <Badge kind="amber">TPM</Badge> : null}</div>
+              <div class="pline-name">{r.yarn.name} {tag(r)}</div>
               <div class="pline-val">{kg(r.total)}</div>
             </div>
             <div class="pline-meta">Warp {kg(r.warp)} · Weft {kg(r.weft)}{r.used.length ? ` · ${r.used.join(', ')}` : ''}</div>
@@ -632,7 +672,7 @@ function ConsumptionTable({ rows, wide }) {
           {rows.map((r) => (
             <tr>
               <td class="txt strong">{r.yarn.name}</td>
-              <td class="txt">{r.tpm ? <Badge kind="amber">TPM</Badge> : <Badge>Base</Badge>}</td>
+              <td class="txt">{r.tpm ? tag(r) : <Badge>Base</Badge>}</td>
               <td>{fmt.n(r.warp, 1)}</td>
               <td>{fmt.n(r.weft, 1)}</td>
               <td class="strong">{fmt.n(r.total, 1)}</td>
@@ -746,7 +786,7 @@ function SaveSheet({ open, onClose, draft, planRow, unitId, model, onSaved }) {
 }
 
 // ---------- saved plans ----------
-function PlansSheet({ open, onClose, idx, unitId, plans, currentId, unsaved, showMoney, onOpen, onDeleted }) {
+function PlansSheet({ open, onClose, idx, unitId, hasTfo, plans, currentId, unsaved, showMoney, onOpen, onDeleted }) {
   const [ask, setAsk] = useState(null); // { kind: 'open' | 'delete' | 'share', row }
   const [shareMoney, setShareMoney] = useState(!!showMoney);
   const [busy, setBusy] = useState(false);
@@ -795,7 +835,7 @@ function PlansSheet({ open, onClose, idx, unitId, plans, currentId, unsaved, sho
                       <div class="pline-meta">{fmt.date(p.plan_date)}{p.updated_by ? ` · ${p.updated_by}` : ''}</div>
                     </div>
                     <div class="plan-item-figs">
-                      <div class={num(s.net) !== null && num(s.net) < 0 ? 'bad' : 'good'}>{num(s.net) === null ? '—' : signedKg(num(s.net))}</div>
+                      {hasTfo ? <div class={num(s.net) !== null && num(s.net) < 0 ? 'bad' : 'good'}>{num(s.net) === null ? '—' : signedKg(num(s.net))}</div> : <div>{num(s.yarnKg) === null ? `${fmt.int(num(s.looms) ?? 0)} looms` : `${kg(num(s.yarnKg), 0)}/day`}</div>}
                       {showMoney ? <div class="pline-meta">{num(s.plantRealisation) === null ? '₹ —' : `${rs0(num(s.plantRealisation))}/day`}</div> : null}
                     </div>
                   </div>
@@ -824,7 +864,7 @@ function PlansSheet({ open, onClose, idx, unitId, plans, currentId, unsaved, sho
               );
             })}
           </div>
-          <p class="section-footer">{showMoney ? 'Net TPM balance and plant realisation as they were when each plan was saved.' : 'Net TPM balance as it was when each plan was saved.'}</p>
+          <p class="section-footer">{`${hasTfo ? 'Net TPM balance' : 'Yarn used per day'}${showMoney ? ' and plant realisation' : ''} as saved with each plan.`}</p>
         </section>
       ) : null}
     </Sheet>
@@ -864,17 +904,110 @@ function ExportSheet({ open, onClose, model, planRow, unsaved, showMoney }) {
           <Toggle label="Include revenue (₹)" value={money} onChange={setMoney} />
           <button type="button" class="row" disabled={!!busy} onClick={() => run('pdf')}>
             <span class="row-chevron" style={{ color: 'var(--accent)' }}><Icon.pdf /></span>
-            <div class="row-main"><div class="row-label">PDF</div><div class="row-sub">{money ? 'Tiles, looms, TFO, yarn consumption and TPM balance' : 'Looms, TFO, yarn consumption and TPM balance, with no rupee figures'}</div></div>
+            <div class="row-main"><div class="row-label">PDF</div><div class="row-sub">{model.hasTfo ? (money ? 'Tiles, looms, TFO, yarn consumption and TPM balance' : 'Looms, TFO, yarn consumption and TPM balance, with no rupee figures') : money ? 'Tiles, looms, production and yarn consumption' : 'Looms, production and yarn consumption, with no rupee figures'}</div></div>
             {busy === 'pdf' ? <span class="spinner" aria-hidden="true" /> : null}
           </button>
           <button type="button" class="row" disabled={!!busy} onClick={() => run('xlsx')}>
             <span class="row-chevron" style={{ color: 'var(--accent)' }}><Icon.grid /></span>
-            <div class="row-main"><div class="row-label">Excel</div><div class="row-sub">{money ? 'One sheet each: Summary, Looms, TFO, Received, Yarn consumption, TPM balance' : 'The same sheets, with no rupee figures'}</div></div>
+            <div class="row-main"><div class="row-label">Excel</div><div class="row-sub">{money ? (model.hasTfo ? 'One sheet each: Summary, Looms, Production, TFO, Received, Yarn consumption, TPM balance' : 'One sheet each: Summary, Looms, Production, Yarn consumption') : 'The same sheets, with no rupee figures'}</div></div>
             {busy === 'xlsx' ? <span class="spinner" aria-hidden="true" /> : null}
           </button>
         </div>
         <p class="section-footer">{planRow ? `${meta.name} · ${fmt.date(meta.date)}${unsaved ? ' · with the unsaved changes on screen' : ''}` : 'The working plan is not saved: it shares as “Unsaved plan” with today’s date.'}</p>
       </section>
     </Sheet>
+  );
+}
+
+// ---------- All units (read-only) ----------
+function AllUnits({ idx, wide, showMoney, top, onOpenUnit }) {
+  const r = useMemo(() => allUnitsRollup(idx), [idx]);
+  const t = r.totals;
+  return (
+    <div class="planner">
+      <NavBar large title="Planner" right={<HelpButton topic="planner" />} />
+      {top}
+      <div class="ptiles">
+        {showMoney ? <Tile label="Group realisation" value={rs0(t.plantRealisation)} sub="per day, all units" accent /> : null}
+        {showMoney ? <Tile label="Group profit" value={rs0(t.plantProfit)} sub="per day, each unit at its own cost per pick" tone={t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : ''} accent /> : null}
+        <Tile label="Yarn used" value={kg(t.yarnKg, 0)} sub="per day, all units" accent={!showMoney} />
+        <Tile label="Looms planned" value={`${fmt.int(t.looms ?? 0)} of ${fmt.int(t.capacity)}`} sub="all units" />
+        <Tile label="Production" value={mtr(t.metresPerDay)} sub="greige metres per day" />
+      </div>
+      <section class="section">
+        <h2 class="section-header">Latest saved plan of each unit</h2>
+        <div class="group">
+          {r.units.map((u) => {
+            const ut = u.model ? u.model.totals : null;
+            return (
+              <div class="plan-item">
+                <div class="plan-item-top">
+                  <div style={{ minWidth: 0 }}>
+                    <div class="pline-name">{u.unit.name}</div>
+                    <div class="pline-meta">{u.row ? `${u.row.name || 'Plan'} · ${fmt.date(u.row.plan_date)}` : 'No saved plan yet'}</div>
+                  </div>
+                  {ut ? (
+                    <div class="plan-item-figs">
+                      <div>{fmt.int(ut.looms)} looms · {kg(ut.yarnKg, 0)}</div>
+                      {showMoney ? <div class="pline-meta">{rs0(ut.plantRealisation)} · profit {rs0(ut.plantProfit)}</div> : null}
+                    </div>
+                  ) : null}
+                </div>
+                <div class="plan-item-btns">
+                  <button type="button" class="link-btn" onClick={() => { onOpenUnit(u.unit.id); window.scrollTo(0, 0); }}>{u.row ? 'Go to unit' : 'Make a plan'}</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p class="section-footer">Only saved plans count here. Save a plan in each unit to see the group's totals. To change a figure, open the unit and save its plan again.</p>
+      </section>
+      <section class="section">
+        <h2 class="section-header">Yarn consumption · all units</h2>
+        <AllUnitsYarn rows={r.consumption} wide={wide} />
+      </section>
+    </div>
+  );
+}
+
+function AllUnitsYarn({ rows, wide }) {
+  if (!rows.length) return <div class="group"><div class="pline"><div class="pline-meta">No saved plans with looms yet.</div></div></div>;
+  const by = (r) => r.byUnit.map((x) => `${x.unit.name} ${fmt.n(x.kg, 1)}`).join(' · ');
+  const total = rows.reduce((s, r) => s + r.total, 0);
+  if (!wide) {
+    return (
+      <div class="group">
+        {rows.map((r) => (
+          <div class="pline">
+            <div class="pline-top">
+              <div class="pline-name">{r.yarn.name} {r.tpm ? <Badge kind="amber">TPM</Badge> : null}</div>
+              <div class="pline-val">{kg(r.total)}</div>
+            </div>
+            <div class="pline-meta">{by(r)}</div>
+          </div>
+        ))}
+        <div class="pline"><div class="pline-top"><div class="pline-name">Total</div><div class="pline-val">{kg(total)}</div></div></div>
+      </div>
+    );
+  }
+  return (
+    <div class="table-wrap">
+      <table class="ftable">
+        <thead><tr><th class="txt"><span class="th">Yarn</span></th><th class="txt"><span class="th">Kind</span></th><th><span class="th">Warp kg/day</span></th><th><span class="th">Weft kg/day</span></th><th><span class="th">Total kg/day</span></th><th class="txt"><span class="th">By unit, kg/day</span></th></tr></thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr>
+              <td class="txt strong">{r.yarn.name}</td>
+              <td class="txt">{r.tpm ? <Badge kind="amber">TPM</Badge> : <Badge>Base</Badge>}</td>
+              <td>{fmt.n(r.warp, 1)}</td>
+              <td>{fmt.n(r.weft, 1)}</td>
+              <td class="strong">{fmt.n(r.total, 1)}</td>
+              <td class="txt muted">{by(r)}</td>
+            </tr>
+          ))}
+          <tr><td class="txt strong">Total</td><td /><td /><td /><td class="strong">{fmt.n(total, 1)}</td><td /></tr>
+        </tbody>
+      </table>
+    </div>
   );
 }
