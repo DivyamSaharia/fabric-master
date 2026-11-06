@@ -844,7 +844,7 @@ export function ProductionCard({ unit, fabric, calc, idx }) {
                 <div class="spin"><div class="s-label">Weft / day</div><div class="s-value">{kg(g.loom.weftKg)}</div>{all(g.total && g.total.weftKg, 'kg')}</div>
               </div>
             ) : null}
-            {ok ? <YarnWise rows={g.yarns || yarnConsumption(calc, g.loom.mPerDay, g.looms)} showAll={!!g.total} /> : null}
+            {ok ? <YarnWise rows={g.yarns || yarnConsumption(calc, g.loom.mPerDay, g.looms)} /> : null}
           </>
         );
       })}
@@ -853,7 +853,7 @@ export function ProductionCard({ unit, fabric, calc, idx }) {
 }
 
 // Yarn-wise consumption per loom per day (shortage included): one line per warp and weft yarn.
-function YarnWise({ rows, showAll }) {
+function YarnWise({ rows }) {
   if (!rows.length) return null;
   return (
     <div class="yarn-wise">
@@ -863,7 +863,6 @@ function YarnWise({ rows, showAll }) {
           <span class="yw-name">{r.yarn.name}</span>
           <span class="yw-kg tnum">
             {r.kg === null ? '—' : `${fmt.n(r.kg, 2)} kg`}
-            {showAll && r.allKg !== null ? <span class="s-note"> · all {fmt.int(r.allKg)} kg</span> : null}
           </span>
         </div>
       ))}
