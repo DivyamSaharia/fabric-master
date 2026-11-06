@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
-import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, loomRealisation, loomRealisationForUnit, num, productionForUnit, rateSources, spindleProfit, spindlesForUnit, tfoPerSide, truthy, unitHasTfo, unitProfit, TFO_CLASSES } from '../calc.js';
+import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, loomRealisation, loomRealisationForUnit, num, productionForUnit, rateSources, spindleProfit, spindlesForUnit, tfoPerSide, truthy, unitHasTfo, unitProfit, yarnConsumption, TFO_CLASSES } from '../calc.js';
 import { beamRowsOf, beamSlots, groupLabel, slotLabel } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
@@ -844,9 +844,29 @@ export function ProductionCard({ unit, fabric, calc, idx }) {
                 <div class="spin"><div class="s-label">Weft / day</div><div class="s-value">{kg(g.loom.weftKg)}</div>{all(g.total && g.total.weftKg, 'kg')}</div>
               </div>
             ) : null}
+            {ok ? <YarnWise rows={g.yarns || yarnConsumption(calc, g.loom.mPerDay, g.looms)} showAll={!!g.total} /> : null}
           </>
         );
       })}
+    </div>
+  );
+}
+
+// Yarn-wise consumption per loom per day (shortage included): one line per warp and weft yarn.
+function YarnWise({ rows, showAll }) {
+  if (!rows.length) return null;
+  return (
+    <div class="yarn-wise">
+      {rows.map((r) => (
+        <div class="yw-row">
+          <span class="yw-side">{r.side === 'warp' ? 'Warp' : 'Weft'}</span>
+          <span class="yw-name">{r.yarn.name}</span>
+          <span class="yw-kg tnum">
+            {r.kg === null ? '—' : `${fmt.n(r.kg, 2)} kg`}
+            {showAll && r.allKg !== null ? <span class="s-note"> · all {fmt.int(r.allKg)} kg</span> : null}
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -904,7 +924,7 @@ export function PanBlocks({ calc, fabric, unit, idx, showNote }) {
               <div class="spin">
                 <div class="s-label">{s.type.name}</div>
                 {s.total === null ? <div class="s-note">{s.reason}</div> : <div class="s-value">{fmt.int(s.total)} spindles</div>}
-                {showNote && s.total !== null ? <div class="s-note">{s.perYarn.map((p) => `${p.side} ${fmt.int(p.spindles)}`).join(' + ')}</div> : null}
+                {s.total !== null ? <div class="s-note tnum">{(() => { const w = Math.round(s.perYarn.filter((p) => p.side === 'warp').reduce((t, p) => t + p.spindles, 0)); return `Warp ${fmt.int(w)} · Weft ${fmt.int(Math.round(s.total) - w)}`; })()}</div> : null}
               </div>
             ))
           : [['Warp', loom.warpKg], ['Weft', loom.weftKg]].map(([k, v]) => (

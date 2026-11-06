@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { baseFabric, buildIndex, fabricCalc, fabricLabel, groupPanna, loomPerDay, loomRealisation, loomRealisationForUnit, productionForUnit, rateSources, stripRs, tfoPerSide, unitProfit, spindlesForUnit, spindleProfit, refTfoType, tfoOutput, yarnDenier, yarnRate } from './calc.js';
+import { baseFabric, buildIndex, fabricCalc, fabricLabel, groupPanna, loomPerDay, loomRealisation, loomRealisationForUnit, productionForUnit, yarnConsumption, rateSources, stripRs, tfoPerSide, unitProfit, spindlesForUnit, spindleProfit, refTfoType, tfoOutput, yarnDenier, yarnRate } from './calc.js';
 import { sampleTables } from './sampleData.js';
 
 const idx = buildIndex(sampleTables());
@@ -248,6 +248,11 @@ describe('production centre', () => {
     expect(rows[0].loom.mPerDay).toBeCloseTo(m, 6);
     expect(rows[0].loom.warpKg).toBeCloseTo((m * c.warpGpm) / 1000, 6);
     expect(rows[0].total.weftKg).toBeCloseTo((m * c.weftGpm * 24) / 1000, 6);
+    const ys = rows[0].yarns;
+    expect(ys.filter((y) => y.side === 'warp').reduce((t, y) => t + y.kg, 0)).toBeCloseTo(rows[0].loom.warpKg, 6);
+    expect(ys.filter((y) => y.side === 'weft').reduce((t, y) => t + y.kg, 0)).toBeCloseTo(rows[0].loom.weftKg, 6);
+    expect(ys[0].allKg).toBeCloseTo(ys[0].kg * 24, 6);
+    expect(yarnConsumption(c, null).every((y) => y.kg === null)).toBe(true);
     const vn = idx.fabricsById.f_vn;
     expect(productionForUnit(fabricCalc(vn, idx), vn, idx.unitsById.u_2, idx).map((r) => r.group.id)).toEqual(['lg1']);
   });

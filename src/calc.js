@@ -411,6 +411,25 @@ export function groupPanna(rs, group) {
   return r * 2 <= inches ? 2 : r <= inches ? 1 : null;
 }
 
+// Yarn-wise consumption: kg a loom uses per day of each warp and weft yarn (shortage included) at the given
+// metres per day. A yarn used twice on the same side is one line. Null kg while a yarn has no g/m.
+export function yarnConsumption(calc, mPerDay, looms = null) {
+  const out = [];
+  for (const [side, lines] of [['warp', calc.warp], ['weft', calc.weft]]) {
+    for (const x of lines) {
+      if (!x.yarn) continue;
+      const kg = mPerDay !== null && mPerDay !== undefined && x.gpm !== null ? (mPerDay * x.gpm) / 1000 : null;
+      const hit = out.find((o) => o.side === side && o.yarn.id === x.yarn.id);
+      if (hit) {
+        hit.kg = hit.kg === null || kg === null ? null : hit.kg + kg;
+        continue;
+      }
+      out.push({ side, yarn: x.yarn, kg });
+    }
+  }
+  return out.map((o) => ({ ...o, allKg: o.kg !== null && looms ? o.kg * looms : null }));
+}
+
 // Loom groups of a unit the fabric can run on (a dobby fabric needs a dobby group), with metres and
 // warp/weft kg per loom per day at the panna that fits, and the same for all looms of the group.
 export function productionForUnit(calc, fabric, unit, idx) {
@@ -425,7 +444,7 @@ export function productionForUnit(calc, fabric, unit, idx) {
       if (!panna) return { group, panna: null, looms, loom: null, reason: calc.rs ? 'Reed space wider than this loom' : 'Set the reed space on the fabric' };
       const loom = loomPerDay(calc, fabric, unit, panna);
       const all = (v) => (v !== null && looms ? v * looms : null);
-      return { group, panna, looms, loom, total: { mPerDay: all(loom.mPerDay), warpKg: all(loom.warpKg), weftKg: all(loom.weftKg) }, reason: loom.reason };
+      return { group, panna, looms, loom, total: { mPerDay: all(loom.mPerDay), warpKg: all(loom.warpKg), weftKg: all(loom.weftKg) }, yarns: yarnConsumption(calc, loom.mPerDay, looms), reason: loom.reason };
     });
 }
 

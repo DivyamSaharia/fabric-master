@@ -584,3 +584,10 @@ button.row:active { background: var(--fill-2); }
 .temp-price-actions .btn { flex: 1; }
 .price-field .row-main { flex: none; display: flex; flex-direction: column; }
 .price-field .field-input { flex: 1; }
+
+/* Yarn-wise consumption (1.23.0) */
+.yarn-wise { display: flex; flex-direction: column; gap: 4px; padding: 2px 2px 6px; }
+.yw-row { display: grid; grid-template-columns: 44px 1fr auto; gap: 8px; align-items: baseline; font-size: 13px; }
+.yw-side { color: var(--text-2); font-size: 12px; }
+.yw-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.yw-kg { font-weight: 600; text-align: right; }
