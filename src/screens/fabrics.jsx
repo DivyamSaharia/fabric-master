@@ -830,7 +830,6 @@ export function ProductionCard({ unit, fabric, calc, idx }) {
         const title = g.group ? groupLabel(g.group) : `${g.panna === 2 ? 'Double' : 'Single'} panna`;
         const ok = g.loom && g.loom.mPerDay !== null;
         const meta = [g.looms ? `${fmt.int(g.looms)} looms` : null, g.group && g.panna ? `${g.panna === 2 ? 'double' : 'single'} panna` : null, ok ? `${fmt.int(g.loom.rpm)} RPM` : null].filter(Boolean).join(' · ');
-        const all = (v, u) => (g.total && v !== null && v !== undefined ? <div class="s-note">all {fmt.int(v)} {u}</div> : null);
         return (
           <>
             <div class="pan-head">
@@ -839,9 +838,9 @@ export function ProductionCard({ unit, fabric, calc, idx }) {
             </div>
             {ok ? (
               <div class="spin-grid three">
-                <div class="spin"><div class="s-label">Metres / day</div><div class="s-value">{fmt.int(g.loom.mPerDay)} m</div>{all(g.total && g.total.mPerDay, 'm')}</div>
-                <div class="spin"><div class="s-label">Warp / day</div><div class="s-value">{kg(g.loom.warpKg)}</div>{all(g.total && g.total.warpKg, 'kg')}</div>
-                <div class="spin"><div class="s-label">Weft / day</div><div class="s-value">{kg(g.loom.weftKg)}</div>{all(g.total && g.total.weftKg, 'kg')}</div>
+                <div class="spin"><div class="s-label">Metres / day</div><div class="s-value">{fmt.int(g.loom.mPerDay)} m</div></div>
+                <div class="spin"><div class="s-label">Warp / day</div><div class="s-value">{kg(g.loom.warpKg)}</div></div>
+                <div class="spin"><div class="s-label">Weft / day</div><div class="s-value">{kg(g.loom.weftKg)}</div></div>
               </div>
             ) : null}
             {ok ? <YarnWise rows={g.yarns || yarnConsumption(calc, g.loom.mPerDay, g.looms)} /> : null}

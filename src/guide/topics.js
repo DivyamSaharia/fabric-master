@@ -282,6 +282,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.23.1', 'Production centre: removed the "all looms" figures, so it shows per loom per day only.'],
   ['1.23.0', 'Production centre now lists each warp and weft yarn with the kg a loom uses per day.'],
   ['1.22.0', 'Spindle requirement now shows how many spindles are for warp and how many for weft, under the total.'],
   ['1.21.0', 'Temporary sale rate: try another selling price on a fabric, see what changes, and save it to the master with today\'s date.'],
