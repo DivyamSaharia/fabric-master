@@ -129,10 +129,18 @@ export function tpmDelta(yarn) {
 
 // Base yarn: latest rate on or before asOf (yyyy-mm-dd). TPM yarn: base yarn's rate + delta.
 // picks: { baseYarnId: 'yyyy-mm-dd' } overrides asOf for that base yarn (the fabric page's rate pickers).
+// A temporary rate typed on a TPM yarn itself (idx.tempRates[tpmId]) is its whole rate: it beats the base yarn's
+// rate, temporary or not, and the delta. masterRate is then the master base rate + delta.
 export function yarnRate(yarn, idx, asOf, picks) {
   if (!yarn) return null;
   if (isTpm(yarn)) {
     const base = baseOf(yarn, idx);
+    const own = tempRateOf(idx, yarn.id);
+    if (own !== null) {
+      const mb = base ? yarnMasterRate(base, idx, asOf, picks) : null;
+      const d = tpmDelta(yarn);
+      return { rate: own, date: '', temp: true, tpmTemp: true, masterRate: mb ? mb.rate + d : null, masterBaseRate: mb ? mb.rate : null, masterDelta: d };
+    }
     const r = base ? yarnRate(base, idx, asOf, picks) : null;
     if (!r) return null;
     const delta = tpmDelta(yarn);
@@ -147,7 +155,7 @@ export function yarnRate(yarn, idx, asOf, picks) {
   return yarnMasterRate(yarn, idx, asOf, picks);
 }
 
-// The temporary rate set on this device for a base yarn, or null.
+// The temporary rate set on this device for a yarn (base or TPM), or null.
 export function tempRateOf(idx, yarnId) {
   const v = idx && idx.tempRates ? num(idx.tempRates[yarnId]) : null;
   return v !== null && v > 0 ? v : null;
@@ -393,9 +401,11 @@ export function rateSources(calc, idx) {
       const rates = (idx.ratesByYarn[src.id] || []).filter((r) => num(r.rate) !== null && r.effective_date);
       const dates = [];
       for (const r of rates) if (!dates.some((d) => d.date === String(r.effective_date).slice(0, 10))) dates.push({ date: String(r.effective_date).slice(0, 10), rate: num(r.rate) });
-      out.push((s = { yarn: src, dates, usedBy: [], temp: tempRateOf(idx, src.id) }));
+      out.push((s = { yarn: src, dates, usedBy: [], tpm: [], temp: tempRateOf(idx, src.id) }));
     }
     if (x.yarn && !s.usedBy.some((y) => y.id === x.yarn.id)) s.usedBy.push(x.yarn);
+    // TPM yarns on this base: each can carry its own temporary rate
+    if (isTpm(x.yarn) && !s.tpm.some((t) => t.yarn.id === x.yarn.id)) s.tpm.push({ yarn: x.yarn, delta: tpmDelta(x.yarn), temp: tempRateOf(idx, x.yarn.id) });
   }
   return out;
 }

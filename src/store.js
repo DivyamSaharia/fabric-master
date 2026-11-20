@@ -1,7 +1,7 @@
 // App state: tables, settings, connection status. Every change goes to the backend first;
 // the phone only updates once the Sheet (or demo store) has accepted it.
 import { useEffect, useState } from 'preact/hooks';
-import { baseFabric, buildIndex, fabricLabel, num, stripRs, truthy } from './calc.js';
+import { baseFabric, buildIndex, fabricLabel, fmt, isTpm, num, stripRs, tpmDelta, truthy } from './calc.js';
 import { applyOps, demoBackend, sheetBackend } from './api.js';
 import { keepStorage, local, savedCopy } from './storage.js';
 import { emptyTables, newId, today } from './schema.js';
@@ -72,7 +72,8 @@ export function getIndex() {
 }
 
 // ---------- temporary yarn rates (this device only) ----------
-// Base yarns only: a TPM yarn follows its base yarn's rate plus its delta.
+// Keyed by yarn id. A base yarn's temporary rate moves every TPM yarn on it (base + delta); a temporary rate
+// typed on a TPM yarn is that yarn's whole rate and beats its base yarn's (see calc.yarnRate).
 function writeTempRates(next) {
   if (Object.keys(next).length) local.set(TEMP_RATES_KEY, next);
   else local.remove(TEMP_RATES_KEY);
@@ -97,17 +98,100 @@ export function clearAllTempRates() {
   if (Object.keys(state.tempRates).length) writeTempRates({});
 }
 
+// Latest master (Sheet) rate of a base yarn, ignoring temporary rates, or null.
+function latestMasterRate(idx, yarnId) {
+  const rates = (idx.ratesByYarn[yarnId] || []).filter((r) => num(r.rate) !== null);
+  return rates.length ? num(rates[0].rate) : null;
+}
+
 // Temporary rates whose yarn still exists, as [{ yarn, rate, masterRate }].
+// TPM yarns also carry { tpm: true, base, delta, masterBase }; their masterRate is master base rate + delta.
 export function activeTempRates() {
   const idx = getIndex();
   return Object.entries(state.tempRates)
     .map(([id, rate]) => ({ yarn: idx.yarnsById[id], rate }))
     .filter((x) => x.yarn)
     .map((x) => {
-      const rates = (idx.ratesByYarn[x.yarn.id] || []).filter((r) => num(r.rate) !== null);
-      return { ...x, masterRate: rates.length ? num(rates[0].rate) : null };
+      if (!isTpm(x.yarn)) return { ...x, masterRate: latestMasterRate(idx, x.yarn.id) };
+      const base = idx.yarnsById[x.yarn.base_yarn_id] || null;
+      const masterBase = base ? latestMasterRate(idx, base.id) : null;
+      const delta = tpmDelta(x.yarn);
+      return { ...x, tpm: true, base, delta, masterBase, masterRate: masterBase === null ? null : masterBase + delta };
     })
     .sort((a, b) => String(a.yarn.name).localeCompare(String(b.yarn.name)));
+}
+
+const round2 = (v) => Math.round(v * 100) / 100;
+
+// What a base rate change reaches: the base yarn, every TPM yarn made from it, and every fabric using any of them.
+export function baseImpact(baseId, idx = getIndex()) {
+  const tpm = (idx.tables.Yarns || []).filter((y) => isTpm(y) && y.base_yarn_id === baseId);
+  const ids = new Set([baseId, ...tpm.map((y) => y.id)]);
+  const fabrics = new Set((idx.tables.FabricYarns || []).filter((l) => ids.has(l.yarn_id) && idx.fabricsById[l.fabric_id]).map((l) => l.fabric_id));
+  return { yarns: ids.size, tpmYarns: tpm.length, fabrics: fabrics.size };
+}
+
+// Fabrics using one yarn.
+export function yarnFabricCount(yarnId, idx = getIndex()) {
+  return new Set((idx.tables.FabricYarns || []).filter((l) => l.yarn_id === yarnId && idx.fabricsById[l.fabric_id]).map((l) => l.fabric_id)).size;
+}
+
+// Save to master for a TPM yarn's temporary rate R (master base B, delta D):
+//   'delta': base stays, delta = R − B
+//   'base':  delta stays, base = R − D (a new dated base rate, today)
+//   'both':  base = newBase (typed), delta = R − newBase
+// Returns { ok, error, mode, rate, base, oldBase, oldDelta, newBase, newDelta, impact }.
+export function tpmSavePlan(tpmId, mode, newBase, idx = getIndex()) {
+  const yarn = idx.yarnsById[tpmId];
+  const rate = num(state.tempRates[tpmId]);
+  if (!yarn || !isTpm(yarn) || !rate) return { ok: false, error: 'No temporary rate on this TPM yarn' };
+  const base = idx.yarnsById[yarn.base_yarn_id] || null;
+  if (!base) return { ok: false, error: 'This TPM yarn has no base yarn' };
+  const oldBase = latestMasterRate(idx, base.id);
+  const oldDelta = tpmDelta(yarn);
+  const out = { mode, yarn, rate, base, oldBase, oldDelta, newBase: oldBase, newDelta: oldDelta };
+  if (mode === 'delta') {
+    if (oldBase === null) return { ...out, ok: false, error: `${base.name} has no master rate yet. Choose “Change both” and type its rate.` };
+    out.newDelta = round2(rate - oldBase);
+    if (out.newDelta < 0) return { ...out, ok: false, error: `The delta would be below zero (base ${fmt.rate(oldBase)}/kg is above ${fmt.rate(rate)}/kg).` };
+    out.impact = { yarns: 1, tpmYarns: 1, fabrics: yarnFabricCount(tpmId, idx) };
+  } else if (mode === 'base') {
+    out.newBase = round2(rate - oldDelta);
+    if (out.newBase <= 0) return { ...out, ok: false, error: `The base rate would be ₹0 or less (delta ${fmt.rate(oldDelta)}/kg is above ${fmt.rate(rate)}/kg).` };
+    out.impact = baseImpact(base.id, idx);
+  } else if (mode === 'both') {
+    const b = num(newBase);
+    if (b === null || b <= 0) return { ...out, ok: false, error: `Type the new rate for ${base.name}.` };
+    out.newBase = round2(b);
+    out.newDelta = round2(rate - out.newBase);
+    if (out.newDelta < 0) return { ...out, ok: false, error: `The delta would be below zero (base ${fmt.rate(out.newBase)}/kg is above ${fmt.rate(rate)}/kg).` };
+    out.impact = baseImpact(base.id, idx);
+  } else {
+    return { ...out, ok: false, error: 'Choose what to change' };
+  }
+  return { ...out, ok: true };
+}
+
+// Writes the plan above in one save: the TPM yarn's delta and/or a dated base rate for today. Then the TPM yarn's
+// temporary rate is removed, and, when the base rate changed, the base yarn's temporary rate too.
+export async function saveTpmTempToMaster(tpmId, mode, newBase) {
+  const idx = getIndex();
+  const plan = tpmSavePlan(tpmId, mode, newBase, idx);
+  if (!plan.ok) throw new Error(plan.error);
+  const ops = [];
+  if (mode !== 'base') ops.push({ op: 'upsert', table: 'Yarns', rows: [{ ...plan.yarn, tpm_delta: plan.newDelta }] });
+  if (mode !== 'delta') {
+    const date = today();
+    const existing = (idx.ratesByYarn[plan.base.id] || []).find((r) => String(r.effective_date).slice(0, 10) === date);
+    ops.push({ op: 'upsert', table: 'YarnRates', rows: [{ id: existing ? existing.id : newId('r'), yarn_id: plan.base.id, rate: plan.newBase, effective_date: date }] });
+  }
+  await commit(ops);
+  const next = { ...state.tempRates };
+  delete next[tpmId];
+  if (mode !== 'delta') delete next[plan.base.id];
+  writeTempRates(next);
+  toast(mode === 'delta' ? 'Delta saved' : mode === 'base' ? 'Base rate saved' : 'Base rate and delta saved');
+  return plan;
 }
 
 // Makes a temporary rate the real one: a new dated rate in the yarn master, then the temporary rate is dropped.

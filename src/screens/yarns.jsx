@@ -41,7 +41,7 @@ function YarnTable({ yarns, idx }) {
                 <td>{tpm && num(y.tpm) ? fmt.int(num(y.tpm)) : '—'}</td>
                 <td class="txt">{tpm ? y.twist || '—' : '—'}</td>
                 <td class="strong">{r ? fmt.n(r.rate, 2) : '—'}{r && r.temp ? <span class="badge amber tag-temp">Temp</span> : null}</td>
-                <td class="txt muted">{!r ? 'No rate' : r.delta !== undefined ? `base ${fmt.rate(r.baseRate)}${r.temp ? ' (temp)' : ''} + ${fmt.rate(r.delta)}` : r.temp ? `temporary${r.masterRate !== null ? `, master ${fmt.rate(r.masterRate)}` : ''}` : r.date ? `from ${r.date}` : ''}</td>
+                <td class="txt muted">{!r ? 'No rate' : r.tpmTemp ? `temporary${r.masterRate !== null ? `, master ${fmt.rate(r.masterRate)}` : ''}` : r.delta !== undefined ? `base ${fmt.rate(r.baseRate)}${r.temp ? ' (temp)' : ''} + ${fmt.rate(r.delta)}` : r.temp ? `temporary${r.masterRate !== null ? `, master ${fmt.rate(r.masterRate)}` : ''}` : r.date ? `from ${r.date}` : ''}</td>
                 <td class="opt">{used[y.id] ? used[y.id].size : 0}</td>
               </tr>
             );
@@ -117,7 +117,7 @@ function YarnEditForm({ id, query }) {
     return start;
   });
   const current = existing && !isTpm(existing) ? yarnRate(existing, { ...idx, tempRates: {} }) : null;
-  const tempNow = existing && !isTpm(existing) ? tempRateOf(idx, existing.id) : null;
+  const tempNow = existing ? tempRateOf(idx, existing.id) : null;
   const [rate, setRate] = useState(current ? String(current.rate) : '');
   const [rateDate, setRateDate] = useState(today());
   const [busy, setBusy] = useState(false);
@@ -251,7 +251,12 @@ function YarnEditForm({ id, query }) {
         {tpm ? (
           <>
             <NumField label="Delta" hint="added to base rate, per kg" prefix="₹" value={y.tpm_delta} onInput={up('tpm_delta')} placeholder={String(DEFAULT_TPM_DELTA)} />
-            <Row label="Rate" value={<span class="strong">{baseRate ? `${fmt.rate(baseRate.rate + delta)} / kg` : '—'}</span>} valueSub={baseRate ? `base ${fmt.rate(baseRate.rate)} + delta ${fmt.rate(delta)}` : base ? 'base yarn has no rate yet' : 'choose the base yarn'} />
+            <Row label="Rate" value={<span class="strong">{baseRate ? `${fmt.rate(baseRate.rate + delta)} / kg` : '—'}</span>} valueSub={baseRate ? `base ${fmt.rate(baseRate.rate)}${baseRate.temp ? ' (temp)' : ''} + delta ${fmt.rate(delta)}` : base ? 'base yarn has no rate yet' : 'choose the base yarn'} />
+            {tempNow !== null ? (
+              <Row label="Temporary rate" sub="This device only, typed on this TPM yarn. Screens and files use it instead of base rate + delta." value={<span class="strong">{fmt.rate(tempNow)}/kg <span class="badge amber tag-temp">Temp</span></span>}>
+                <div class="temp-actions"><TextButton onClick={() => clearTempRate(existing.id)}>Reset</TextButton></div>
+              </Row>
+            ) : null}
           </>
         ) : (
           <>

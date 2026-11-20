@@ -2,15 +2,17 @@ import { useState } from 'preact/hooks';
 import { fmt, num, priceForPick } from '../calc.js';
 import {
   activeTempPrices, activeTempRates, clearAllTempPrices, clearAllTempRates, clearTempPrice, clearTempRate,
-  saveTempPriceToMaster, saveTempRateToMaster, setTempPrice, setTempRate, toast, todayIst, useStore,
+  getState, saveTempPriceToMaster, saveTempRateToMaster, saveTpmTempToMaster, setTempPrice, setTempRate, toast, todayIst, tpmSavePlan, useStore,
 } from '../store.js';
-import { Button, Icon, Row, Section, Sheet, TextButton } from '../ui.jsx';
+import { Button, Icon, NumField, Row, Section, Segmented, Sheet, TextButton } from '../ui.jsx';
 
 // Strip across the top of every screen while any temporary yarn rate is on, with the panel to reset them.
 export function TempRatesStrip() {
   const st = useStore();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  // TPM yarn whose temporary rate is being saved to master (the three choices), or null
+  const [tpmItem, setTpmItem] = useState(null);
   const list = Object.keys(st.tempRates).length ? activeTempRates() : [];
   const prices = Object.keys(st.tempPrices).length ? activeTempPrices() : [];
   if (!list.length && !prices.length) return null;
@@ -20,6 +22,10 @@ export function TempRatesStrip() {
   ].filter(Boolean).join(' · ');
 
   async function toMaster(item) {
+    if (item.tpm) {
+      setTpmItem(item);
+      return;
+    }
     const m = item.masterRate === null ? 'no rate' : `${fmt.rate(item.masterRate)}/kg`;
     if (!window.confirm(`Save ${fmt.rate(item.rate)}/kg as today's rate for ${item.yarn.name} in the yarn master? It is ${m} now. The temporary rate is removed afterwards.`)) return;
     setBusy(true);
@@ -49,7 +55,14 @@ export function TempRatesStrip() {
         <span class="temp-strip-go">View<Icon.chevron size={11} /></span>
       </button>
       <Sheet
-        open={open}
+        open={open && !!tpmItem}
+        onClose={() => { setTpmItem(null); setOpen(false); }}
+        title="Save to master"
+      >
+        {tpmItem ? <TpmSaveView key={tpmItem.yarn.id} item={tpmItem} onClose={() => setTpmItem(null)} /> : null}
+      </Sheet>
+      <Sheet
+        open={open && !tpmItem}
         onClose={() => setOpen(false)}
         title="Temporary rates"
         footer={<Button kind="secondary" onClick={() => { clearAllTempRates(); clearAllTempPrices(); setOpen(false); }}>Reset all</Button>}
@@ -76,7 +89,9 @@ export function TempRatesStrip() {
           {list.map((item) => (
             <Row
               label={item.yarn.name}
-              sub={item.masterRate === null ? 'No master rate' : `Master ${fmt.rate(item.masterRate)}/kg`}
+              sub={item.tpm
+                ? `TPM yarn · master ${item.masterBase === null ? `${item.base ? item.base.name : 'base'} has no rate` : `${fmt.rate(item.masterBase)} + ${fmt.rate(item.delta)} = ${fmt.rate(item.masterRate)}/kg`}`
+                : item.masterRate === null ? 'No master rate' : `Master ${fmt.rate(item.masterRate)}/kg`}
               value={<span class="strong">{fmt.rate(item.rate)}/kg</span>}
               valueSub="temporary"
             >
@@ -94,44 +109,104 @@ export function TempRatesStrip() {
 }
 
 // Per-yarn temporary rate input on the fabric page. Empty and leaving the field clears it.
-export function TempRateRow({ src }) {
+// yarn: a base yarn or a TPM yarn. temp: its temporary rate or null. placeholder: the rate it has without one.
+export function TempRateRow({ yarn, temp, placeholder, tpm }) {
   const [draft, setDraft] = useState(null);
-  const active = src.temp !== null && src.temp !== undefined;
-  const shown = draft !== null ? draft : active ? String(src.temp) : '';
-  const master = src.dates.length ? src.dates[0].rate : null;
+  const active = temp !== null && temp !== undefined;
+  const shown = draft !== null ? draft : active ? String(temp) : '';
+  const ph = placeholder === null || placeholder === undefined ? null : String(Math.round(placeholder * 100) / 100);
 
   function commit() {
     const v = (draft ?? '').trim();
     setDraft(null);
     if (v === '') {
-      if (active) clearTempRate(src.yarn.id);
+      if (active) clearTempRate(yarn.id);
       return;
     }
-    if (!setTempRate(src.yarn.id, v)) toast('Temporary rate must be a number above zero', 'error');
+    if (!setTempRate(yarn.id, v)) toast('Temporary rate must be a number above zero', 'error');
   }
 
   return (
-    <label class="row field">
+    <label class={`row field${tpm ? ' tpm-temp' : ''}`}>
       <span class="row-label">
-        Temporary rate <span class="hint">{src.yarn.name}</span>
+        {tpm ? 'Temporary TPM rate' : 'Temporary rate'} <span class="hint">{yarn.name}{tpm && !active ? ' · base + delta now' : ''}{tpm && active ? ' · overrides base + delta' : ''}</span>
       </span>
       <span class="field-input">
         <span class="affix">₹</span>
         <input
           class="num"
-          size={Math.max(3, shown.length, String(master ?? '').length)}
+          size={Math.max(3, shown.length, String(ph ?? '').length)}
           inputmode="decimal"
           value={shown}
-          placeholder={master === null ? 'per kg' : String(master)}
+          placeholder={ph === null ? 'per kg' : ph}
           onInput={(e) => setDraft(e.currentTarget.value)}
           onBlur={commit}
           onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-          aria-label={`Temporary rate for ${src.yarn.name}`}
+          aria-label={`Temporary rate for ${yarn.name}`}
         />
         <span class="affix">/kg</span>
-        {active ? <TextButton onClick={() => { setDraft(null); clearTempRate(src.yarn.id); }}>Reset</TextButton> : null}
+        {active ? <TextButton onClick={() => { setDraft(null); clearTempRate(yarn.id); }}>Reset</TextButton> : null}
       </span>
     </label>
+  );
+}
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+// Save to master for a temporary rate typed on a TPM yarn: change the delta, the base rate, or both.
+// This view is the confirm step: it says what changes and how many yarns and fabrics move.
+export function TpmSaveView({ item, onClose }) {
+  const [mode, setMode] = useState('delta');
+  const [baseDraft, setBaseDraft] = useState(item.masterBase === null ? '' : String(item.masterBase));
+  const [busy, setBusy] = useState(false);
+  const plan = tpmSavePlan(item.yarn.id, mode, baseDraft);
+  const baseName = item.base ? item.base.name : 'the base yarn';
+  const baseTemp = item.base ? getState().tempRates[item.base.id] ?? null : null;
+  const im = plan.impact;
+  const reach = !plan.ok || !im ? '' : mode === 'delta'
+    ? `Only ${item.yarn.name} changes, in ${plural(im.fabrics, 'fabric', 'fabrics')}. ${baseName} and its other TPM yarns stay as they are.`
+    : `${baseName} gets a new rate dated ${fmt.date(todayIst())}. That moves ${plural(im.yarns, 'yarn', 'yarns')} (${baseName} and ${plural(im.tpmYarns, 'TPM yarn', 'TPM yarns')} made from it) and ${plural(im.fabrics, 'fabric', 'fabrics')}, for everyone.`;
+  const tempNote = baseTemp === null ? '' : mode === 'delta'
+    ? ` ${baseName} still has a temporary rate of ${fmt.rate(baseTemp)}/kg on this device, so ${item.yarn.name} will show ${fmt.rate(baseTemp + (plan.newDelta ?? 0))}/kg here until you reset it.`
+    : ` The temporary rate on ${baseName} (${fmt.rate(baseTemp)}/kg) is removed too.`;
+
+  async function save() {
+    setBusy(true);
+    try {
+      await saveTpmTempToMaster(item.yarn.id, mode, baseDraft);
+      onClose();
+    } catch (e) {
+      toast(e.message || 'Could not save the rate', 'error');
+    }
+    setBusy(false);
+  }
+
+  return (
+    <>
+      <Section header={item.yarn.name}>
+        <Row label="Temporary rate" value={<span class="strong">{fmt.rate(item.rate)}/kg</span>} valueSub="this device" />
+        <Row label="Master now" value={item.masterBase === null ? 'No base rate' : `${fmt.rate(item.masterBase)} + ${fmt.rate(item.delta)} = ${fmt.rate(item.masterRate)}/kg`} valueSub={`${baseName} + delta`} />
+      </Section>
+      <Section header="What to change in the master" footer={mode === 'delta' ? 'The base rate stays. The delta becomes the temporary rate minus the base rate.' : mode === 'base' ? 'The delta stays. The base rate becomes the temporary rate minus the delta.' : 'Type the new base rate. The delta is what is left of the temporary rate.'}>
+        <div class="row"><Segmented label="What to change" options={[{ value: 'delta', label: 'Delta only' }, { value: 'base', label: 'Base only' }, { value: 'both', label: 'Both' }]} value={mode} onChange={setMode} /></div>
+        {mode === 'both' ? <NumField label={`New rate · ${baseName}`} hint="per kg" prefix="₹" value={baseDraft} onInput={setBaseDraft} /> : null}
+      </Section>
+      <Section header="After saving" footer={plan.ok ? `${reach}${tempNote} The temporary rate on ${item.yarn.name} is removed afterwards.` : null}>
+        {plan.ok ? (
+          <>
+            <Row label={`${baseName} rate`} value={<span class={plan.newBase !== plan.oldBase ? 'strong' : ''}>{fmt.rate(plan.newBase)}/kg</span>} valueSub={plan.newBase !== plan.oldBase ? `was ${plan.oldBase === null ? 'not set' : fmt.rate(plan.oldBase)}` : 'no change'} />
+            <Row label="Delta" value={<span class={plan.newDelta !== plan.oldDelta ? 'strong' : ''}>{fmt.rate(plan.newDelta)}/kg</span>} valueSub={plan.newDelta !== plan.oldDelta ? `was ${fmt.rate(plan.oldDelta)}` : 'no change'} />
+            <Row label={`${item.yarn.name} rate`} value={<span class="strong">{fmt.rate(plan.newBase + plan.newDelta)}/kg</span>} />
+          </>
+        ) : (
+          <div class="notice tpm-error">{plan.error}</div>
+        )}
+      </Section>
+      <div class="row temp-price-actions">
+        <Button kind="secondary" onClick={onClose} disabled={busy}>Back</Button>
+        <Button onClick={save} busy={busy} disabled={busy || !plan.ok}>Save to master</Button>
+      </div>
+    </>
   );
 }
 

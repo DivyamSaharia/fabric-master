@@ -498,7 +498,11 @@ export function FabricDetail({ id }) {
   const calcNow = fabricCalc(fabric, idx);
   const sources = rateSources(calcNow, idx);
   const livePicks = Object.fromEntries(Object.entries(picks).filter(([k, v]) => v && sources.some((s) => s.yarn.id === k && s.temp === null && s.dates.length && s.dates[0].date !== v)));
-  const tempSources = sources.filter((x) => x.temp !== null);
+  // temporary rates that set this fabric's cost: base yarns, and TPM yarns with their own (which win over the base's)
+  const tempSources = [
+    ...sources.filter((x) => x.temp !== null && (x.usedBy.some((y) => y.id === x.yarn.id) || x.tpm.some((t) => t.temp === null))),
+    ...sources.flatMap((x) => x.tpm.filter((t) => t.temp !== null)),
+  ];
   const older = Object.keys(livePicks).length > 0;
   const calc = older ? fabricCalc(fabric, idx, null, livePicks) : calcNow;
   // Same page without this fabric's temporary sale rate, to show what it changes.
@@ -691,7 +695,7 @@ export function FabricDetail({ id }) {
       />
 
       {sources.length ? (
-        <Section header="Yarn rates" footer="Pick an older rate to see cost, realisation and profit at that rate; only this page changes. Or type a temporary rate: it applies to every fabric using the yarn, on this device only, until you reset it. Nothing is saved to the yarn master. A TPM yarn takes its base yarn's rate plus its delta.">
+        <Section header="Yarn rates" footer="Pick an older rate to see cost, realisation and profit at that rate; only this page changes. Or type a temporary rate: it applies to every fabric using the yarn, on this device only, until you reset it. Nothing is saved to the yarn master until you use Save to master in the Temporary rates panel. A TPM yarn takes its base yarn's rate plus its delta, unless you type a temporary rate on the TPM yarn itself; that one wins over the base yarn's.">
           {sources.map((src) => (
             <>
             <label class="row field">
@@ -710,7 +714,11 @@ export function FabricDetail({ id }) {
                 <span class="row-value"><span class="row-sub">No rate yet</span></span>
               )}
             </label>
-            <TempRateRow src={src} />
+            <TempRateRow yarn={src.yarn} temp={src.temp} placeholder={src.dates.length ? src.dates[0].rate : null} />
+            {src.tpm.map((t) => {
+              const b = src.temp ?? (src.dates.length ? src.dates[0].rate : null);
+              return <TempRateRow tpm yarn={t.yarn} temp={t.temp} placeholder={b === null ? null : b + t.delta} />;
+            })}
             </>
           ))}
         </Section>
