@@ -17,6 +17,14 @@ export function num(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+// Weft pick share of each weft line = parts ÷ sum of parts. A blank share counts as 1; 0 stays 0.
+// One rule for the fabric page, exports and the Planner (1.26.2).
+export function weftShares(weftLines) {
+  const partsOf = (l) => num(l.parts) ?? 1;
+  const total = weftLines.reduce((s, l) => s + partsOf(l), 0) || 1;
+  return (l) => partsOf(l) / total;
+}
+
 const pct = (v) => (num(v) ?? 0) / 100;
 
 // tempRates: { yarnId: rate } set on this device only (never in the Sheet); see yarnRate.
@@ -208,11 +216,11 @@ export function fabricCalc(fabric, idx, asOf, picks) {
     return { line, yarn, denier, ends, gpm, kgPer100: gpm === null ? null : gpm / 10, ...lineCost(yarn, gpm) };
   });
 
-  const totalParts = weftLines.reduce((s, l) => s + (num(l.parts) ?? 1), 0) || 1;
+  const shareOf = weftShares(weftLines);
   const weft = weftLines.map((line) => {
     const yarn = idx.yarnsById[line.yarn_id] || null;
     const denier = yarnDenier(yarn, idx);
-    const share = (num(line.parts) ?? 1) / totalParts;
+    const share = shareOf(line);
     const gpm = denier && ppi && rs ? (ppi * rs * share * denier / 9000) * (1 + sf) : null;
     return { line, yarn, denier, share, gpm, kgPer100: gpm === null ? null : gpm / 10, ...lineCost(yarn, gpm) };
   });

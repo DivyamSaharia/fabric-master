@@ -8,7 +8,7 @@
 //     receipts: [{ yarnId, kg }], settings: { key: value }, soldAs: { 'fabricId:groupId': 'rfd' } }
 // settings keys: rpm:f:g, eff:f:g, tfoRpm:y:t, tfoEff:t, avail:t. Only values that differ from master are kept,
 // so a setting nobody edited follows later master changes.
-import { baseOf, fabricCalc, fabricLabel, groupPanna, isTpm, num, stripRfd, stripRs, tfoOutput, truthy, yarnDenier } from './calc.js';
+import { baseOf, fabricCalc, fabricLabel, groupPanna, isTpm, num, stripRfd, stripRs, tfoOutput, truthy, weftShares, yarnDenier } from './calc.js';
 
 const IN_PER_M = 39.37;
 const MIN_PER_DAY = 1440;
@@ -139,7 +139,7 @@ export function resetAll(plan) {
 const shortage = (v) => (num(v) ?? DEFAULT_SHORTAGE) / 100;
 
 // g per metre of loom output for every yarn line of a quality (ends are per panna; weft share = parts ÷ sum,
-// a blank parts takes the average of the others, one weft = all of the pick). Shortage % from the fabric, blank = 10.
+// same rule as the fabric page via weftShares: a blank share counts as 1, one weft = all of the pick). Shortage % from the fabric, blank = 10.
 export function qualityLines(q, idx) {
   const f = q.fabric;
   const ppi = num(f.ppi);
@@ -148,13 +148,7 @@ export function qualityLines(q, idx) {
   const sf = shortage(f.weft_shortage_pct);
   const lines = idx.linesByFabric[f.id] || [];
   const wefts = lines.filter((l) => l.side === 'weft');
-  const given = wefts.map((l) => num(l.parts)).filter((p) => p !== null && p > 0);
-  const avg = given.length ? given.reduce((s, p) => s + p, 0) / given.length : 1;
-  const partsOf = (l) => {
-    const p = num(l.parts);
-    return p !== null && p > 0 ? p : avg;
-  };
-  const totalParts = wefts.reduce((s, l) => s + partsOf(l), 0) || 1;
+  const shareOf = weftShares(wefts);
   return lines.map((l) => {
     const yarn = idx.yarnsById[l.yarn_id] || null;
     const denier = yarnDenier(yarn, idx);
@@ -164,7 +158,7 @@ export function qualityLines(q, idx) {
         const ends = num(l.ends);
         gpm = ends ? ((ends * denier) / 9000) * (1 + sw) : null;
       } else if (ppi && rs) {
-        gpm = ((ppi * (partsOf(l) / totalParts) * rs * denier) / 9000) * (1 + sf);
+        gpm = ((ppi * shareOf(l) * rs * denier) / 9000) * (1 + sf);
       }
     }
     return { line: l, side: l.side, yarn, denier, gpm, tpm: isTpm(yarn), noCount: !!yarn && !denier };

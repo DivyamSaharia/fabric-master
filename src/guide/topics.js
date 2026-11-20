@@ -105,7 +105,7 @@ export const TOPICS = [
       'For the same quality at a new RS, open it and tap **Duplicate for new RS**.',
       'Changing the price sets the sale date to today.',
       '[[Shortage]] starts at 10% on warp and weft unless you change it.',
-      'Pick share splits picks between weft yarns, for example 1 and 1 for alternate picks. One weft yarn takes all picks.',
+      'Pick share splits picks between weft yarns, for example 1 and 1 for alternate picks. One weft yarn takes all picks. A blank share counts as 1, on the fabric page and in the Planner.',
       'VATAV is the discount off the selling price. Leave it blank if there is none.',
       'For RFD the selling price is per RFD metre.',
       'RFD shortage (shrinkage) grosses up yarn cost and processing.',
@@ -316,6 +316,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.26.2', 'The Planner now counts a blank weft pick share as 1, the same as the fabric page, so both show the same yarn kg and cost.'],
   ['1.26.1', '280 cm looms now use the fabric\'s double panna RPM (the 280 cm RPM) also when a wide fabric runs single panna, on the fabric page, Production centre and Detailed share. Where that RPM is blank, the 280 cm figures ask for it.'],
   ['1.26.0', 'New look across the app. The fabric page is shorter: jump buttons under the title, and Construction, Beam length and History fold away. The Planner shows four main figures first, with All figures for the rest. Boxes you can type in now look like boxes, and deleting asks in the app.'],
   ['1.25.0', 'Temporary rate on a TPM yarn: type it under the base yarn, and Save to master can change the delta, the base rate or both. Share a fabric as Basic or Detailed: the Detailed PDF and Excel carry every figure and how it is worked out.'],

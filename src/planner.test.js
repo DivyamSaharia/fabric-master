@@ -157,13 +157,38 @@ describe('yarn', () => {
     expect(lx.denier).toBe(60);
   });
 
-  it('blank weft parts take the average of the others; shortage blank = 10%', () => {
+  it('blank weft parts count as 1, as on the fabric page; shortage blank = 10%', () => {
     const lines = qualityLines(q('cotton'), idx);
     const vsf = lines.find((l) => l.line.id === 'l12');
     const sized = lines.find((l) => l.line.id === 'l13');
-    // parts blank → 2 (average of the one given), so each weft has half the pick
-    expect(vsf.gpm / (5315 / 30)).toBeCloseTo(sized.gpm / 60, 8);
-    expect(sized.gpm).toBeCloseTo(((60 * 0.5 * 54 * 60) / 9000) * 1.1, 8);
+    // parts blank → 1 against 2, so the blank weft has 1/3 of the pick and the other 2/3
+    expect(2 * vsf.gpm / (5315 / 30)).toBeCloseTo(sized.gpm / 60, 8);
+    expect(sized.gpm).toBeCloseTo(((60 * (2 / 3) * 54 * 60) / 9000) * 1.1, 8);
+  });
+
+  it('weft g/m match the fabric page for blank, 0 and given shares (1.26.2)', () => {
+    const extra = [
+      { id: 'z1', fabric_id: 'nc74', side: 'weft', yarn_id: 'vsf30', parts: 0, sort: 3 },
+      { id: 'z2', fabric_id: 'gajji', side: 'weft', yarn_id: 'y1650', parts: '', sort: 3 },
+    ];
+    // shortage set on every fabric so only the pick share is compared (a blank shortage is a separate rule)
+    const fabrics = tables().Fabrics.map((f) => ({ ...f, warp_shortage_pct: f.warp_shortage_pct ?? 10, weft_shortage_pct: f.weft_shortage_pct ?? 10 }));
+    const t = buildIndex({ ...tables(), Fabrics: fabrics, FabricYarns: [...tables().FabricYarns, ...extra] });
+    const qi = qualityIndex(t);
+    for (const id of ['cotton', 'nc74', 'gajji', 'nc53']) {
+      const f = t.fabricsById[id];
+      const page = fabricCalc(f, t).weft;
+      const plan = qualityLines(qi.byMember[id], t).filter((l) => l.side === 'weft');
+      expect(plan.length).toBe(page.length);
+      page.forEach((w) => {
+        const p = plan.find((l) => l.line.id === w.line.id);
+        if (w.gpm === null) expect(p.gpm).toBeNull();
+        else expect(p.gpm).toBeCloseTo(w.gpm, 10);
+      });
+    }
+    // a 0 share stays 0 in both
+    const z1 = qualityLines(qi.byMember.nc74, t).find((l) => l.line.id === 'z1');
+    expect(z1.gpm).toBe(0);
   });
 
   it('a yarn with no usable count is listed and left out of kg', () => {
