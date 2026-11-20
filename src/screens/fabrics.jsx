@@ -3,7 +3,7 @@ import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, loomR
 import { beamRowsOf, beamSlots, groupLabel, slotLabel } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
-  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, saveFabric, savedFilters, setAssignments, setCover, clearTempPrice, clearTempRate, toast, useStore,
+  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, retry, saveFabric, savedFilters, setAssignments, setCover, clearTempPrice, clearTempRate, toast, useStore,
 } from '../store.js';
 import { back, go, replace } from '../router.js';
 import { loadListState, saveListState, savedScroll, saveScroll } from '../listState.js';
@@ -318,10 +318,10 @@ export function FabricList({ query }) {
           <Chip on={filters.classes.includes('TPM × TPM')} onClick={() => setFilters({ ...filters, classes: toggleIn(filters.classes, 'TPM × TPM') })}>TPM × TPM</Chip>
         </div>
       </div>
-      <div class="list-meta">
+      {st.status.error && !Object.keys(idx.fabricsById).length ? null : <div class="list-meta">
         <span>{rows.length} {rows.length === 1 ? 'fabric' : 'fabrics'} · {unit ? unit.name : 'all units'}</span>
         <span>{wide ? 'Click a heading to sort · press / to search' : filters.sort === 'spindle' ? 'Profit / pick per spindle · TPM fabrics' : loomSortWidth(filters.sort) !== null ? `₹ per loom per day · ${fmt.int(loomSortWidth(filters.sort))} cm looms` : '₹ / pick with VATAV'}</span>
-      </div>
+      </div>}
       {rows.length ? (
         wide ? (
           <FabricTable rows={rows} idx={idx} unit={unit} />
@@ -332,6 +332,8 @@ export function FabricList({ query }) {
         )
       ) : st.status.loading ? (
         <Empty title="Loading…" />
+      ) : st.status.error && !Object.keys(idx.fabricsById).length ? (
+        <Empty title="No copy on this device yet" text="Open the app once with a signal. It then keeps a copy on this device for times with no connection." />
       ) : (
         <Empty
           title={Object.keys(idx.fabricsById).length ? 'No fabrics match' : 'No fabrics yet'}
@@ -344,13 +346,22 @@ export function FabricList({ query }) {
   );
 }
 
+// "20 Nov, 4:50 pm"
+const shortWhen = (iso) => {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? '' : d.toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+};
+
 export function StatusBanner() {
   const st = useStore();
   if (st.status.error) {
+    const hasCopy = !!st.status.lastSync && Object.keys(getIndex().fabricsById).length > 0;
     return (
       <div class="banner error">
-        <span>{st.status.error}{st.status.lastSync ? ' Showing the last saved copy.' : ''}</span>
-        <button type="button" onClick={() => refresh()}>Retry</button>
+        <span>{st.status.error}{hasCopy ? ` Showing the copy saved on this device, last checked with the Sheet ${shortWhen(st.status.lastSync)}.` : ''}</span>
+        <button type="button" onClick={() => retry()} disabled={st.retrying} aria-busy={st.retrying ? 'true' : undefined}>
+          {st.retrying ? <><span class="spinner" aria-hidden="true" /> Trying…</> : 'Retry'}
+        </button>
       </div>
     );
   }

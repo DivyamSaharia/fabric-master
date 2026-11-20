@@ -48,7 +48,7 @@ describe('people with access', () => {
   it('owner sees who has access and can add a person', async () => {
     await openAs(ownerKey, '#/settings');
     await screen.findByText('People with access');
-    expect(screen.getByText('Divyam (you)')).toBeTruthy();
+    await screen.findByText('Divyam (you)');
     await screen.findByText('Ishaan');
     fireEvent.click(screen.getByText('Give someone access'));
     fireEvent.input(screen.getByLabelText('Name'), { target: { value: 'Aman' } });
@@ -78,7 +78,8 @@ describe('people with access', () => {
     const tmp = gas.post({ action: 'addPerson', key: ownerKey, name: 'Temp' }).person;
     await openAs(tmp.key, '#/fabrics');
     await screen.findByText('Georgette 60 (RFD)');
-    expect(localStorage.getItem('fm.cache.v1')).toBeTruthy();
+    // jsdom has no IndexedDB, so the copy falls back to localStorage here
+    await waitFor(() => expect(localStorage.getItem('fm.cache.v1')).toBeTruthy());
     gas.post({ action: 'removePerson', key: ownerKey, id: tmp.id });
     cleanup();
     await openAs(tmp.key, '#/fabrics');

@@ -8,6 +8,10 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
+ * Backend v14: faster sync. A data version (script property DATA_VERSION) moves on every save and on every edit made by
+ *   hand in a data tab (simple onEdit trigger). The app asks for it with the light "version" action and loads the tables
+ *   only when it has moved. Loads read all tabs in one Sheets API call (advanced service "Sheets", falls back to one read
+ *   per tab) and no longer wait for the save lock. Each call's action and time go to PERF_LOG; run perfReport to see them.
  * Backend v13: names confirmed in the planning-sheet photo import are kept in their own spreadsheet ("Fabric Master – Sheet Names", made on the first save,
  *   next to this one in Drive), not in this workbook. Actions sheetNames and saveSheetNames. Not in the change log.
  * Backend v12: TFO planner plans (TfoBalancePlans, TfoBalanceLines); plan_date is date only. Logged as type "TFO plan".
@@ -165,6 +169,19 @@ var OWNER_ONLY = { people: 1, addPerson: 1, renamePerson: 1, removePerson: 1 };
 
 function handle_(p) {
   REQ_ = null;
+  var t0 = Date.now();
+  var ok = false;
+  try {
+    LAST_OK_ = false;
+    var out = route_(p);
+    ok = LAST_OK_;
+    return out;
+  } finally {
+    perf_(p && p.action, Date.now() - t0, ok);
+  }
+}
+
+function route_(p) {
   try {
     var user = userForKey_(p.key);
     if (!user) {
@@ -175,26 +192,37 @@ function handle_(p) {
     switch (p.action) {
       case 'ping':
         return json_(Object.assign({ ok: true }, meta_()));
-      case 'bootstrap':
+      case 'version':
+        // the light check: no Sheet access at all, only the data version
+        return json_({ ok: true, version: version_() });
+      case 'bootstrap': {
         ensureReady_();
-        return json_({ ok: true, tables: withLock_(readAll_), meta: meta_() });
-      case 'batch':
+        var loaded = readFast_();
+        return json_({ ok: true, tables: loaded.tables, version: loaded.version, meta: meta_() });
+      }
+      case 'batch': {
         ensureReady_();
-        return json_({
-          ok: true,
-          ops: withLock_(function () {
-            var applied = batch_(p.ops || []);
-            return applied.concat(finish_());
-          })
+        var w = writing_(function () {
+          var applied = batch_(p.ops || []);
+          return applied.concat(finish_());
         });
-      case 'uploadPhoto':
+        return json_({ ok: true, ops: w.result, version: w.version, prev: w.prev });
+      }
+      case 'uploadPhoto': {
         ensureReady_();
-        return json_({ ok: true, row: uploadPhoto_(p) });
+        // no prev: the save also stamps the fabric's "last edited", which is not sent back, so the next check loads
+        var up = uploadPhoto_(p);
+        return json_({ ok: true, row: up.result, version: up.version });
+      }
       case 'photo':
         return json_({ ok: true, dataUrl: photo_(p.id, p.size) });
-      case 'deletePhoto':
-        deletePhoto_(p.id);
-        return json_({ ok: true });
+      case 'deletePhoto': {
+        var dp = deletePhoto_(p.id);
+        return json_(dp ? { ok: true, version: dp.version } : { ok: true });
+      }
+      case 'perf':
+        if (REQ_.user.role !== 'owner') return json_({ ok: false, error: 'Only the owner can see this.' });
+        return json_({ ok: true, lines: perfLines_() });
       case 'saveExport':
         return json_({ ok: true, url: saveExport_(p) });
       case 'sheetNames':
@@ -221,7 +249,10 @@ function handle_(p) {
   }
 }
 
+var LAST_OK_ = false;
+
 function json_(obj) {
+  LAST_OK_ = !!(obj && obj.ok);
   return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(ContentService.MimeType.JSON);
 }
 
@@ -418,6 +449,213 @@ function readAll_() {
   var t = {};
   Object.keys(TABLES).forEach(function (n) { t[n] = readTable_(n, true); });
   return t;
+}
+
+// ---------- data version and fast loads ----------
+// DATA_VERSION changes whenever the tables may have changed: around every save (a value starting with "w" while a
+// save is being written) and after every edit made by hand in a data tab. The app keeps the version its copy was
+// loaded at, asks for it with the light "version" call, and loads all tabs only when it differs.
+
+var TIMESTAMP = { updated_at: 1, created_at: 1 };
+
+function newVersion_() {
+  return Date.now().toString(36) + Utilities.getUuid().replace(/-/g, '').slice(0, 6);
+}
+
+function version_() {
+  var props = PropertiesService.getScriptProperties();
+  var v = props.getProperty('DATA_VERSION');
+  if (!v) {
+    v = newVersion_();
+    props.setProperty('DATA_VERSION', v);
+  }
+  return v;
+}
+
+function setVersion_(v) {
+  PropertiesService.getScriptProperties().setProperty('DATA_VERSION', v);
+  return v;
+}
+
+// Runs a save under the lock. The version is marked "being written" first and moves on afterwards, even when the
+// save fails part-way, so a load that overlaps a save can always tell. prev is the version before the save: a device
+// whose copy was at prev knows its copy plus this save's rows is now complete.
+function writing_(fn) {
+  return withLock_(function () {
+    var props = PropertiesService.getScriptProperties();
+    var mark = props.getProperty('HAND_EDIT') || '';
+    var prev = version_();
+    if (prev.charAt(0) === 'w') prev = ''; // an earlier save was cut off; nobody's copy can claim to be complete
+    setVersion_('w' + newVersion_());
+    var version;
+    try {
+      var result = fn();
+      version = setVersion_(newVersion_());
+      // a hand edit landed while this save was running: the saving device must load in full
+      if ((props.getProperty('HAND_EDIT') || '') !== mark) prev = '';
+      return { result: result, version: version, prev: prev };
+    } finally {
+      if (!version) setVersion_(newVersion_());
+    }
+  });
+}
+
+// Simple trigger: a row typed or pasted into a data tab by hand moves the version, so every device loads it.
+// HAND_EDIT is always moved too, so a save running at that moment tells its device to load in full (writing_).
+// While a save is being written its "w" marker is left alone; the save moves the version when it ends.
+// (Deleting or sorting rows by hand does not fire it; the app also reloads in full every 30 minutes for that.)
+function onEdit(e) {
+  try {
+    var name = e && e.range ? e.range.getSheet().getName() : '';
+    if (name && !TABLES[name]) return;
+    PropertiesService.getScriptProperties().setProperty('HAND_EDIT', newVersion_());
+    if (version_().charAt(0) !== 'w') setVersion_(newVersion_());
+  } catch (err) {
+    /* a missed bump only delays the next load until the 30-minute full reload */
+  }
+}
+
+// Spreadsheet serial number (days since 30 Dec 1899, local time) to yyyy-mm-dd.
+function serialDate_(n) {
+  var d = new Date(Date.UTC(1899, 11, 30) + Math.floor(n + 1e-7) * 86400000);
+  return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2);
+}
+
+// Spreadsheet serial number to an ISO timestamp, as a Date cell read through SpreadsheetApp would give.
+function serialIso_(n) {
+  var local = Math.round((n - 25569) * 86400000);
+  var z = Utilities.formatDate(new Date(local), ss_().getSpreadsheetTimeZone(), 'Z'); // e.g. +0530
+  var m = String(z).match(/^([+-])(\d\d)(\d\d)$/);
+  var off = m ? (m[1] === '-' ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3])) * 60000 : 0;
+  return new Date(local - off).toISOString();
+}
+
+// One cell as the app expects it. api: the value came from the Sheets API (dates as serial numbers, blanks missing).
+function cellIn_(h, v, api) {
+  if (v === undefined || v === null) v = '';
+  if (api && typeof v === 'number') {
+    if (DATE_ONLY[h]) return serialDate_(v);
+    if (TIMESTAMP[h]) return serialIso_(v);
+  }
+  return fromCell_(h, v);
+}
+
+// Rows of one tab from its values (header row first). Same rules as readTable_: blank rows skipped, rows without an
+// id left out (needIds says the tab has some, so they get one under the lock).
+function rowsFrom_(values, api) {
+  var res = { rows: [], needIds: false };
+  if (!values || values.length < 2) return res;
+  var head = values[0].map(function (h) { return h === undefined || h === null ? '' : String(h); });
+  var idCol = head.indexOf('id');
+  for (var r = 1; r < values.length; r++) {
+    var row = values[r] || [];
+    var hasData = false;
+    for (var k = 0; k < row.length; k++) if (row[k] !== '' && row[k] !== null && row[k] !== undefined) hasData = true;
+    if (!hasData) continue;
+    var obj = {};
+    for (var c = 0; c < head.length; c++) if (head[c]) obj[head[c]] = cellIn_(head[c], row[c], api);
+    if (obj.id !== '' && obj.id !== undefined && obj.id !== null) {
+      obj.id = String(obj.id);
+      res.rows.push(obj);
+    } else if (idCol >= 0) res.needIds = true;
+  }
+  return res;
+}
+
+// Every data tab: one Sheets API call when the advanced service is on, otherwise one read per tab.
+function readTablesOnce_() {
+  var names = Object.keys(TABLES);
+  var lists;
+  var api = typeof Sheets !== 'undefined' && Sheets && Sheets.Spreadsheets && Sheets.Spreadsheets.Values;
+  if (api) {
+    try {
+      var res = Sheets.Spreadsheets.Values.batchGet(ss_().getId(), {
+        ranges: names.map(function (n) { return "'" + n.replace(/'/g, "''") + "'"; }),
+        valueRenderOption: 'UNFORMATTED_VALUE',
+        dateTimeRenderOption: 'SERIAL_NUMBER'
+      });
+      var vr = (res && res.valueRanges) || [];
+      lists = names.map(function (n, i) { return (vr[i] && vr[i].values) || []; });
+    } catch (e) {
+      console.error('batchGet failed, reading tab by tab: ' + (e && e.message));
+      api = false; // e.g. the service is off or not authorised: the slower path still works
+    }
+  }
+  if (!api) {
+    lists = names.map(function (n) {
+      var sh = sheet_(n);
+      return sh.getLastRow() < 1 ? [] : sh.getDataRange().getValues();
+    });
+  }
+  var out = { tables: {}, needIds: [] };
+  names.forEach(function (n, i) {
+    var t = rowsFrom_(lists[i], !!api);
+    out.tables[n] = t.rows;
+    if (t.needIds) out.needIds.push(n);
+  });
+  return out;
+}
+
+// A load that does not wait for saves. Reads the version before and after; if it moved (or a save was being written),
+// reads again. After three tries, or when pasted rows need ids, it reads under the lock.
+function readFast_() {
+  for (var i = 0; i < 3; i++) {
+    var v1 = version_();
+    if (v1.charAt(0) !== 'w') {
+      var t = readTablesOnce_();
+      if (version_() === v1) {
+        if (!t.needIds.length) return { tables: t.tables, version: v1 };
+        break;
+      }
+    }
+    Utilities.sleep(200 * (i + 1));
+  }
+  return withLock_(function () {
+    var v = version_();
+    if (v.charAt(0) === 'w') v = setVersion_(newVersion_()); // left over from a save that was cut off
+    var t = readTablesOnce_();
+    if (t.needIds.length) {
+      t.needIds.forEach(function (n) { t.tables[n] = readTable_(n, true); });
+      v = setVersion_(newVersion_()); // ids were written: every other device must load them
+    }
+    return { tables: t.tables, version: v };
+  });
+}
+
+// ---------- timing log ----------
+// The last 200 calls as "time|action|ms|ok" in the script property PERF_LOG. Run perfReport in the editor to see
+// count, median and slowest per action.
+
+function perf_(action, ms, ok) {
+  try {
+    console.log(JSON.stringify({ action: String(action || ''), ms: ms, ok: ok }));
+    var props = PropertiesService.getScriptProperties();
+    var lines = (props.getProperty('PERF_LOG') || '').split('\n').filter(String);
+    lines.push(new Date().toISOString().slice(0, 19) + '|' + String(action || '').slice(0, 20) + '|' + ms + '|' + (ok ? 1 : 0));
+    while (lines.length > 200 || lines.join('\n').length > 8500) lines.shift();
+    props.setProperty('PERF_LOG', lines.join('\n'));
+  } catch (e) {
+    /* timing must never break a call */
+  }
+}
+
+function perfLines_() {
+  return (PropertiesService.getScriptProperties().getProperty('PERF_LOG') || '').split('\n').filter(String);
+}
+
+function perfReport() {
+  var by = {};
+  perfLines_().forEach(function (l) {
+    var p = l.split('|');
+    (by[p[1]] = by[p[1]] || []).push(Number(p[2]));
+  });
+  var out = Object.keys(by).sort().map(function (a) {
+    var x = by[a].slice().sort(function (m, n) { return m - n; });
+    var med = x.length % 2 ? x[(x.length - 1) / 2] : (x[x.length / 2 - 1] + x[x.length / 2]) / 2;
+    return a + ': ' + x.length + ' calls, median ' + Math.round(med) + ' ms, 90th ' + x[Math.min(x.length - 1, Math.floor(x.length * 0.9))] + ' ms, slowest ' + x[x.length - 1] + ' ms';
+  });
+  Logger.log(out.join('\n') || 'No calls logged yet');
+  return out;
 }
 
 function idRows_(sh, head) {
@@ -813,7 +1051,7 @@ function uploadPhoto_(p) {
   var full = folder.createFile(decode_(p.image, photo.fabric_id + '_' + photo.id + '.jpg'));
   var thumb = folder.createFile(decode_(p.thumb, photo.fabric_id + '_' + photo.id + '_thumb.jpg'));
   var row = Object.assign({}, photo, { file_id: full.getId(), thumb_file_id: thumb.getId() });
-  return withLock_(function () {
+  return writing_(function () {
     var saved = upsert_('Photos', [row])[0];
     finish_();
     return saved;
@@ -836,7 +1074,7 @@ function photo_(id, size) {
 
 function deletePhoto_(id) {
   var row = photoRow_(id);
-  if (!row) return;
+  if (!row) return null;
   [row.file_id, row.thumb_file_id].forEach(function (fid) {
     if (!fid) return;
     try {
@@ -845,7 +1083,7 @@ function deletePhoto_(id) {
       /* already gone */
     }
   });
-  withLock_(function () {
+  return writing_(function () {
     delete_('Photos', [row.id]);
     finish_();
   });

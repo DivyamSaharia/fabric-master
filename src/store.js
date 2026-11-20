@@ -3,12 +3,15 @@
 import { useEffect, useState } from 'preact/hooks';
 import { baseFabric, buildIndex, fabricLabel, num, stripRs, truthy } from './calc.js';
 import { applyOps, demoBackend, sheetBackend } from './api.js';
-import { local } from './storage.js';
+import { keepStorage, local, savedCopy } from './storage.js';
 import { emptyTables, newId, today } from './schema.js';
 import { compressImage } from './photos.js';
 
 const SETTINGS_KEY = 'fm.settings.v1';
-const CACHE_KEY = 'fm.cache.v1';
+// when this device last confirmed its copy is up to date (a light check, no full load)
+const CHECKED_KEY = 'fm.cache.checked.v1';
+// Edits made by hand that the Sheet's edit trigger can't see (deleting or sorting rows) show up within this time.
+const FULL_EVERY_MS = 30 * 60000;
 const FILTERS_KEY = 'fm.savedFilters.v1';
 const TEMP_RATES_KEY = 'fm.tempRates.v1';
 const TEMP_PRICES_KEY = 'fm.tempPrices.v1';
@@ -35,6 +38,10 @@ let state = {
   tempPrices: readTempRates(TEMP_PRICES_KEY),
   status: { loading: true, error: null, lastSync: null },
   syncing: false,
+  // Retry pressed and still trying
+  retrying: false,
+  // the copy kept on this device: { ok, at, where, error }
+  copy: null,
   toast: null,
 };
 let backend = demoBackend();
@@ -42,6 +49,12 @@ let backend = demoBackend();
 // can't put back the old rows when it lands after the save.
 let mutationSeq = 0;
 let inflight = 0;
+let checking = 0;
+// Data version (from the Sheet) that state.tables is complete at, or null when the next check must load in full.
+let known = null;
+// The script in the Sheet is older than v14 (no "version" call): every check is a full load, as before.
+let legacy = false;
+let lastFull = 0;
 let indexCache = { tables: null, temp: null, tp: null, idx: null };
 
 function set(patch) {
@@ -175,18 +188,55 @@ export function toast(message, kind = 'info') {
   }, 3200);
 }
 
-function makeBackend(settings) {
-  return settings.mode === 'sheet' && settings.url && settings.key ? sheetBackend(settings.url, settings.key) : demoBackend();
+// A save on any device answers with the data version before and after it. If this device's copy was complete at
+// "before", it is complete at "after" once the save's own rows are applied; otherwise the next check loads in full.
+function noteWrite({ version, prev }) {
+  known = prev && known && prev === known ? version : null;
 }
+
+function makeBackend(settings) {
+  return settings.mode === 'sheet' && settings.url && settings.key ? sheetBackend(settings.url, settings.key, { onWrite: noteWrite }) : demoBackend();
+}
+
+function resetSync() {
+  known = null;
+  legacy = false;
+  lastFull = 0;
+}
+
+async function keepCopy(tables, meta, version) {
+  const at = new Date().toISOString();
+  const r = await savedCopy.set({ tables, meta, at, version: version || null });
+  set({ copy: { ...r, at: r.ok ? at : state.copy && state.copy.ok ? state.copy.at : null } });
+}
+
+const later = (a, b) => (!a ? b || null : !b ? a : Date.parse(a) >= Date.parse(b) ? a : b);
 
 export async function init() {
   const settings = { ...state.settings, ...local.get(SETTINGS_KEY, {}) };
   backend = makeBackend(settings);
-  const cached = backend.mode === 'sheet' ? local.get(CACHE_KEY) : null;
-  set({ settings, tables: cached ? { ...emptyTables(), ...cached.tables } : state.tables, meta: cached ? cached.meta || {} : {}, status: { loading: true, error: null, lastSync: cached ? cached.at : null } });
-  await refresh();
+  resetSync();
+  const b = backend;
+  set({ settings, status: { loading: true, error: null, lastSync: null } });
+  const cached = b.mode === 'sheet' ? await savedCopy.get() : null;
+  if (b !== backend) return; // Settings changed while the copy was being read
+  if (cached) {
+    known = cached.version || null;
+    lastFull = Date.parse(cached.at) || 0;
+  }
+  const seen = cached ? later(cached.at, local.get(CHECKED_KEY)) : null;
+  set({
+    settings,
+    tables: cached ? { ...emptyTables(), ...cached.tables } : state.tables,
+    meta: cached ? cached.meta || {} : {},
+    status: { loading: !cached, error: null, lastSync: seen },
+    copy: cached ? { ok: true, at: cached.at } : null,
+  });
+  if (b.mode === 'sheet') keepStorage();
+  await sync();
 }
 
+// Full load of every tab. Shows "Syncing…" while it runs.
 export async function refresh() {
   const seq = mutationSeq;
   const b = backend;
@@ -194,27 +244,79 @@ export async function refresh() {
   if (inflight === 1) set({ syncing: true });
   let again = false;
   try {
-    const { tables, meta } = await b.bootstrap();
+    const { tables, meta, version } = await b.bootstrap();
     if (b !== backend) {
       // data source changed while loading; the new source's own load applies
     } else if (seq !== mutationSeq) {
+      // a save landed while this was loading; its rows are already in. A light check decides whether more is needed.
       again = true;
     } else {
       const at = new Date().toISOString();
-      if (b.mode === 'sheet') local.set(CACHE_KEY, { tables, meta, at });
+      known = version || null;
+      lastFull = Date.now();
       set({ tables, meta, status: { loading: false, error: null, lastSync: at } });
+      if (b.mode === 'sheet') {
+        local.set(CHECKED_KEY, at);
+        await keepCopy(tables, meta, known);
+      }
     }
   } catch (e) {
     if (b === backend && e.code === 'auth') {
       // The key no longer works (wrong, or the owner removed this person): drop the saved copy too.
-      local.remove(CACHE_KEY);
-      set({ tables: emptyTables(), meta: {}, status: { loading: false, error: e.message, lastSync: null } });
+      resetSync();
+      await savedCopy.remove();
+      set({ tables: emptyTables(), meta: {}, copy: null, status: { loading: false, error: e.message, lastSync: null } });
     } else if (b === backend) set({ status: { ...state.status, loading: false, error: e.message } });
   } finally {
     inflight -= 1;
     if (inflight === 0) set({ syncing: false });
   }
-  if (again) await refresh();
+  if (again) await sync();
+}
+
+// The routine check: asks the Sheet for its data version (a light call) and loads in full only when it moved,
+// when this device has no complete copy, every 30 minutes, or when forced. No spinner for the light call.
+export async function sync({ force = false } = {}) {
+  const b = backend;
+  if (b.mode !== 'sheet' || force || legacy || !known || Date.now() - lastFull >= FULL_EVERY_MS) return refresh();
+  const seq = mutationSeq;
+  checking += 1;
+  let v;
+  try {
+    v = await b.version();
+  } catch (e) {
+    if (b !== backend) return;
+    if (/Unknown action/.test(e.message || '')) {
+      legacy = true; // the script in the Sheet is older than v14
+      return refresh();
+    }
+    if (e.code === 'auth') return refresh();
+    set({ status: { ...state.status, loading: false, error: e.message } });
+    return;
+  } finally {
+    checking -= 1;
+  }
+  if (b !== backend || seq !== mutationSeq) return; // a save landed meanwhile; the next check decides
+  if (v && v === known) {
+    const at = new Date().toISOString();
+    local.set(CHECKED_KEY, at);
+    set({ status: { loading: false, error: null, lastSync: at } });
+    return;
+  }
+  return refresh();
+}
+
+// The Retry button: shows that it is trying, then says how it went.
+export async function retry() {
+  if (state.retrying) return;
+  set({ retrying: true });
+  try {
+    await sync();
+  } finally {
+    set({ retrying: false });
+  }
+  if (state.status.error) toast('Still no connection to your Google Sheet. The app will try again by itself when the signal is back.', 'error');
+  else toast('Connected. Your data is up to date.');
 }
 
 // Keeps phone and laptop in step: reloads from the Sheet when the app comes back
@@ -225,30 +327,40 @@ export function startAutoSync({ everyMs = 60000, staleMs = 15000 } = {}) {
     const t = Date.parse(state.status.lastSync || '');
     return !t || Date.now() - t >= ms;
   };
+  const busy = () => backend.mode !== 'sheet' || inflight > 0 || checking > 0 || state.retrying || document.visibilityState === 'hidden';
   const check = (ms) => {
-    if (backend.mode !== 'sheet' || inflight > 0 || state.status.loading) return;
-    if (document.visibilityState === 'hidden') return;
-    if (stale(ms)) refresh();
+    if (busy() || (state.status.loading && !state.status.error)) return;
+    if (stale(ms)) sync();
   };
   const onWake = () => check(staleMs);
+  // the signal is back: try at once rather than at the next minute
+  const onOnline = () => {
+    if (!busy()) sync();
+  };
   document.addEventListener('visibilitychange', onWake);
   window.addEventListener('focus', onWake);
-  window.addEventListener('online', onWake);
+  window.addEventListener('online', onOnline);
   const timer = setInterval(() => check(everyMs - 2000), everyMs);
   return () => {
     document.removeEventListener('visibilitychange', onWake);
     window.removeEventListener('focus', onWake);
-    window.removeEventListener('online', onWake);
+    window.removeEventListener('online', onOnline);
     clearInterval(timer);
   };
 }
 
 export async function saveSettings(settings) {
+  const prev = state.settings;
   const next = { ...state.settings, ...settings };
   local.set(SETTINGS_KEY, next);
   backend = makeBackend(next);
-  set({ settings: next, tables: emptyTables(), status: { loading: true, error: null, lastSync: null } });
-  if (backend.mode !== 'sheet') local.remove(CACHE_KEY);
+  resetSync();
+  set({ settings: next, tables: emptyTables(), copy: null, status: { loading: true, error: null, lastSync: null } });
+  // a copy from another Sheet or key must never show up for this one
+  if (backend.mode !== 'sheet' || prev.url !== next.url || prev.key !== next.key) {
+    local.remove(CHECKED_KEY);
+    await savedCopy.remove();
+  }
   await refresh();
 }
 
@@ -275,8 +387,9 @@ export async function commit(ops) {
       throw e;
     }
     const tables = applyOps(state.tables, applied || ops);
-    if (backend.mode === 'sheet') local.set(CACHE_KEY, { tables, meta: state.meta, at: new Date().toISOString() });
     set({ tables });
+    // no full load after a save: the Sheet sent back the saved rows, and noteWrite has kept the version
+    if (backend.mode === 'sheet') await keepCopy(tables, state.meta, known);
   } finally {
     mutationSeq += 1;
   }

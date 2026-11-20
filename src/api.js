@@ -113,7 +113,8 @@ export function demoBackend() {
   };
 }
 
-export function sheetBackend(url, key) {
+// onWrite({ version, prev }): called after every save the Sheet accepted (backend v14 and later).
+export function sheetBackend(url, key, { onWrite } = {}) {
   async function call(action, payload = {}) {
     let res;
     try {
@@ -139,16 +140,21 @@ export function sheetBackend(url, key) {
       if (data.code) err.code = data.code;
       throw err;
     }
+    if (onWrite && data.version && 'prev' in data) onWrite({ version: data.version, prev: data.prev });
     return data;
   }
   return {
     mode: 'sheet',
     ping: () => call('ping'),
+    // The light check: the Sheet's data version only (backend v14; older scripts answer "Unknown action").
+    async version() {
+      return (await call('version')).version || null;
+    },
     async bootstrap() {
       const data = await call('bootstrap');
       const tables = { ...emptyTables() };
       for (const t of TABLE_NAMES) tables[t] = data.tables[t] || [];
-      return { tables, meta: data.meta || {} };
+      return { tables, meta: data.meta || {}, version: data.version || null };
     },
     async batch(ops) {
       const data = await call('batch', { ops });

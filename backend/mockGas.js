@@ -55,11 +55,25 @@ class Sheet {
   }
   getLastColumn() { return this.data.reduce((m, r) => Math.max(m, r.reduce((k, v, i) => (v !== '' && v !== undefined ? i + 1 : k), 0)), 0); }
   getMaxRows() { return 1000; }
+  getDataRange() { return new Range(this, 1, 1, Math.max(this.getLastRow(), 1), Math.max(this.getLastColumn(), 1)); }
   setFrozenRows() {}
   deleteRow(r) { this.data.splice(r - 1, 1); }
 }
 
-export function loadCodeGs() {
+// Sheets API (advanced service) values as batchGet sends them: trailing blanks left out, dates as serial numbers.
+function apiValues(sheet, tz = 330) {
+  const last = sheet.getLastRow();
+  const out = [];
+  for (let r = 0; r < last; r++) {
+    const row = (sheet.data[r] || []).map((v) => (Object.prototype.toString.call(v) === '[object Date]' ? (v.getTime() + tz * 60000) / 86400000 + 25569 : v));
+    while (row.length && (row[row.length - 1] === '' || row[row.length - 1] === undefined || row[row.length - 1] === null)) row.pop();
+    out.push(row);
+  }
+  return out;
+}
+
+// opts.sheetsApi: the "Sheets" advanced service is switched on in the script project.
+export function loadCodeGs(opts = {}) {
   const sheets = [new Sheet('Sheet1')];
   const props = {};
   const files = {};
@@ -93,10 +107,16 @@ export function loadCodeGs() {
   const ctx = {
     SpreadsheetApp: { getActiveSpreadsheet: () => ss, getUi: () => { throw new Error('no ui in tests'); } },
     PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => (k in props ? props[k] : null), setProperty: (k, v) => { props[k] = v; } }) },
-    LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
+    LockService: { getScriptLock: () => ({ waitLock() {}, tryLock() { return true; }, releaseLock() {} }) },
     Utilities: {
       getUuid: () => crypto.randomUUID(),
-      formatDate: (d, _tz, fmt) => (String(fmt).includes('HH') ? d.toISOString().slice(0, 19).replace('T', ' ') : d.toISOString().slice(0, 10)),
+      sleep() {},
+      // the spreadsheet's zone is India time (+05:30)
+      formatDate: (d, _tz, fmt) => {
+        if (fmt === 'Z') return '+0530';
+        const ist = new Date(d.getTime() + 330 * 60000).toISOString();
+        return String(fmt).includes('HH') ? ist.slice(0, 19).replace('T', ' ') : ist.slice(0, 10);
+      },
       base64Decode: (s) => [...Buffer.from(s, 'base64')],
       base64Encode: (bytes) => Buffer.from(bytes).toString('base64'),
       newBlob: (bytes, type, name) => ({ bytes, type, name, getBytes: () => bytes, getContentType: () => type }),
@@ -113,12 +133,33 @@ export function loadCodeGs() {
       getRootFolder: () => root,
     },
     Logger: { log() {} },
-    console,
+    console: { log() {}, error: console.error },
   };
+  const calls = { batchGet: 0 };
+  if (opts.sheetsApi) {
+    ctx.Sheets = {
+      Spreadsheets: {
+        Values: {
+          batchGet: (id, args) => {
+            calls.batchGet += 1;
+            if (id !== 'ss1') throw new Error('wrong spreadsheet');
+            return {
+              valueRanges: args.ranges.map((r) => {
+                const name = r.replace(/^'|'$/g, '').replace(/''/g, "'");
+                const sh = sheets.find((s) => s.name === name);
+                if (!sh) throw new Error(`Unable to parse range: ${r}`);
+                return { range: r, values: apiValues(sh) };
+              }),
+            };
+          },
+        },
+      },
+    };
+  }
   vm.createContext(ctx);
   // a plain path: under jsdom, URL is jsdom's own and fs won't take it
   const here = decodeURIComponent(String(import.meta.url).replace(/^file:\/\//, ''));
   vm.runInContext(fs.readFileSync(here.replace(/[^/]*$/, 'Code.gs'), 'utf8'), ctx);
   const post = (body) => JSON.parse(ctx.doPost({ postData: { contents: JSON.stringify(body) } }).getContent());
-  return { ctx, ss, sheets, props, files, post };
+  return { ctx, ss, sheets, props, files, post, calls };
 }

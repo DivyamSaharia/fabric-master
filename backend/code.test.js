@@ -9,8 +9,11 @@ import { buildIndex, fabricCalc } from '../src/calc.js';
 
 let gas;
 let key;
+
+// Every test runs twice: with the Sheets advanced service switched on (one batchGet per load) and without it.
+describe.each([['one read per tab', false], ['Sheets API batchGet', true]])('Code.gs, %s', (_label, sheetsApi) => {
 beforeEach(() => {
-  gas = loadCodeGs();
+  gas = loadCodeGs({ sheetsApi });
   key = gas.ctx.setup();
 });
 
@@ -309,4 +312,158 @@ describe('TFO plans (v12)', () => {
     // the lines that went with the plan add no line of their own
     expect(e[1].details).toBe('Name Plan 25 Oct 2026 → Diwali plan');
   });
+});
+
+describe('sync: data version, fast loads, timing (v14)', () => {
+  const fab = (id, name) => ({ op: 'upsert', table: 'Fabrics', rows: [{ id, name, reed_space_in: 64, ppi: 80 }] });
+
+  it('moves the version on every save and says what it was before', () => {
+    const b = gas.post({ action: 'bootstrap', key });
+    expect(b.version).toBeTruthy();
+    expect(gas.post({ action: 'version', key }).version).toBe(b.version);
+    const s1 = gas.post({ action: 'batch', key, ops: [fab('f1', 'Gajji Silk')] });
+    expect(s1.prev).toBe(b.version);
+    expect(s1.version).not.toBe(b.version);
+    expect(s1.version.charAt(0)).not.toBe('w');
+    expect(gas.post({ action: 'version', key }).version).toBe(s1.version);
+    const s2 = gas.post({ action: 'batch', key, ops: [fab('f1', 'Gajji Silk 2')] });
+    expect(s2.prev).toBe(s1.version);
+    expect(gas.post({ action: 'bootstrap', key }).version).toBe(s2.version);
+  });
+
+  it('the light check needs a key and reads no tab', () => {
+    expect(gas.post({ action: 'version' }).ok).toBe(false);
+    gas.post({ action: 'bootstrap', key });
+    const before = gas.calls.batchGet;
+    const r = gas.post({ action: 'version', key });
+    expect(r.ok).toBe(true);
+    expect(Object.keys(r).sort()).toEqual(['ok', 'version']);
+    expect(gas.calls.batchGet).toBe(before);
+  });
+
+  it('a save that fails part-way still moves the version, so no device keeps a half-written copy', () => {
+    const v0 = gas.post({ action: 'bootstrap', key }).version;
+    const r = gas.post({ action: 'batch', key, ops: [fab('f1', 'Salsa'), { op: 'nonsense' }] });
+    expect(r.ok).toBe(false);
+    const v1 = gas.post({ action: 'version', key }).version;
+    expect(v1).not.toBe(v0);
+    expect(v1.charAt(0)).not.toBe('w');
+  });
+
+  it('a load that meets a save marked as being written waits for it and returns a clean version', () => {
+    gas.post({ action: 'batch', key, ops: [fab('f1', 'Tissue')] });
+    gas.props.DATA_VERSION = 'wcutoff123';
+    const b = gas.post({ action: 'bootstrap', key });
+    expect(b.ok).toBe(true);
+    expect(b.tables.Fabrics.map((f) => f.id)).toEqual(['f1']);
+    expect(b.version.charAt(0)).not.toBe('w');
+    // a save that follows a cut-off one cannot vouch for anyone's copy
+    gas.props.DATA_VERSION = 'wcutoff456';
+    expect(gas.post({ action: 'batch', key, ops: [fab('f2', 'Ganesh')] }).prev).toBe('');
+  });
+
+  it('an edit typed or pasted by hand in a data tab moves the version; other tabs do not', () => {
+    const v0 = gas.post({ action: 'bootstrap', key }).version;
+    gas.ctx.onEdit({ range: { getSheet: () => ({ getName: () => 'Change log' }) } });
+    expect(gas.post({ action: 'version', key }).version).toBe(v0);
+    gas.ctx.onEdit({ range: { getSheet: () => ({ getName: () => 'PlannerLooms' }) } });
+    expect(gas.post({ action: 'version', key }).version).toBe(v0);
+    gas.ctx.onEdit({ range: { getSheet: () => ({ getName: () => 'Fabrics' }) } });
+    expect(gas.post({ action: 'version', key }).version).not.toBe(v0);
+  });
+
+  it('a hand edit while a save is being written makes the saving device load in full', () => {
+    const v0 = gas.post({ action: 'bootstrap', key }).version;
+    const realUpsert = gas.ctx.upsert_;
+    gas.ctx.upsert_ = (name, rows) => {
+      gas.ctx.onEdit({ range: { getSheet: () => ({ getName: () => 'Fabrics' }) } }); // someone types in the Sheet mid-save
+      expect(gas.props.DATA_VERSION.charAt(0)).toBe('w'); // the marker is left alone
+      return realUpsert(name, rows);
+    };
+    const r = gas.post({ action: 'batch', key, ops: [fab('f1', 'Glass')] });
+    gas.ctx.upsert_ = realUpsert;
+    expect(r.ok).toBe(true);
+    expect(r.prev).toBe('');
+    expect(r.version).not.toBe(v0);
+    // a save with no hand edit vouches as usual
+    expect(gas.post({ action: 'batch', key, ops: [fab('f2', 'Tissue')] }).prev).toBe(r.version);
+  });
+
+  it('photo saves move the version but send no prev, so the next check loads the stamped fabric', () => {
+    gas.post({ action: 'batch', key, ops: [fab('f1', 'Glass')] });
+    const img = 'data:image/jpeg;base64,' + Buffer.from('x').toString('base64');
+    const up = gas.post({ action: 'uploadPhoto', key, photo: { id: 'p1', fabric_id: 'f1' }, image: img, thumb: img });
+    expect(up.ok).toBe(true);
+    expect(up.version).toBeTruthy();
+    expect('prev' in up).toBe(false);
+    const del = gas.post({ action: 'deletePhoto', key, id: 'p1' });
+    expect(del.version).not.toBe(up.version);
+    expect('prev' in del).toBe(false);
+  });
+
+  it('rows pasted without an id get one once, and every device is told to load them', () => {
+    gas.post({ action: 'bootstrap', key });
+    const sh = gas.ss.getSheetByName('Yarns');
+    sh.getRange(2, 2, 1, 3).setValues([['Pasted 75D', 'base', '']]);
+    const v0 = gas.post({ action: 'version', key }).version;
+    const b1 = gas.post({ action: 'bootstrap', key });
+    expect(b1.tables.Yarns).toHaveLength(1);
+    const id = b1.tables.Yarns[0].id;
+    expect(id).toMatch(/^y_/);
+    expect(b1.version).not.toBe(v0);
+    const b2 = gas.post({ action: 'bootstrap', key });
+    expect(b2.tables.Yarns[0].id).toBe(id);
+    expect(b2.version).toBe(b1.version);
+  });
+
+  it('reads back hand-entered dates, times and numbers the same way on both read paths', () => {
+    gas.post({ action: 'bootstrap', key });
+    const sh = gas.ss.getSheetByName('Fabrics');
+    const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+    const row = head.map(() => '');
+    const put = (h, v) => { row[head.indexOf(h)] = v; };
+    put('id', 'f_hand');
+    put('name', 'Hand Pasted');
+    put('price', 52.5);
+    put('sale_date', vm.runInContext("new Date('2026-11-19T18:30:00Z')", gas.ctx)); // 20 Nov 2026, midnight in India
+    put('updated_at', vm.runInContext("new Date('2026-11-20T05:00:00Z')", gas.ctx));
+    sh.getRange(2, 1, 1, row.length).setValues([row]);
+    const f = gas.post({ action: 'bootstrap', key }).tables.Fabrics[0];
+    expect(f.price).toBe(52.5);
+    expect(f.sale_date).toBe('2026-11-20');
+    expect(f.updated_at).toBe('2026-11-20T05:00:00.000Z');
+    expect(f.notes).toBe('');
+  });
+
+  it('logs each action and its time; only the owner can read the log', () => {
+    gas.post({ action: 'bootstrap', key });
+    gas.post({ action: 'version', key });
+    const lines = gas.post({ action: 'perf', key }).lines;
+    expect(lines.some((l) => /\|bootstrap\|\d+\|1$/.test(l))).toBe(true);
+    expect(lines.some((l) => /\|version\|\d+\|1$/.test(l))).toBe(true);
+    const other = gas.post({ action: 'addPerson', key, name: 'Ishaan' }).person.key;
+    expect(gas.post({ action: 'perf', key: other }).ok).toBe(false);
+    for (let i = 0; i < 260; i++) gas.post({ action: 'version', key });
+    expect(gas.post({ action: 'perf', key }).lines.length).toBeLessThanOrEqual(200);
+    expect(gas.props.PERF_LOG.length).toBeLessThan(9000);
+    expect(gas.ctx.perfReport().some((l) => /^version: \d+ calls, median \d+ ms/.test(l))).toBe(true);
+  });
+
+  if (sheetsApi) {
+    it('a load is one Sheets API call', () => {
+      gas.post({ action: 'bootstrap', key });
+      const before = gas.calls.batchGet;
+      gas.post({ action: 'bootstrap', key });
+      expect(gas.calls.batchGet - before).toBe(1);
+    });
+
+    it('falls back to reading tab by tab when the Sheets API call fails', () => {
+      gas.post({ action: 'batch', key, ops: [fab('f1', 'Glass')] });
+      gas.ctx.Sheets.Spreadsheets.Values.batchGet = () => { throw new Error('Sheets API has not been enabled'); };
+      const b = gas.post({ action: 'bootstrap', key });
+      expect(b.ok).toBe(true);
+      expect(b.tables.Fabrics.map((f) => f.id)).toEqual(['f1']);
+    });
+  }
+});
 });

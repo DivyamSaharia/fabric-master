@@ -26,6 +26,7 @@ export const TOPICS = [
     tips: [
       'Your key is only for you. Do not forward it.',
       'Every change you save reaches everyone else within a minute.',
+      'The app keeps a copy of the data on your phone. It opens at once, and still shows your fabrics with no signal.',
       'Your name is kept with each change, under **Settings** → **Recent changes**.',
     ],
     related: ['find', 'fabric', 'words'],
@@ -265,6 +266,7 @@ export const TOPICS = [
       ['Realisation shows ₹ —.', 'The fabric has no selling price, or a yarn has no rate. Add them on the fabric or yarn page.'],
       ['Profit shows ₹ —.', 'The unit has no cost per pick. Add it on the Units tab.'],
       ['I cannot see a change someone made.', 'Open **Settings** and tap **Reload from the Sheet**.'],
+      ['It says No connection to your Google Sheet.', 'The app shows the copy saved on this phone, with the time it was last updated. Tap **Retry** when you have a signal. The app also tries again by itself when the signal comes back.'],
       ['The app still looks old after an update.', 'Close the app fully and open it again. Do this twice if needed.'],
       ['A unit is missing in the Planner.', 'It has no loom groups. Add them on the unit page.'],
       ['I lost my key.', 'Ask the owner to make you a new one in **Settings** → **People with access**.'],
@@ -282,6 +284,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.24.0', 'Faster: the app opens at once from the copy saved on your phone, checks the Sheet in under a second, and loads in full only when something changed. With no signal it shows the saved copy and says when it was last updated; Retry shows that it is trying.'],
   ['1.23.2', 'New app logo and icon: a stack of swatch cards with the Hanuman H.'],
   ['1.23.1', 'Production centre: removed the "all looms" figures, so it shows per loom per day only.'],
   ['1.23.0', 'Production centre now lists each warp and weft yarn with the kg a loom uses per day.'],

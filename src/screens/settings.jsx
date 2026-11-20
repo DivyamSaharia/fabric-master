@@ -6,7 +6,7 @@ import { HelpButton } from './guide.jsx';
 import { exportListXlsx, openWhatsAppText } from '../export/exports.js';
 import { computeRows } from './fabrics.jsx';
 
-export const APP_VERSION = '1.23.2';
+export const APP_VERSION = '1.24.0';
 
 // What to send someone so they can open the app on their own phone or laptop.
 export function inviteText(person, url, appUrl) {
@@ -230,7 +230,14 @@ export function Settings() {
       <Section header="Status">
         <Row label="Connected to" value={st.settings.mode === 'sheet' ? st.meta.spreadsheetName || 'Google Sheet' : 'Demo data'} />
         {who ? <Row label="Signed in as" value={who.name} valueSub={who.role === 'owner' ? 'Owner' : 'Editor'} /> : null}
-        <Row label="Last loaded" value={sync} />
+        <Row label="Last checked" value={sync} />
+        {st.settings.mode === 'sheet' ? (
+          <Row
+            label="Copy on this device"
+            value={st.copy && st.copy.at ? `Saved ${new Date(st.copy.at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}` : 'Not saved yet'}
+            sub={st.copy && st.copy.ok === false ? `Couldn't save the latest copy: ${st.copy.error}` : st.copy && st.copy.at ? 'Shown at once when the app opens, and when there is no signal' : 'Open the app once with a signal to keep a copy'}
+          />
+        ) : null}
         {st.status.error ? <Row label="Last error" sub={st.status.error} /> : null}
         <Row label="Reload from the Sheet" onClick={async () => { setBusy('refresh'); await refresh(); setBusy(''); toast('Reloaded'); }} value={busy === 'refresh' ? <span class="spinner" /> : undefined} chevron />
         {st.settings.mode === 'sheet' ? <Row label="Recent changes" sub="Who added, changed or deleted what" onClick={() => go('/changes')} chevron /> : null}
