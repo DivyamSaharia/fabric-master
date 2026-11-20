@@ -340,19 +340,25 @@ export function Chip({ on, onClick, children }) {
   );
 }
 
+// Open sheets, newest last: Escape closes only the one on top (a confirm sheet can open over another sheet).
+const openSheets = [];
 export function Sheet({ open, onClose, title, children, footer }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
   useEffect(() => {
     if (!open) return undefined;
+    const me = {};
+    openSheets.push(me);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e) => {
-      if (e.key === 'Escape' && closeRef.current) closeRef.current();
+      if (e.key === 'Escape' && openSheets[openSheets.length - 1] === me && closeRef.current) closeRef.current();
     };
     window.addEventListener('keydown', onKey);
     return () => {
-      document.body.style.overflow = prev;
+      const i = openSheets.indexOf(me);
+      if (i >= 0) openSheets.splice(i, 1);
+      document.body.style.overflow = openSheets.length ? 'hidden' : prev;
       window.removeEventListener('keydown', onKey);
     };
   }, [open]);

@@ -643,7 +643,7 @@ input::placeholder, textarea::placeholder { color: var(--hint); opacity: 1; }
 .badge.tpm { font-weight: 700; }
 
 /* section notes: one line, with a link to the Guide (B4) */
-.guide-link { display: inline; margin-left: 4px; font-size: 13px; }
+.guide-link { display: inline; margin-left: 0; font-size: 13px; white-space: normal; text-align: left; }
 .section-footer .guide-link { font-weight: 600; }
 
 /* folded sections (B1 b) */

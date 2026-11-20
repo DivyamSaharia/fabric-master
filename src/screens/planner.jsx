@@ -114,6 +114,7 @@ function Labeled({ label, children }) {
 }
 
 // The four headline figures in a slim strip under the top bar, once their tiles have scrolled away (B3).
+// Short labels, so all four fit on a small phone.
 function PlanStrip({ items }) {
   return (
     <div class="pstrip" aria-label="Headline figures">
@@ -273,10 +274,10 @@ export function Planner() {
   // Four headline tiles; the rest open with All figures (B3). Yarns short is the Net TPM balance tile's second line (C7).
   const shortLine = hasTfo && model.balance.length ? `${fmt.int(t.short)} of ${fmt.int(model.balance.length)} TPM ${model.balance.length === 1 ? 'yarn' : 'yarns'} short` : '';
   const tiles = [
-    showMoney ? { key: 'real', label: 'Plant realisation', value: rs0(t.plantRealisation), el: <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={!t.realLooms ? 'enter looms with a price' : moneyPart ? 'per day' : `per day · ${fmt.int(t.realLooms)} looms`} part={moneyPart} accent /> } : null,
-    showMoney ? { key: 'profit', label: 'Plant profit', value: rs0(t.plantProfit), tone: t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : '', el: <Tile label="Plant profit" value={rs0(t.plantProfit)} sub={t.costPerPick === null ? 'set cost per pick on the unit' : `per day · at ${fmt.pick(t.costPerPick)} a pick`} part={moneyPart} tone={t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : ''} accent /> } : null,
-    hasTfo ? { key: 'net', label: 'Net TPM balance', value: signedKg(t.net), tone: t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : '', el: <Tile label="Net TPM balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} second={shortLine} secondTone={t.short ? 'bad' : ''} part={ratePart} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} accent={!showMoney} /> } : null,
-    { key: 'looms', label: 'Looms planned', value: `${fmt.int(t.looms)} of ${fmt.int(t.capacity)}`, tone: t.looms > t.capacity ? 'bad' : '', el: <Tile label="Looms planned" value={`${fmt.int(t.looms)} of ${fmt.int(t.capacity)}`} sub={t.looms > t.capacity ? 'more than the unit has' : 'looms in this unit'} tone={t.looms > t.capacity ? 'bad' : ''} /> },
+    showMoney ? { key: 'real', label: 'Realisation', value: rs0(t.plantRealisation), el: <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={!t.realLooms ? 'enter looms with a price' : moneyPart ? 'per day' : `per day · ${fmt.int(t.realLooms)} looms`} part={moneyPart} accent /> } : null,
+    showMoney ? { key: 'profit', label: 'Profit', value: rs0(t.plantProfit), tone: t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : '', el: <Tile label="Plant profit" value={rs0(t.plantProfit)} sub={t.costPerPick === null ? 'set cost per pick on the unit' : `per day · at ${fmt.pick(t.costPerPick)} a pick`} part={moneyPart} tone={t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : ''} accent /> } : null,
+    hasTfo ? { key: 'net', label: 'TPM balance', value: signedKg(t.net), tone: t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : '', el: <Tile label="Net TPM balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} second={shortLine} secondTone={t.short ? 'bad' : ''} part={ratePart} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} accent={!showMoney} /> } : null,
+    { key: 'looms', label: 'Looms', value: `${fmt.int(t.looms)} of ${fmt.int(t.capacity)}`, tone: t.looms > t.capacity ? 'bad' : '', el: <Tile label="Looms planned" value={`${fmt.int(t.looms)} of ${fmt.int(t.capacity)}`} sub={t.looms > t.capacity ? 'more than the unit has' : 'looms in this unit'} tone={t.looms > t.capacity ? 'bad' : ''} /> },
     showMoney ? { key: 'avgloom', el: <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub={t.avgLoomProfit !== null ? `per loom per day · profit ${rs0(t.avgLoomProfit)}` : 'per loom per day'} part={moneyPart} /> } : null,
     showMoney ? { key: 'avgpick', el: <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="realisation with VATAV, weighted by output" part={moneyPart} /> } : null,
     showMoney ? { key: 'ppp', el: <Tile label="Profit per pick" value={fmt.pick(t.avgProfitPerPick)} sub="average, weighted by output" part={moneyPart} tone={t.avgProfitPerPick !== null && t.avgProfitPerPick < 0 ? 'bad' : ''} /> } : null,

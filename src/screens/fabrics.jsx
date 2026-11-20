@@ -852,7 +852,7 @@ export function FabricDetail({ id }) {
         </Section>
       )}
 
-      <Section id="sec-units" header="Units · profit per pick" footer={`Profit per pick uses realisation with VATAV.${calc.tpmLines.length && units.some((u) => truthy(u.has_tfo)) ? ' Spindles are per loom, per TFO type.' : ''}`} guide="fabric">
+      <Section id="sec-units" header="Units · profit per pick" footer={`Profit per pick uses realisation with VATAV.${calc.tpmLines.length && units.some((u) => truthy(u.has_tfo)) ? ' Spindles are per loom, per TFO type.' : ''}`}>
         {units.map((u) => <UnitCard unit={u} fabric={fabric} calc={calc} idx={idx} />)}
         {!units.length ? <Row label="Not in any unit yet" sub="Assign it to see profit per pick and spindles." /> : null}
         <button type="button" class="add-row" onClick={() => setAssignOpen(true)}><Icon.plus size={20} />{units.length ? 'Change units' : 'Assign to units'}</button>
