@@ -156,7 +156,8 @@ const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 // Save to master for a temporary rate typed on a TPM yarn: change the delta, the base rate, or both.
 // This view is the confirm step: it says what changes and how many yarns and fabrics move.
 export function TpmSaveView({ item, onClose }) {
-  const [mode, setMode] = useState('delta');
+  // delta only changes the least; with no base rate yet, only "both" can work
+  const [mode, setMode] = useState(item.masterBase === null ? 'both' : 'delta');
   const [baseDraft, setBaseDraft] = useState(item.masterBase === null ? '' : String(item.masterBase));
   const [busy, setBusy] = useState(false);
   const plan = tpmSavePlan(item.yarn.id, mode, baseDraft);
@@ -164,8 +165,8 @@ export function TpmSaveView({ item, onClose }) {
   const baseTemp = item.base ? getState().tempRates[item.base.id] ?? null : null;
   const im = plan.impact;
   const reach = !plan.ok || !im ? '' : mode === 'delta'
-    ? `Only ${item.yarn.name} changes, in ${plural(im.fabrics, 'fabric', 'fabrics')}. ${baseName} and its other TPM yarns stay as they are.`
-    : `${baseName} gets a new rate dated ${fmt.date(todayIst())}. That moves ${plural(im.yarns, 'yarn', 'yarns')} (${baseName} and ${plural(im.tpmYarns, 'TPM yarn', 'TPM yarns')} made from it) and ${plural(im.fabrics, 'fabric', 'fabrics')}, for everyone.`;
+    ? `For everyone: only ${item.yarn.name} changes, in ${plural(im.fabrics, 'fabric', 'fabrics')}. ${baseName} keeps its rate.`
+    : `For everyone: ${baseName} gets a new rate dated ${fmt.date(todayIst())}${plan.replacesToday !== null && plan.replacesToday !== undefined ? `, replacing today's ${fmt.rate(plan.replacesToday)}/kg` : ''}. That changes ${plural(im.yarns, 'yarn', 'yarns')} (${baseName} and ${plural(im.tpmYarns, 'TPM yarn', 'TPM yarns')} made from it) and ${plural(im.fabrics, 'fabric', 'fabrics')}.`;
   const tempNote = baseTemp === null ? '' : mode === 'delta'
     ? ` ${baseName} still has a temporary rate of ${fmt.rate(baseTemp)}/kg on this device, so ${item.yarn.name} will show ${fmt.rate(baseTemp + (plan.newDelta ?? 0))}/kg here until you reset it.`
     : ` The temporary rate on ${baseName} (${fmt.rate(baseTemp)}/kg) is removed too.`;
@@ -187,11 +188,11 @@ export function TpmSaveView({ item, onClose }) {
         <Row label="Temporary rate" value={<span class="strong">{fmt.rate(item.rate)}/kg</span>} valueSub="this device" />
         <Row label="Master now" value={item.masterBase === null ? 'No base rate' : `${fmt.rate(item.masterBase)} + ${fmt.rate(item.delta)} = ${fmt.rate(item.masterRate)}/kg`} valueSub={`${baseName} + delta`} />
       </Section>
-      <Section header="What to change in the master" footer={mode === 'delta' ? 'The base rate stays. The delta becomes the temporary rate minus the base rate.' : mode === 'base' ? 'The delta stays. The base rate becomes the temporary rate minus the delta.' : 'Type the new base rate. The delta is what is left of the temporary rate.'}>
-        <div class="row"><Segmented label="What to change" options={[{ value: 'delta', label: 'Delta only' }, { value: 'base', label: 'Base only' }, { value: 'both', label: 'Both' }]} value={mode} onChange={setMode} /></div>
+      <Section header="What to change in the master" footer={`The delta is the extra ₹ per kg for twisting. ${mode === 'delta' ? 'The base rate stays. The delta becomes the temporary rate minus the base rate.' : mode === 'base' ? 'The delta stays. The base rate becomes the temporary rate minus the delta.' : 'Type the new base rate. The delta is what is left of the temporary rate.'}`}>
+        <div class="row"><div class="seg-fill"><Segmented label="What to change" options={[{ value: 'delta', label: 'Delta only' }, { value: 'base', label: 'Base rate' }, { value: 'both', label: 'Both' }]} value={mode} onChange={setMode} /></div></div>
         {mode === 'both' ? <NumField label={`New rate · ${baseName}`} hint="per kg" prefix="₹" value={baseDraft} onInput={setBaseDraft} /> : null}
       </Section>
-      <Section header="After saving" footer={plan.ok ? `${reach}${tempNote} The temporary rate on ${item.yarn.name} is removed afterwards.` : null}>
+      <Section header="After saving" footer={plan.ok ? `The temporary rate on ${item.yarn.name} is removed afterwards.${tempNote}` : null}>
         {plan.ok ? (
           <>
             <Row label={`${baseName} rate`} value={<span class={plan.newBase !== plan.oldBase ? 'strong' : ''}>{fmt.rate(plan.newBase)}/kg</span>} valueSub={plan.newBase !== plan.oldBase ? `was ${plan.oldBase === null ? 'not set' : fmt.rate(plan.oldBase)}` : 'no change'} />
@@ -202,6 +203,7 @@ export function TpmSaveView({ item, onClose }) {
           <div class="notice tpm-error">{plan.error}</div>
         )}
       </Section>
+      {plan.ok ? <div class="notice tpm-reach">{reach}</div> : null}
       <div class="row temp-price-actions">
         <Button kind="secondary" onClick={onClose} disabled={busy}>Back</Button>
         <Button onClick={save} busy={busy} disabled={busy || !plan.ok}>Save to master</Button>

@@ -607,3 +607,5 @@ input::placeholder, textarea::placeholder { color: var(--hint); opacity: 1; }
 /* temporary rate typed on a TPM yarn: sits under its base yarn's rows */
 .tpm-temp .row-label { padding-left: 14px; }
 .tpm-error { margin: 10px 12px; }
+.seg-fill { flex: 1; min-width: 0; }
+.tpm-reach { margin: 14px 16px 0; }

@@ -498,11 +498,15 @@ export function FabricDetail({ id }) {
   // calcNow: today's rates (exports). calc: what the page shows, at any older rates picked below.
   const calcNow = fabricCalc(fabric, idx);
   const sources = rateSources(calcNow, idx);
-  const livePicks = Object.fromEntries(Object.entries(picks).filter(([k, v]) => v && sources.some((s) => s.yarn.id === k && s.temp === null && s.dates.length && s.dates[0].date !== v)));
+  // a base yarn used only through TPM yarns that each carry their own temporary rate sets no cost here
+  const covered = (s) => !s.usedBy.some((y) => y.id === s.yarn.id) && s.tpm.length > 0 && s.tpm.every((t) => t.temp !== null);
+  const livePicks = Object.fromEntries(Object.entries(picks).filter(([k, v]) => v && sources.some((s) => s.yarn.id === k && s.temp === null && !covered(s) && s.dates.length && s.dates[0].date !== v)));
   // temporary rates that set this fabric's cost: base yarns, and TPM yarns with their own (which win over the base's)
   const tempSources = [
     ...sources.filter((x) => x.temp !== null && (x.usedBy.some((y) => y.id === x.yarn.id) || x.tpm.some((t) => t.temp === null))),
     ...sources.flatMap((x) => x.tpm.filter((t) => t.temp !== null)),
+    // a TPM yarn whose base yarn is missing still uses its own temporary rate
+    ...[...new Map(calcNow.tpmLines.filter((x) => !idx.yarnsById[x.yarn.base_yarn_id] && x.temp).map((x) => [x.yarn.id, { yarn: x.yarn, temp: x.rate }])).values()],
   ];
   const older = Object.keys(livePicks).length > 0;
   const calc = older ? fabricCalc(fabric, idx, null, livePicks) : calcNow;
@@ -706,7 +710,7 @@ export function FabricDetail({ id }) {
               </span>
               {src.dates.length ? (
                 <span class="field-input select">
-                  <select disabled={src.temp !== null} value={livePicks[src.yarn.id] || src.dates[0].date} onChange={(e) => setPicks((p) => ({ ...p, [src.yarn.id]: e.currentTarget.value }))} aria-label={`Rate for ${src.yarn.name}`}>
+                  <select disabled={src.temp !== null || covered(src)} value={livePicks[src.yarn.id] || src.dates[0].date} onChange={(e) => setPicks((p) => ({ ...p, [src.yarn.id]: e.currentTarget.value }))} aria-label={`Rate for ${src.yarn.name}`}>
                     {src.dates.map((d, i) => <option value={d.date}>{`${fmt.date(d.date)} · ${fmt.rate(d.rate)}/kg${i === 0 ? ' (current)' : ''}`}</option>)}
                   </select>
                   <Icon.chevron size={12} />
@@ -1111,15 +1115,15 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
       <Section
         header="Report"
         footer={detailed
-          ? 'Detailed: everything on the fabric page, with yarn rates, the full cost breakdown, loom realisation and spindle figures, and the RPM and efficiency they assume. PDF and Excel only.'
+          ? 'Detailed: everything on the fabric page, with yarn rates, the full cost breakdown, loom realisation and spindle figures, and the RPM and efficiency they assume. PDF and Excel only. For internal use: it shows costs, yarn rates and profit.'
           : 'Basic: the spec sheet as always shared.'}
       >
-        <div class="row"><Segmented label="Report" options={[{ value: 'basic', label: 'Basic' }, { value: 'detailed', label: 'Detailed' }]} value={level} onChange={setLevel} /></div>
+        <div class="row"><div class="seg-fill"><Segmented label="Report" options={[{ value: 'basic', label: 'Basic' }, { value: 'detailed', label: 'Detailed' }]} value={level} onChange={setLevel} /></div></div>
       </Section>
       <Section header={`${fabric.name} · ${calc.finish}`} footer={detailed ? 'WhatsApp and Copy text always send the Basic text.' : null}>
         {detailed ? (
           <>
-            <Row label="Detailed PDF" sub="Logo, key figures, every table, how each figure is worked out" onClick={() => run('dpdf', () => exportFabricPdfDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'dpdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'dpdf'} />
+            <Row label="Detailed PDF" sub="Internal · key figures, every table, how each figure is worked out" onClick={() => run('dpdf', () => exportFabricPdfDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'dpdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'dpdf'} />
             <Row label="Detailed Excel" sub="The same sections on one sheet, numbers as numbers" onClick={() => run('dxlsx', () => exportFabricXlsxDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'dxlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'dxlsx'} />
           </>
         ) : (

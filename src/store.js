@@ -151,7 +151,7 @@ export function tpmSavePlan(tpmId, mode, newBase, idx = getIndex()) {
   const oldDelta = tpmDelta(yarn);
   const out = { mode, yarn, rate, base, oldBase, oldDelta, newBase: oldBase, newDelta: oldDelta };
   if (mode === 'delta') {
-    if (oldBase === null) return { ...out, ok: false, error: `${base.name} has no master rate yet. Choose “Change both” and type its rate.` };
+    if (oldBase === null) return { ...out, ok: false, error: `${base.name} has no master rate yet. Choose “Both” and type its rate.` };
     out.newDelta = round2(rate - oldBase);
     if (out.newDelta < 0) return { ...out, ok: false, error: `The delta would be below zero (base ${fmt.rate(oldBase)}/kg is above ${fmt.rate(rate)}/kg).` };
     out.impact = { yarns: 1, tpmYarns: 1, fabrics: yarnFabricCount(tpmId, idx) };
@@ -168,6 +168,11 @@ export function tpmSavePlan(tpmId, mode, newBase, idx = getIndex()) {
     out.impact = baseImpact(base.id, idx);
   } else {
     return { ...out, ok: false, error: 'Choose what to change' };
+  }
+  // a base rate already dated today is replaced, not added to
+  if (mode !== 'delta') {
+    const t = (idx.ratesByYarn[base.id] || []).find((r) => String(r.effective_date).slice(0, 10) === today());
+    out.replacesToday = t ? num(t.rate) : null;
   }
   return { ...out, ok: true };
 }

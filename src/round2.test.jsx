@@ -142,9 +142,9 @@ describe('screens', () => {
     expect(document.body.textContent).toMatch(/TPM yarn · master ₹118 \+ ₹50 = ₹168\/kg/);
     fireEvent.click(screen.getByRole('button', { name: 'Save to master' }));
     await screen.findByText('What to change in the master');
-    expect(document.body.textContent).toMatch(/Only 75D TPM 2000 S\/Z changes, in 1 fabric/);
-    fireEvent.click(screen.getByRole('button', { name: 'Base only' }));
-    await waitFor(() => expect(document.body.textContent).toMatch(/moves 2 yarns \(75D Polyester FDY and 1 TPM yarn made from it\) and 2 fabrics, for everyone/));
+    expect(document.body.textContent).toMatch(/For everyone: only 75D TPM 2000 S\/Z changes, in 1 fabric/);
+    fireEvent.click(screen.getByRole('button', { name: 'Base rate' }));
+    await waitFor(() => expect(document.body.textContent).toMatch(/For everyone: 75D Polyester FDY gets a new rate dated .*That changes 2 yarns \(75D Polyester FDY and 1 TPM yarn made from it\) and 2 fabrics/));
     fireEvent.click(screen.getByRole('button', { name: 'Both' }));
     fireEvent.input(screen.getByLabelText('New rate · 75D Polyester FDY'), { target: { value: '200' } });
     await waitFor(() => expect(document.body.textContent).toMatch(/delta would be below zero/));
@@ -239,5 +239,23 @@ describe('Detailed share', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
     await screen.findByText('PDF spec sheet');
     expect(screen.queryByText('Detailed PDF')).toBeNull();
+  });
+});
+
+describe('review fixes', () => {
+  it('says when a base save replaces a rate already dated today', async () => {
+    await clearTemps();
+    setTempRate('y_tpm75', 180);
+    expect(tpmSavePlan('y_tpm75', 'base').replacesToday).toBe(null);
+    await saveTpmTempToMaster('y_tpm75', 'base');
+    setTempRate('y_tpm75', 190);
+    expect(tpmSavePlan('y_tpm75', 'base').replacesToday).toBe(130);
+  });
+  it('the base rate picker is off when only TPM yarns with their own temporary rate use it', async () => {
+    await clearTemps();
+    setTempRate('y_tpm60', 200);
+    await open('#/fabric/f_geo');
+    await screen.findByText('Finishing · RFD');
+    expect(screen.getByLabelText('Rate for 60D Polyester FDY').disabled).toBe(true);
   });
 });

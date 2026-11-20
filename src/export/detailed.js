@@ -52,13 +52,13 @@ export function detailedModel(fabric, calc, idx) {
   const loomUnit = units.find((u) => (idx.loomGroupsByUnit[u.id] || []).length) || null;
   const firstLoom = loomUnit ? loomRealisationForUnit(calc, fabric, loomUnit, idx).find((x) => x.value !== null) || null : null;
   const figures = [
-    { label: 'Realisation with VATAV', value: `${fmt.pick(calc.realisationNetPerPick)} / pick`, sub: `${fmt.rs(calc.realisationNetPerM)} / ${per}`, accent: true },
-    { label: 'Without VATAV', value: `${fmt.pick(calc.realisationPerPick)} / pick`, sub: `${fmt.rs(calc.realisationPerM)} / ${per}` },
-    { label: 'Sale rate', value: `${fmt.rs(calc.price)} / ${per}`, sub: calc.priceTemp ? `temporary · master ${calc.masterPrice === null ? 'not set' : fmt.rs(calc.masterPrice)}` : fmt.date(fabric.sale_date) ? `sale date ${fmt.date(fabric.sale_date)}` : 'no sale date' },
-    { label: rfd ? 'RFD cost' : 'RM cost', value: `${fmt.rs(rfd ? calc.rfdCost : calc.rmCost)} / ${per}`, sub: rfd ? `RM ${fmt.rs(calc.rmPerSaleM)} + finishing ${fmt.rs(calc.finishingCost)}` : 'shortage included' },
-    ...(profit ? [{ label: `Profit · ${costUnit.name}`, value: `${fmt.signedPick(profit.profitPerPick)} / pick`, sub: `cost ${fmt.pick(profit.costPerPick)} / pick` }] : []),
-    ...(firstLoom ? [{ label: `Loom realisation · ${fmt.int(firstLoom.width)} cm`, value: `${fmt.rs(firstLoom.value, 0)} / day`, sub: `${loomUnit.name} · ${firstLoom.panna === 2 ? 'double' : 'single'} panna` }] : []),
-    { label: 'GSM (estimate)', value: fmt.n(calc.gsm, 1), sub: `${fmt.n(calc.totalGpm, 1)} g/m · ${fmt.n(calc.kgPer100, 2)} kg/100 m` },
+    { label: 'Realisation with VATAV', value: `${fmt.pick(calc.realisationNetPerPick)} / pick`, v: round(calc.realisationNetPerPick, 4), u: '₹ / pick', sub: `${fmt.rs(calc.realisationNetPerM)} / ${per}`, accent: true },
+    { label: 'Without VATAV', value: `${fmt.pick(calc.realisationPerPick)} / pick`, v: round(calc.realisationPerPick, 4), u: '₹ / pick', sub: `${fmt.rs(calc.realisationPerM)} / ${per}` },
+    { label: 'Sale rate', value: `${fmt.rs(calc.price)} / ${per}`, v: round(calc.price, 2), u: `₹ / ${per}`, sub: calc.priceTemp ? `temporary · master ${calc.masterPrice === null ? 'not set' : fmt.rs(calc.masterPrice)}` : fmt.date(fabric.sale_date) ? `sale date ${fmt.date(fabric.sale_date)}` : 'no sale date' },
+    { label: rfd ? 'RFD cost' : 'RM cost', value: `${fmt.rs(rfd ? calc.rfdCost : calc.rmCost)} / ${per}`, v: round(rfd ? calc.rfdCost : calc.rmCost, 2), u: `₹ / ${per}`, sub: rfd ? `RM ${fmt.rs(calc.rmPerSaleM)} + finishing ${fmt.rs(calc.finishingCost)}` : 'shortage included' },
+    ...(profit ? [{ label: `Profit · ${costUnit.name}`, value: `${fmt.signedPick(profit.profitPerPick)} / pick`, v: round(profit.profitPerPick, 4), u: '₹ / pick', sub: `cost ${fmt.pick(profit.costPerPick)} / pick` }] : []),
+    ...(firstLoom ? [{ label: `Loom realisation · ${fmt.int(firstLoom.width)} cm`, value: `${fmt.rs(firstLoom.value, 0)} / day`, v: round(firstLoom.value, 0), u: '₹ / loom / day', sub: `${loomUnit.name} · ${firstLoom.panna === 2 ? 'double' : 'single'} panna` }] : []),
+    { label: 'GSM (estimate)', value: fmt.n(calc.gsm, 1), v: round(calc.gsm, 1), u: 'g/m²', sub: `${fmt.n(calc.totalGpm, 1)} g/m · ${fmt.n(calc.kgPer100, 2)} kg/100 m` },
   ];
 
   sections.push({
@@ -103,7 +103,7 @@ export function detailedModel(fabric, calc, idx) {
     title: 'Consumption per greige metre',
     note: 'Shortage included.',
     kind: 'table',
-    head: ['Side', 'Yarn', 'Denier', 'Ends', 'Pick share', 'g/m', 'kg/100 m'],
+    head: ['Side', 'Yarn', 'Denier', 'Ends', 'Pick share %', 'g/m', 'kg/100 m'],
     align: { 2: 'right', 3: 'right', 4: 'right', 5: 'right', 6: 'right' },
     rows: [
       ...lines.map((x) => [
@@ -188,7 +188,7 @@ export function detailedModel(fabric, calc, idx) {
       ['Loom efficiency', PCT(u.loom_eff_pct), 'set on the unit'],
     ];
     const sp = spindleProfit(calc, fabric, u, idx);
-    if (sp && sp.value !== null) kv.push(['Spindle profitability', cell(`${fmt.spin(sp.value)} / pick / spindle`, round(sp.value, 6), '₹ / pick / spindle'), `profit per pick ÷ ${fmt.int(sp.spindles)} spindles a single panna loom needs on ${sp.type.name}`]);
+    if (sp && sp.value !== null) kv.push(['Spindle profitability', cell(fmt.spin(sp.value), round(sp.value, 6), '₹ / pick / spindle'), `per pick per spindle: profit per pick ÷ ${fmt.int(sp.spindles)} spindles a single panna loom needs on ${sp.type.name}`]);
     else if (sp) kv.push(['Spindle profitability', '—', sp.reason || '']);
     sections.push({ title: `Unit · ${u.name}`, kind: 'kv', single: true, rows: kv, unitStart: true });
 
@@ -197,7 +197,7 @@ export function detailedModel(fabric, calc, idx) {
         title: `Looms · ${u.name}`,
         note: 'Per loom per day.',
         kind: 'table',
-        head: ['Loom width', 'Groups', 'Panna', 'RPM', 'Efficiency', 'm/day', 'Warp kg', 'Weft kg', 'Loom realisation'],
+        head: ['Loom width', 'Loom type', 'Panna', 'RPM', 'Efficiency %', 'm/day', 'Warp kg', 'Weft kg', 'Loom realisation ₹/day'],
         align: { 3: 'right', 4: 'right', 5: 'right', 6: 'right', 7: 'right', 8: 'right' },
         rows: widths.map((w) => {
           const gs = prod.filter((x) => num(x.group.reed_width_cm) === w.width).map((x) => x.group.shedding || 'Plain');
@@ -272,7 +272,7 @@ export function detailedModel(fabric, calc, idx) {
         title: `TFO and spindles · ${u.name}`,
         note: 'TFO RPM as stored (already × 2). kg per side per day. Spindles one loom needs per day.',
         kind: 'table',
-        head: ['TFO type', 'TPM yarn', 'Side', 'TFO RPM', 'TPM', 'TFO eff.', 'Spindles / side', 'kg / side', 'Spindles · single panna', 'Spindles · double panna'],
+        head: ['TFO type', 'TPM yarn', 'Side', 'TFO RPM', 'TPM', 'TFO eff. %', 'Spindles / side', 'kg / side', 'Spindles · single panna', 'Spindles · double panna'],
         align: { 3: 'right', 4: 'right', 5: 'right', 6: 'right', 7: 'right', 8: 'right', 9: 'right' },
         rows,
       });
@@ -285,7 +285,7 @@ export function detailedModel(fabric, calc, idx) {
     sections.push({
       title: 'Beam length',
       kind: 'table',
-      head: ['Unit', 'Loom group', 'Beam length'],
+      head: ['Unit', 'Loom group', 'Beam length m'],
       align: { 2: 'right' },
       rows: beams.map((b) => [b.unit.name, slotLabel(b), b.length === null ? 'Not set' : N(b.length, 0, ' m')]),
     });
@@ -370,6 +370,11 @@ export async function buildDetailedPdf(fabric, calc, idx) {
   doc.setTextColor(...grey);
   doc.text(m.subtitle, x0, 26.5);
   doc.text(fmt.date(m.date), PW - M, 14, { align: 'right' });
+  doc.setFont('DejaVu', 'bold');
+  doc.setTextColor(158, 90, 0);
+  doc.text('INTERNAL', PW - M, 19, { align: 'right' });
+  doc.setFont('DejaVu', 'normal');
+  doc.setTextColor(...grey);
   doc.setDrawColor(...green);
   doc.setLineWidth(0.6);
   doc.line(M, 30, PW - M, 30);
@@ -463,7 +468,7 @@ export async function buildDetailedPdf(fabric, calc, idx) {
           const st = total ? totalStyle : {};
           return [{ content: pdfText(c[0]), styles: { ...st, textColor: total ? ink : grey } }, { content: pdfText(c[1]), styles: { ...st, fontStyle: 'bold', halign: 'right' } }, { content: pdfText(c[2] || ''), styles: { ...st, textColor: grey, fontSize: 7.5 } }];
         }),
-        columnStyles: { 0: { cellWidth: 62 }, 1: { cellWidth: 46 } },
+        columnStyles: { 0: { cellWidth: 60 }, 1: { cellWidth: 50 } },
       });
     } else {
       // two label/value pairs per line
@@ -503,7 +508,7 @@ export async function buildDetailedPdf(fabric, calc, idx) {
     doc.setDrawColor(...line);
     doc.setLineWidth(0.2);
     doc.line(M, PH - 11, PW - M, PH - 11);
-    doc.text(`${m.title} · detailed report · ${fmt.date(m.date)} · contains cost and realisation figures`, M, PH - 7);
+    doc.text(`${m.title} · detailed report · ${fmt.date(m.date)} · internal: contains costs, yarn rates and profit`, M, PH - 7);
     doc.text(`Page ${p} of ${pages}`, PW - M, PH - 7, { align: 'right' });
   }
   return doc.output('blob');
@@ -517,13 +522,13 @@ export async function exportFabricPdfDetailed(fabric, calc, idx, opts = {}) {
 // ---------- Excel: one sheet, the same sections top to bottom ----------
 export function detailedAoa(model) {
   const aoa = [];
-  aoa.push(['Hanuman Group · Detailed fabric report']);
+  aoa.push(['Hanuman Group · Detailed fabric report · INTERNAL: contains costs, yarn rates and profit']);
   aoa.push([model.title]);
   aoa.push([model.subtitle]);
   aoa.push([`Date: ${fmt.date(model.date)}`]);
   aoa.push([]);
   aoa.push(['KEY FIGURES']);
-  for (const f of model.figures) aoa.push([f.label, f.value, f.sub || '']);
+  for (const f of model.figures) aoa.push(f.v === '' || f.v === undefined ? [f.label, f.value, '', f.sub || ''] : [f.label, f.v, f.u || '', f.sub || '']);
   for (const s of model.sections) {
     aoa.push([]);
     aoa.push([s.title.toUpperCase(), ...(s.note ? [s.note] : [])]);
