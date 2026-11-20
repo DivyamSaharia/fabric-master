@@ -282,6 +282,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.23.2', 'New app logo and icon: a stack of swatch cards with the Hanuman H.'],
   ['1.23.1', 'Production centre: removed the "all looms" figures, so it shows per loom per day only.'],
   ['1.23.0', 'Production centre now lists each warp and weft yarn with the kg a loom uses per day.'],
   ['1.22.0', 'Spindle requirement now shows how many spindles are for warp and how many for weft, under the total.'],
