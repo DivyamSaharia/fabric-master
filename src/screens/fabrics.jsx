@@ -5,7 +5,7 @@ import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.j
 import {
   addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, retry, saveFabric, savedFilters, setAssignments, setCover, clearTempPrice, clearTempRate, toast, useStore,
 } from '../store.js';
-import { back, go, replace } from '../router.js';
+import { back, go, replace, useLeaveGuard } from '../router.js';
 import { loadListState, saveListState, savedScroll, saveScroll } from '../listState.js';
 import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, SearchPicker, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
 import { GuideHint, HelpButton } from './guide.jsx';
@@ -777,7 +777,7 @@ export function FabricDetail({ id }) {
       </Section>
 
       {units.length ? (
-        <Section header="Production centre" footer="Per loom per day at each unit's loom efficiency; 'all' is for every loom in the group. Double panna where two reed spaces fit the reed width. Warp and weft include shortage.">
+        <Section header="Production centre" footer="Per loom per day at each unit's loom efficiency. Double panna where two reed spaces fit the reed width. Warp and weft include shortage.">
           {units.map((u) => <ProductionCard unit={u} fabric={fabric} calc={calc} idx={idx} />)}
         </Section>
       ) : null}
@@ -1171,6 +1171,11 @@ function FabricEditForm({ id }) {
     const tIdx = buildIndex({ ...t, Fabrics: [...(t.Fabrics || []).filter((x) => x.id !== tempId), fab], FabricYarns: [...(t.FabricYarns || []).filter((x) => x.fabric_id !== tempId), ...ls] }, getState().tempRates);
     return fabricCalc(fab, tIdx);
   }, [f, lines, st.tables, st.tempRates]);
+  // Cancel, Back or the back gesture asks before throwing away changes
+  const startSnap = useRef(null);
+  const snap = JSON.stringify([f, lines, unitIds, beams]);
+  if (startSnap.current === null) startSnap.current = snap;
+  const allowLeave = useLeaveGuard(snap !== startSnap.current);
 
   if (id && !existing) {
     return (
@@ -1195,6 +1200,7 @@ function FabricEditForm({ id }) {
     try {
       const clean = lines.filter((l) => l.yarn_id);
       const fid = await saveFabric({ ...f, name: f.name.trim() }, clean, unitIds, slots.flatMap((slot) => slot.groupIds.map((loom_group_id) => ({ loom_group_id, beam_length_m: slotValue(slot) }))));
+      allowLeave();
       if (existing) back(`/fabric/${fid}`);
       else replace(`/fabric/${fid}`);
     } catch (e) {

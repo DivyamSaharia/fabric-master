@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'preact/hooks';
+import { useEffect, useRef, useState } from 'preact/hooks';
 import { fabricCalc, fmt, isTpm, num, spindlesForUnit, tfoEff, tfoOutput, truthy, yarnDenier } from '../calc.js';
 import { deleteSpeed, deleteUnit, getIndex, saveSpeed, saveUnit, toast, useStore } from '../store.js';
-import { back, go, replace } from '../router.js';
+import { back, go, replace, useLeaveGuard } from '../router.js';
 import { PanBlocks } from './fabrics.jsx';
 import { DEFAULT_SPINDLES_PER_SIDE, typeCapacity } from '../machines.js';
 import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, Section, Segmented, SelectField, Sheet, TextButton, Toggle, classBadge, History } from '../ui.jsx';
@@ -249,6 +249,11 @@ function UnitEditForm({ id }) {
   const [groups, setGroups] = useState(() => (existing ? (idx.loomGroupsByUnit[id] || []).map((g) => ({ ...g })) : []));
   const [types, setTypes] = useState(() => (existing ? (idx.tfoTypesByUnit[id] || []).map((t) => ({ ...t })) : []));
   const [busy, setBusy] = useState(false);
+  // Cancel, Back or the back gesture asks before throwing away changes
+  const startSnap = useRef(null);
+  const snap = JSON.stringify([u, groups, types]);
+  if (startSnap.current === null) startSnap.current = snap;
+  const allowLeave = useLeaveGuard(snap !== startSnap.current);
   const up = (k) => (v) => setU((x) => ({ ...x, [k]: v }));
   if (id && !existing) {
     return (
@@ -280,6 +285,7 @@ function UnitEditForm({ id }) {
         groups.map((g) => ({ ...g, reed_width_cm: num(g.reed_width_cm) ?? '', looms: num(g.looms) ?? '' })),
         u.has_tfo ? types.map((t) => ({ ...t, machines: num(t.machines) ?? '', spindles_per_side: num(t.spindles_per_side) ?? '', efficiency: num(t.efficiency) ?? '' })) : [],
       );
+      allowLeave();
       if (existing) back(`/unit/${uid}`);
       else replace(`/unit/${uid}`);
     } catch (e) {
@@ -351,6 +357,7 @@ function UnitEditForm({ id }) {
             if (!window.confirm(`Delete ${existing.name}? Its fabric links, loom groups, TFO types and speeds go too. Fabrics stay.`)) return;
             try {
               await deleteUnit(existing.id);
+              allowLeave();
               replace('/units');
             } catch (e) {
               toast(e.message, 'error');

@@ -91,7 +91,7 @@ export function NavBar({ title, backLabel, backTo, onBack, left, right, large, h
 }
 
 export const IconButton = ({ label, onClick, children, disabled }) => (
-  <button type="button" class="icon-btn" aria-label={label} onClick={onClick} disabled={disabled}>
+  <button type="button" class="icon-btn" aria-label={label} title={label} onClick={onClick} disabled={disabled}>
     {children}
   </button>
 );
@@ -384,7 +384,7 @@ export function Sidebar({ active, settingsOpen }) {
             <div>{demo ? 'Demo data on this device' : 'Google Sheet'}</div>
             <div class="sb-sync-sub">{st.status.error ? 'Last sync failed' : demo ? 'Connect your Sheet in Settings' : syncText(st)}</div>
           </div>
-          <button type="button" class="icon-btn" aria-label="Reload from the Sheet" onClick={() => refresh()} disabled={st.syncing}>
+          <button type="button" class="icon-btn" aria-label="Reload from the Sheet" title="Reload from the Sheet" onClick={() => refresh()} disabled={st.syncing}>
             {st.syncing ? <span class="spinner" aria-hidden="true" /> : <Icon.refresh size={20} />}
           </button>
         </div>

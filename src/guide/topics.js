@@ -284,7 +284,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
-  ['1.24.0', 'Faster: the app opens at once from the copy saved on your phone, checks the Sheet in under a second, and loads in full only when something changed. With no signal it shows the saved copy and says when it was last updated; Retry shows that it is trying.'],
+  ['1.24.0', 'Faster: the app opens at once from the copy saved on your phone and loads in full only when something changed. With no signal it shows that copy. Cancel now asks before throwing away changes, long names wrap, and Planner tiles say when they cover only some looms.'],
   ['1.23.2', 'New app logo and icon: a stack of swatch cards with the Hanuman H.'],
   ['1.23.1', 'Production centre: removed the "all looms" figures, so it shows per loom per day only.'],
   ['1.23.0', 'Production centre now lists each warp and weft yarn with the kg a loom uses per day.'],

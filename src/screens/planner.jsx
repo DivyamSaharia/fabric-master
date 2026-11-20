@@ -240,6 +240,11 @@ export function Planner() {
   const hasInputs = plan.looms.length || plan.sides.length || plan.receipts.length || nSettings;
   const t = model.totals;
   const hasTfo = model.hasTfo;
+  // display only: how many planned looms each kind of tile covers (no change to any figure)
+  const plannedRows = model.groups.flatMap((g) => g.rows).filter((r) => r.looms > 0);
+  const rateLooms = plannedRows.filter((r) => r.mPerDay !== null).reduce((a, r) => a + r.looms, 0);
+  const moneyPart = partOf(t.realLooms, t.looms);
+  const ratePart = partOf(rateLooms, t.looms);
   const tpmList = tpmYarns(idx);
   const yarnOptions = (exclude) => [
     { group: 'TPM yarns', options: tpmList.filter((y) => !exclude.includes(y.yarn.id)).map((y) => ({ value: y.yarn.id, label: y.yarn.name })) },
@@ -280,23 +285,24 @@ export function Planner() {
         {moneyToggle}
       </div>
 
+      {/* what the tiles leave out comes first, so a part-total is never read as the whole plan */}
+      <Notes model={model} showMoney={showMoney} />
+
       <div class="ptiles">
-        {showMoney ? <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={t.realLooms ? `per day · ${fmt.int(t.realLooms)} looms` : 'enter looms with a price'} accent /> : null}
-        {showMoney ? <Tile label="Plant profit" value={rs0(t.plantProfit)} sub={t.costPerPick === null ? 'set cost per pick on the unit' : `per day · at ${fmt.pick(t.costPerPick)} a pick`} tone={t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : ''} accent /> : null}
-        {showMoney ? <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub={t.avgLoomProfit !== null ? `per loom per day · profit ${rs0(t.avgLoomProfit)}` : 'per loom per day'} /> : null}
-        {showMoney ? <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="realisation with VATAV, weighted by output" /> : null}
-        {showMoney ? <Tile label="Profit per pick" value={fmt.pick(t.avgProfitPerPick)} sub="average, weighted by output" tone={t.avgProfitPerPick !== null && t.avgProfitPerPick < 0 ? 'bad' : ''} /> : null}
-        <Tile label="Yarn used" value={kg(t.yarnKg, 0)} sub="per day, all yarns, shortage included" accent={!showMoney} />
+        {showMoney ? <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={!t.realLooms ? 'enter looms with a price' : moneyPart ? 'per day' : `per day · ${fmt.int(t.realLooms)} looms`} part={moneyPart} accent /> : null}
+        {showMoney ? <Tile label="Plant profit" value={rs0(t.plantProfit)} sub={t.costPerPick === null ? 'set cost per pick on the unit' : `per day · at ${fmt.pick(t.costPerPick)} a pick`} part={moneyPart} tone={t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : ''} accent /> : null}
+        {showMoney ? <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub={t.avgLoomProfit !== null ? `per loom per day · profit ${rs0(t.avgLoomProfit)}` : 'per loom per day'} part={moneyPart} /> : null}
+        {showMoney ? <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="realisation with VATAV, weighted by output" part={moneyPart} /> : null}
+        {showMoney ? <Tile label="Profit per pick" value={fmt.pick(t.avgProfitPerPick)} sub="average, weighted by output" part={moneyPart} tone={t.avgProfitPerPick !== null && t.avgProfitPerPick < 0 ? 'bad' : ''} /> : null}
+        <Tile label="Yarn used" value={kg(t.yarnKg, 0)} sub="per day, all yarns, shortage included" part={ratePart} accent={!showMoney} />
         <Tile label="Looms planned" value={`${fmt.int(t.looms)} of ${fmt.int(t.capacity)}`} sub={t.looms > t.capacity ? 'more than the unit has' : 'looms in this unit'} tone={t.looms > t.capacity ? 'bad' : ''} />
-        <Tile label="Production" value={mtr(t.metresPerDay)} sub="greige metres per day" />
-        {hasTfo ? <Tile label="TPM consumption" value={kg(t.tpmConsumption, 0)} sub="per day, shortage included" /> : null}
+        <Tile label="Production" value={mtr(t.metresPerDay)} sub="greige metres per day" part={ratePart} />
+        {hasTfo ? <Tile label="TPM consumption" value={kg(t.tpmConsumption, 0)} sub="per day, shortage included" part={ratePart} /> : null}
         {hasTfo ? <Tile label="TFO output" value={kg(t.tfoOutput, 0)} sub="per day from the sides entered" /> : null}
         {hasTfo ? <Tile label="From outside" value={kg(t.received, 0)} sub="average per day" /> : null}
-        {hasTfo ? <Tile label="Net TPM balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} /> : null}
-        {hasTfo ? <Tile label="Yarns short" value={String(t.short)} sub={`of ${model.balance.length} TPM ${model.balance.length === 1 ? 'yarn' : 'yarns'}`} tone={t.short ? 'bad' : ''} /> : null}
+        {hasTfo ? <Tile label="Net TPM balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} part={ratePart} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} /> : null}
+        {hasTfo ? <Tile label="Yarns short" value={String(t.short)} sub={`of ${model.balance.length} TPM ${model.balance.length === 1 ? 'yarn' : 'yarns'}`} part={ratePart} tone={t.short ? 'bad' : ''} /> : null}
       </div>
-
-      <Notes model={model} showMoney={showMoney} />
 
       {hasTfo ? (
         <section class="section">
@@ -466,14 +472,21 @@ export function Planner() {
   );
 }
 
-function Tile({ label, value, sub, tone, accent }) {
+// part: "12 of 40 looms" when the figure covers only some of the planned looms (shown in amber)
+function Tile({ label, value, sub, tone, accent, part }) {
   return (
     <div class={`tile ${accent ? 'accent' : ''}`}>
       <div class="t-label">{label}</div>
       <div class={`t-value ${tone || ''}`}>{value}</div>
       <div class="t-sub">{sub}</div>
+      {part ? <div class="t-part">{part}</div> : null}
     </div>
   );
+}
+
+// Looms planned vs looms a figure covers: money tiles need RPM, efficiency and a price; kg and metres need RPM and efficiency.
+export function partOf(covered, total) {
+  return total > 0 && covered < total ? `${fmt.int(covered)} of ${fmt.int(total)} looms` : '';
 }
 
 function Notes({ model, showMoney }) {

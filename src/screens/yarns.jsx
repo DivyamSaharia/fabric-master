@@ -1,9 +1,9 @@
-import { useMemo, useState } from 'preact/hooks';
+import { useMemo, useRef, useState } from 'preact/hooks';
 import { DEFAULT_TPM_DELTA, fmt, isTpm, num, tempRateOf, tpmDelta, yarnDenier, yarnRate } from '../calc.js';
 import { rateLabel, yarnSub } from '../describe.js';
 import { clearTempRate, deleteRates, deleteYarn, getIndex, saveYarn, toast, useStore, yarnUsage } from '../store.js';
 import { today } from '../schema.js';
-import { back, go, replace } from '../router.js';
+import { back, go, replace, useLeaveGuard } from '../router.js';
 import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, SearchBox, Section, Segmented, SelectField, TextButton, useWide, History } from '../ui.jsx';
 import { HelpButton } from './guide.jsx';
 
@@ -121,6 +121,11 @@ function YarnEditForm({ id, query }) {
   const [rate, setRate] = useState(current ? String(current.rate) : '');
   const [rateDate, setRateDate] = useState(today());
   const [busy, setBusy] = useState(false);
+  // Cancel, Back or the back gesture asks before throwing away changes
+  const startSnap = useRef(null);
+  const snap = JSON.stringify([y, rate, rateDate]);
+  if (startSnap.current === null) startSnap.current = snap;
+  const allowLeave = useLeaveGuard(snap !== startSnap.current);
   const up = (k) => (v) => setY((x) => ({ ...x, [k]: v }));
   if (id && id !== 'new' && !existing) {
     return (
@@ -190,6 +195,7 @@ function YarnEditForm({ id, query }) {
         row.tpm_delta = delta;
       }
       const yid = await saveYarn(row, rateChanged ? num(rate) : null, rateDate);
+      allowLeave();
       if (existing) back('/yarns');
       else replace(`/yarn/${yid}`);
     } catch (e) {
@@ -293,6 +299,7 @@ function YarnEditForm({ id, query }) {
               if (!window.confirm(`Delete ${existing.name} and its rate history?`)) return;
               try {
                 await deleteYarn(existing.id);
+                allowLeave();
                 replace('/yarns');
               } catch (e) {
                 toast(e.message, 'error');
