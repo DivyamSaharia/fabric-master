@@ -1,4 +1,5 @@
-import { useState } from 'preact/hooks';
+import { useEffect, useState } from 'preact/hooks';
+import { askConfirm } from '../confirm.js';
 import { fmt, num, priceForPick } from '../calc.js';
 import {
   activeTempPrices, activeTempRates, clearAllTempPrices, clearAllTempRates, clearTempPrice, clearTempRate,
@@ -6,20 +7,54 @@ import {
 } from '../store.js';
 import { Button, Icon, NumField, Row, Section, Segmented, Sheet, TextButton } from '../ui.jsx';
 
-// Strip across the top of every screen while any temporary yarn rate is on, with the panel to reset them.
+// The strip sits in every top bar (so it stays in view); the panel it opens is drawn once by the app.
+let panelOpen = false;
+const panelSubs = new Set();
+const setPanelOpen = (v) => {
+  panelOpen = v;
+  panelSubs.forEach((f) => f());
+};
+function usePanelOpen() {
+  const [open, setOpen] = useState(panelOpen);
+  useEffect(() => {
+    const f = () => setOpen(panelOpen);
+    panelSubs.add(f);
+    return () => panelSubs.delete(f);
+  }, []);
+  return [open, setPanelOpen];
+}
+
+function stripLabel(list, prices) {
+  return [
+    list.length ? (list.length === 1 ? '1 temporary yarn rate' : `${list.length} temporary yarn rates`) : '',
+    prices.length ? (prices.length === 1 ? '1 temporary sale rate' : `${prices.length} temporary sale rates`) : '',
+  ].filter(Boolean).join(' · ');
+}
+
+// Strip under the top bar of every screen while any temporary rate is on.
 export function TempRatesStrip() {
   const st = useStore();
-  const [open, setOpen] = useState(false);
+  const list = Object.keys(st.tempRates).length ? activeTempRates() : [];
+  const prices = Object.keys(st.tempPrices).length ? activeTempPrices() : [];
+  if (!list.length && !prices.length) return null;
+  return (
+    <button type="button" class="temp-strip" onClick={() => setPanelOpen(true)}>
+      <span>{stripLabel(list, prices)} active</span>
+      <span class="temp-strip-go">View<Icon.chevron size={11} /></span>
+    </button>
+  );
+}
+
+// The Temporary rates panel and the TPM Save to master screen.
+export function TempRatesPanel() {
+  const st = useStore();
+  const [open, setOpen] = usePanelOpen();
   const [busy, setBusy] = useState(false);
   // TPM yarn whose temporary rate is being saved to master (the three choices), or null
   const [tpmItem, setTpmItem] = useState(null);
   const list = Object.keys(st.tempRates).length ? activeTempRates() : [];
   const prices = Object.keys(st.tempPrices).length ? activeTempPrices() : [];
   if (!list.length && !prices.length) return null;
-  const label = [
-    list.length ? (list.length === 1 ? '1 temporary yarn rate' : `${list.length} temporary yarn rates`) : '',
-    prices.length ? (prices.length === 1 ? '1 temporary sale rate' : `${prices.length} temporary sale rates`) : '',
-  ].filter(Boolean).join(' · ');
 
   async function toMaster(item) {
     if (item.tpm) {
@@ -27,7 +62,12 @@ export function TempRatesStrip() {
       return;
     }
     const m = item.masterRate === null ? 'no rate' : `${fmt.rate(item.masterRate)}/kg`;
-    if (!window.confirm(`Save ${fmt.rate(item.rate)}/kg as today's rate for ${item.yarn.name} in the yarn master? It is ${m} now. The temporary rate is removed afterwards.`)) return;
+    const ok = await askConfirm({
+      title: `Save ${item.yarn.name} to master?`,
+      text: `${fmt.rate(item.rate)}/kg becomes today's rate in the yarn master, for everyone. It is ${m} now. The temporary rate is removed afterwards.`,
+      yes: `Save ${fmt.rate(item.rate)}/kg to master`,
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await saveTempRateToMaster(item.yarn.id);
@@ -50,10 +90,6 @@ export function TempRatesStrip() {
 
   return (
     <>
-      <button type="button" class="temp-strip" onClick={() => setOpen(true)}>
-        <span>{label} active</span>
-        <span class="temp-strip-go">View<Icon.chevron size={11} /></span>
-      </button>
       <Sheet
         open={open && !!tpmItem}
         onClose={() => { setTpmItem(null); setOpen(false); }}
@@ -68,7 +104,7 @@ export function TempRatesStrip() {
         footer={<Button kind="secondary" onClick={() => { clearAllTempRates(); clearAllTempPrices(); setOpen(false); }}>Reset all</Button>}
       >
         {prices.length ? (
-          <Section header="Sale rates" footer="Set on this device only. Save to master makes it the fabric's selling price for everyone, with today's sale date.">
+          <Section header="Sale rates" footer="This device only. Save to master sets the selling price for everyone, dated today.">
             {prices.map((item) => (
               <Row
                 label={item.fabric.name}
@@ -77,15 +113,15 @@ export function TempRatesStrip() {
                 valueSub="temporary"
               >
                 <div class="temp-actions">
-                  <TextButton onClick={() => clearTempPrice(item.fabric.id)}>Reset</TextButton>
-                  <TextButton onClick={() => priceToMaster(item)} disabled={busy}>Save to master</TextButton>
+                  <Button kind="primary small" onClick={() => priceToMaster(item)} disabled={busy}>Save to master</Button>
+                  <button type="button" class="link-btn" onClick={() => clearTempPrice(item.fabric.id)}>Reset</button>
                 </div>
               </Row>
             ))}
           </Section>
         ) : null}
         {list.length ? (
-        <Section header={prices.length ? 'Yarn rates' : undefined} footer="Set on this device only, to try a different price. The yarn master and the Sheet are not changed, so these figures differ from everyone else's.">
+        <Section header={prices.length ? 'Yarn rates' : undefined} footer="This device only. The yarn master is not changed until you save.">
           {list.map((item) => (
             <Row
               label={item.yarn.name}
@@ -96,8 +132,8 @@ export function TempRatesStrip() {
               valueSub="temporary"
             >
               <div class="temp-actions">
-                <TextButton onClick={() => clearTempRate(item.yarn.id)}>Reset</TextButton>
-                <TextButton onClick={() => toMaster(item)} disabled={busy}>Save to master</TextButton>
+                <Button kind="primary small" onClick={() => toMaster(item)} disabled={busy}>Save to master</Button>
+                <button type="button" class="link-btn" onClick={() => clearTempRate(item.yarn.id)}>Reset</button>
               </div>
             </Row>
           ))}
@@ -127,11 +163,11 @@ export function TempRateRow({ yarn, temp, placeholder, tpm }) {
   }
 
   return (
-    <label class={`row field${tpm ? ' tpm-temp' : ''}`}>
+    <label class={`row field cmp${tpm ? ' tpm-temp' : ''}`}>
       <span class="row-label">
         {tpm ? 'Temporary TPM rate' : 'Temporary rate'} <span class="hint">{yarn.name}{tpm && !active ? ' · base + delta now' : ''}{tpm && active ? ' · overrides base + delta' : ''}</span>
       </span>
-      <span class="field-input">
+      <span class="field-input compact">
         <span class="affix">₹</span>
         <input
           class="num"
@@ -214,7 +250,11 @@ export function TpmSaveView({ item, onClose }) {
 
 function confirmPriceToMaster(fabric, price, masterPrice) {
   const m = masterPrice === null || masterPrice === undefined ? 'not set' : `${fmt.rs(masterPrice)}/m`;
-  return Promise.resolve(window.confirm(`Save ${fmt.rs(price)}/m as the selling price of ${fabric.name}, with sale date ${fmt.date(todayIst())}? It is ${m} now. Everyone will see the new rate. The temporary rate is removed afterwards.`));
+  return askConfirm({
+    title: `Save ${fabric.name}'s sale rate?`,
+    text: `${fmt.rs(price)}/m becomes the selling price for everyone, with sale date ${fmt.date(todayIst())}. It is ${m} now. The temporary rate is removed afterwards.`,
+    yes: `Save ${fmt.rs(price)}/m to master`,
+  });
 }
 
 const STEP = 0.25;
@@ -276,14 +316,16 @@ export function TempPriceSection({ fabric, calc, master, unit, loom }) {
   return (
     <Section
       header="Try a sale rate"
-      footer={`Type a temporary sale rate to see how every figure changes. It stays on this device only, for this fabric, until you reset it; the fabric list, Ranking, Planner and files use it too.${active ? ` Save to master makes it the selling price for everyone, with sale date ${fmt.date(todayIst())}.` : ''}`}
+      id="sec-rates"
+      footer="This device only, until you reset it."
+      guide="temp-sale-rate"
     >
-      <label class="row field price-field">
+      <label class="row field cmp price-field">
         <span class="row-main">
           <span class="row-label">Try rate</span>
           <span class="row-sub">master {calc.masterPrice === null ? 'not set' : `${fmt.rs(calc.masterPrice)}/${per}`}</span>
         </span>
-        <span class="field-input">
+        <span class="field-input compact">
           <span class="affix">₹</span>
           <input
             class="num"

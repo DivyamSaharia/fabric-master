@@ -4,6 +4,7 @@ import { rateLabel, yarnSub } from '../describe.js';
 import { clearTempRate, deleteRates, deleteYarn, getIndex, saveYarn, toast, useStore, yarnUsage } from '../store.js';
 import { today } from '../schema.js';
 import { back, go, replace, useLeaveGuard } from '../router.js';
+import { askConfirm } from '../confirm.js';
 import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, SearchBox, Section, Segmented, SelectField, TextButton, useWide, History } from '../ui.jsx';
 import { HelpButton } from './guide.jsx';
 
@@ -68,7 +69,7 @@ export function YarnList() {
   return (
     <div>
       <NavBar large title="Yarns" left={<HelpButton screen="yarns" />} right={<IconButton label="Add yarn" onClick={() => go(`/yarn/new${kind === 'tpm' ? '?kind=tpm' : ''}`)}><Icon.plus size={26} /></IconButton>} />
-      <div class="stack" style={{ padding: 0 }}>
+      <div class="stack flush">
         <SearchBox value={search} onInput={setSearch} placeholder="Search yarns" />
         <div class="pad"><Segmented small label="Yarn kind" options={[{ value: 'all', label: 'All' }, { value: 'base', label: 'Base' }, { value: 'tpm', label: 'TPM' }]} value={kind} onChange={setKind} /></div>
       </div>
@@ -80,12 +81,12 @@ export function YarnList() {
           <div class="group">
             {yarns.map((y) => {
               const r = rateLabel(y, idx);
-              return <Row label={y.name} sub={yarnSub(y, idx)} value={<span class="strong">{r.value}{r.temp ? <span class="badge amber tag-temp">Temp</span> : null}</span>} valueSub={r.sub} onClick={() => go(`/yarn/${y.id}`)} />;
+              return <Row label={y.name} sub={<>{yarnSub(y, idx)}{r.basis ? <span class="row-basis">{r.basis}</span> : null}</>} value={<span class="strong">{r.value}{r.temp ? <span class="badge amber tag-temp">Temp</span> : null}</span>} valueSub={r.sub} onClick={() => go(`/yarn/${y.id}`)} />;
             })}
           </div>
         )
       ) : (
-        <Empty title={(st.tables.Yarns || []).length ? 'No yarns match' : 'No yarns yet'} text="Base yarns first; TPM yarns are made from a base yarn." action={<div style={{ width: '220px' }}><Button onClick={() => go('/yarn/new')}>Add yarn</Button></div>} />
+        <Empty title={(st.tables.Yarns || []).length ? 'No yarns match' : 'No yarns yet'} text="Base yarns first; TPM yarns are made from a base yarn." action={<div class="btn-narrow"><Button onClick={() => go('/yarn/new')}>Add yarn</Button></div>} />
       )}
     </div>
   );
@@ -155,7 +156,7 @@ function YarnEditForm({ id, query }) {
           ? ''
           : ' This yarn will have no rate.'
       : '';
-    if (!window.confirm(`Delete ${list}?${after}`)) return;
+    if (!(await askConfirm({ title: `Delete ${list}?`, text: after.trim() || 'It is removed for everyone.', yes: rows.length === 1 ? 'Delete rate' : `Delete ${rows.length} rates`, danger: true }))) return;
     setBusy(true);
     try {
       await deleteRates(rows.map((r) => r.id));
@@ -209,9 +210,9 @@ function YarnEditForm({ id, query }) {
       <NavBar
         title={existing ? existing.name : 'New yarn'}
         left={<TextButton onClick={() => back('/yarns')}>{existing ? 'Back' : 'Cancel'}</TextButton>}
-        right={<TextButton bold onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</TextButton>}
+        right={<TextButton bold onClick={save} disabled={busy} title="Save (Ctrl+S)">{busy ? 'Saving…' : 'Save'}</TextButton>}
       />
-      {!existing ? <div class="pad" style={{ marginTop: '8px' }}><Segmented label="Yarn kind" options={[{ value: 'base', label: 'Base yarn' }, { value: 'tpm', label: 'TPM yarn' }]} value={y.kind} onChange={(k) => setY({ ...y, kind: k })} /></div> : null}
+      {!existing ? <div class="pad mt8"><Segmented label="Yarn kind" options={[{ value: 'base', label: 'Base yarn' }, { value: 'tpm', label: 'TPM yarn' }]} value={y.kind} onChange={(k) => setY({ ...y, kind: k })} /></div> : null}
 
       <Section header={tpm ? 'TPM yarn' : 'Base yarn'} footer="Only the name is required.">
         <Field label="Name" required value={y.name} onInput={up('name')} placeholder={tpm ? 'e.g. 75D TPM 2000 S/Z' : 'e.g. 75D Polyester FDY'} />
@@ -229,22 +230,22 @@ function YarnEditForm({ id, query }) {
           <NumField label="TPM" value={y.tpm} onInput={up('tpm')} />
           <div class="row">
             <div class="row-main"><div class="row-label">Twist direction</div></div>
-            <div style={{ width: '150px' }}><Segmented small label="Twist direction" options={['S', 'Z', 'S/Z']} value={y.twist || 'S/Z'} onChange={up('twist')} /></div>
+            <div class="seg-twist"><Segmented small label="Twist direction" options={['S', 'Z', 'S/Z']} value={y.twist || 'S/Z'} onChange={up('twist')} /></div>
           </div>
         </Section>
       ) : null}
 
-      <Section header="Count and rate" footer={tpm ? `Count defaults to the base yarn's; enter the twisted denier if it differs. The rate is the base yarn's rate plus the delta, so it follows every base rate change. The delta stays at ₹${DEFAULT_TPM_DELTA} unless you change it here.` : null}>
+      <Section header="Count and rate" footer={tpm ? 'Rate = base yarn rate + delta.' : null} guide={tpm ? 'yarns' : undefined}>
         <div class="row">
           <div class="row-main"><div class="row-label">Count</div></div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', width: '60%' }}>
-            <label class="mini" style={{ flex: 2 }}><input inputmode="decimal" value={y.count ?? ''} placeholder={tpm && baseDenier ? fmt.n(baseDenier, 0) : ''} onInput={(e) => up('count')(e.currentTarget.value)} aria-label="Count" /></label>
-            <div style={{ flex: 2 }}><Segmented small label="Count unit" options={[{ value: 'D', label: 'D' }, { value: 'Ne', label: 'Ne' }]} value={y.count_unit || 'D'} onChange={up('count_unit')} /></div>
+          <div class="count-pair">
+            <label class="mini wide2"><input inputmode="decimal" value={y.count ?? ''} placeholder={tpm && baseDenier ? fmt.n(baseDenier, 0) : ''} onInput={(e) => up('count')(e.currentTarget.value)} aria-label="Count" /></label>
+            <div class="flex2"><Segmented small label="Count unit" options={[{ value: 'D', label: 'D' }, { value: 'Ne', label: 'Ne' }]} value={y.count_unit || 'D'} onChange={up('count_unit')} /></div>
           </div>
         </div>
         {!tpm ? (
           <>
-            <NumField label="Filaments" value={y.filaments} onInput={up('filaments')} />
+            <NumField label="Filaments" value={y.filaments} onInput={up('filaments')} placeholder="optional" />
             <Field label="Lustre" value={y.lustre} onInput={up('lustre')} placeholder="SD, BR, FD" />
           </>
         ) : null}
@@ -285,7 +286,7 @@ function YarnEditForm({ id, query }) {
             </div>
           ))}
           {history.length > 1 && !tpm ? (
-            <button type="button" class="add-row" style={{ color: 'var(--bad)' }} disabled={busy} onClick={() => removeRates(history.slice(1))}>
+            <button type="button" class="add-row danger" disabled={busy} onClick={() => removeRates(history.slice(1))}>
               <Icon.trash size={20} />Delete older rates
             </button>
           ) : null}
@@ -299,9 +300,9 @@ function YarnEditForm({ id, query }) {
             <Row label="Used in fabrics" value={String(usage.fabrics)} />
             {!tpm ? <Row label="TPM yarns made from it" value={String(usage.tpmChildren)} /> : null}
           </Section>
-          <div class="actions">
+          <div class="danger-zone">
             <Button kind="danger" disabled={!!(usage.fabrics || usage.tpmChildren)} onClick={async () => {
-              if (!window.confirm(`Delete ${existing.name} and its rate history?`)) return;
+              if (!(await askConfirm({ title: `Delete ${existing.name}?`, text: 'Its rate history goes too, for everyone.', yes: `Delete ${existing.name}`, danger: true }))) return;
               try {
                 await deleteYarn(existing.id);
                 allowLeave();

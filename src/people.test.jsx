@@ -40,6 +40,8 @@ describe('people with access', () => {
   it('fabric page shows who last edited it and who added it', async () => {
     await openAs(ownerKey, '#/fabric/f_geo');
     await screen.findByText('History');
+    // History is folded until tapped (1.26.0, B1 b)
+    fireEvent.click(screen.getByRole('button', { name: 'Show History' }));
     expect(screen.getByText('Ishaan')).toBeTruthy();
     expect(screen.getByText('Divyam')).toBeTruthy();
     expect(screen.getByText('All changes to this fabric')).toBeTruthy();

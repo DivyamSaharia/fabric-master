@@ -70,13 +70,13 @@ export function Changes({ query = {} }) {
         <Empty title="No change history in demo" text="Changes are recorded in your Google Sheet. Connect it in Settings." />
       ) : (
         <>
-          <div class="title-block" style={{ paddingTop: '4px' }}>
+          <div class="title-block pt4">
             <h1>{ref ? (item ? item.name : 'Changes') : title}</h1>
             <div class="title-sub">{ref ? 'Every edit made through the app' : 'Who added, changed or deleted what, newest first'}</div>
           </div>
           {names.length > 1 && !ref ? (
-            <div class="row" style={{ background: 'transparent' }}>
-              <div style={{ width: '100%' }}>
+            <div class="row clear">
+              <div class="fill">
                 <Segmented small label="Show changes by" options={[{ value: 'all', label: 'Everyone' }, ...names.map((n) => ({ value: n, label: n }))]} value={who} onChange={setWho} />
               </div>
             </div>

@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, beforeAll, afterAll, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/preact';
 import { App } from './app.jsx';
+import { answer } from './testUtil.js';
 import { sampleTables } from './sampleData.js';
 import { whatsappText, fileName } from './export/exports.js';
 import { buildIndex, fabricCalc, fmt, loomRealisationForUnit, priceForPick } from './calc.js';
@@ -75,7 +76,7 @@ describe('every screen renders with demo data', () => {
     await open('#/fabric/f_crepe');
     await screen.findByText('Sale rate');
     const tiles = [...document.querySelectorAll('.tiles .tile')];
-    expect(tiles.length).toBe(10);
+    expect(tiles.length).toBe(9);
     expect(tiles.map((t) => t.querySelector('.t-label').textContent).join('|')).not.toMatch(/GSM|^Consumption|RM cost|RFD cost|Spindle/);
     expect(tiles[3].textContent).toContain('₹45.00');
     expect(tiles[3].textContent).toContain('per RFD metre');
@@ -84,23 +85,25 @@ describe('every screen renders with demo data', () => {
     expect(daily[0].textContent).toContain('15.9 kg');
     expect(daily[0].textContent).toContain('12.7 kg');
     expect(daily[0].textContent).toContain('(311 m) · single panna · 800 RPM · 85% eff. · Unit 2');
-    // loom realisation: one tile per loom width, after the daily consumption tiles
+    // loom realisation, right after the sale rate: 190 and 280 cm give the same figure here (both single panna),
+    // so they share one tile (1.26.0, C7); it fills the rest of its row on a phone
     const ix = buildIndex(sampleTables());
     const cc = fabricCalc(ix.fabricsById.f_crepe, ix);
     const lr = loomRealisationForUnit(cc, ix.fabricsById.f_crepe, ix.unitsById.u_2, ix);
+    expect(lr[0].value).toBe(lr[1].value);
     const loomTiles = tiles.filter((t) => /Loom realisation/.test(t.querySelector('.t-label').textContent));
-    expect(loomTiles.map((t) => t.querySelector('.t-label').textContent)).toEqual(['Loom realisation · 190 cm', 'Loom realisation · 280 cm']);
-    expect(tiles.indexOf(loomTiles[0])).toBe(6);
+    expect(loomTiles.map((t) => t.querySelector('.t-label').textContent)).toEqual(['Loom realisation · 190 and 280 cm']);
+    expect(tiles.indexOf(loomTiles[0])).toBe(4);
+    expect(loomTiles[0].classList.contains('pf')).toBe(true);
     expect(lr[0].value).toBeGreaterThan(0);
     expect(loomTiles[0].querySelector('.t-value').textContent).toBe(fmt.rs(lr[0].value, 0));
     expect(loomTiles[0].textContent).toContain('per loom per day · single panna');
-    expect(loomTiles[1].querySelector('.t-value').textContent).toBe(fmt.rs(lr[1].value, 0));
-    expect(tiles[8].textContent).toContain('TFO per side · M/C 1–12');
-    expect(tiles[8].textContent).toContain('Weft · 75D TPM 2000 S/Z');
-    expect(tiles[8].textContent).toContain('24.5 kg');
-    expect(tiles[8].textContent).toContain('90% eff. assumed');
-    expect(tiles[9].textContent).toContain('M/C 13–16');
-    expect(tiles[9].textContent).toContain('28.6 kg');
+    expect(tiles[7].textContent).toContain('TFO per side · M/C 1–12');
+    expect(tiles[7].textContent).toContain('Weft · 75D TPM 2000 S/Z');
+    expect(tiles[7].textContent).toContain('24.5 kg');
+    expect(tiles[7].textContent).toContain('90% eff. assumed');
+    expect(tiles[8].textContent).toContain('M/C 13–16');
+    expect(tiles[8].textContent).toContain('28.6 kg');
     expect(screen.getByText('Transportation')).toBeTruthy();
     // spindle profitability is a row in the realisation section now
     expect(screen.getByText('Spindle profitability')).toBeTruthy();
@@ -184,6 +187,9 @@ describe('every screen renders with demo data', () => {
   it('beam length: shown per loom group, saved from the editor, dropped when the unit is unassigned', async () => {
     await open('#/fabric/f_geo');
     await screen.findByText('Beam length');
+    // folded until tapped (1.26.0, B1 b)
+    expect(screen.queryByText('4,000 m')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Show Beam length' }));
     expect(screen.getByText('4,000 m')).toBeTruthy();
     cleanup();
     await open('#/fabric/f_geo/edit');
@@ -242,7 +248,9 @@ describe('every screen renders with demo data', () => {
     await open('#/yarns');
     await screen.findByText('75D TPM 2000 S/Z');
     expect(screen.getByText('₹168')).toBeTruthy();
-    expect(screen.getAllByText('per kg · base ₹118 + ₹50').length).toBeGreaterThan(0);
+    // how the rate is made sits on the left, under the name; the right keeps the rate and "per kg" (B15)
+    expect(screen.getAllByText('base ₹118 + ₹50').length).toBeGreaterThan(0);
+    expect(document.querySelector('.row-basis').closest('.row-main')).not.toBeNull();
     cleanup();
     await open('#/yarn/y_tpm75');
     await screen.findByText('Twist direction');
@@ -265,6 +273,7 @@ describe('every screen renders with demo data', () => {
     await screen.findByText('Rate history');
     expect(screen.getByText('From 2026-10-01 · in use')).toBeTruthy();
     fireEvent.click(screen.getByLabelText('Delete rate from 2026-10-01'));
+    await answer(true);
     await waitFor(() => expect(JSON.parse(localStorage.getItem('fm.demo.v1')).YarnRates.some((r) => r.id === 'r1')).toBe(false));
     await waitFor(() => expect(screen.getByLabelText('Rate').value).toBe('110'));
   });
@@ -275,6 +284,7 @@ describe('every screen renders with demo data', () => {
     localStorage.setItem('fm.demo.v1', JSON.stringify(demo));
     await open('#/yarn/y_fdy75');
     fireEvent.click(await screen.findByText('Delete older rates'));
+    await answer(true);
     await waitFor(() => {
       const left = JSON.parse(localStorage.getItem('fm.demo.v1')).YarnRates.filter((r) => r.yarn_id === 'y_fdy75');
       expect(left.map((r) => r.id)).toEqual(['r1']);
@@ -574,6 +584,9 @@ describe('Planner', () => {
     const toggle = screen.getByRole('button', { name: 'Show revenue and ₹ figures' });
     expect(toggle.getAttribute('aria-pressed')).toBe('true');
     expect(screen.getByText('Plant realisation')).toBeTruthy();
+    // four headline tiles; the rest open with All figures (B3)
+    expect(screen.queryByText('Average per pick')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /^All figures/ }));
     expect(screen.getByText('Average per pick')).toBeTruthy();
     expect(document.body.textContent).toMatch(/loom\/day/);
     fireEvent.click(toggle);

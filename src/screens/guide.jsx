@@ -154,7 +154,7 @@ export function Guide({ topic }) {
   return (
     <div class="guide">
       <NavBar large title="Guide" backLabel="Back" onBack={() => back('/fabrics')} />
-      <div class="stack" style={{ padding: 0, gap: '10px', marginTop: '10px' }}>
+      <div class="stack flush top">
         <SearchBox value={q} onInput={setQ} placeholder="Search the guide" />
       </div>
       {!q ? (

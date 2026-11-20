@@ -37,6 +37,15 @@ export function beamSlots(weave, unitIds, idx) {
   return slots.sort((x, y) => String(x.unit.name).localeCompare(String(y.unit.name)));
 }
 
+// A loom slot named inside its unit, without the make when the unit name already says it
+// ("Chinese AJ · 190 cm", not "Chinese AJ · Chinese · 190 cm") (B12).
+export function slotLabelIn(unit, slot) {
+  const make = String(slot.group.make || '').trim();
+  const width = num(slot.group.reed_width_cm) ? `${num(slot.group.reed_width_cm)} cm` : null;
+  const repeats = make && unit && String(unit.name || '').toLowerCase().includes(make.toLowerCase());
+  return [unit ? unit.name : null, repeats ? null : make || null, width].filter(Boolean).join(' · ') || 'Loom group';
+}
+
 export const slotLabel = (slot) => [slot.group.make, num(slot.group.reed_width_cm) ? `${num(slot.group.reed_width_cm)} cm` : null].filter(Boolean).join(' · ') || 'Loom group';
 
 // Beam length (m) of a saved fabric per slot; length is null when not set.

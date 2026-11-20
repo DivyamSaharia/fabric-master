@@ -62,6 +62,8 @@ export const TOPICS = [
     steps: [
       'Open a fabric from the Fabrics tab.',
       'Read the tiles at the top first. They hold the main figures.',
+      'Tap a button under the title, like **Rates** or **Units**, to jump to that part.',
+      '**Construction**, **Beam length** and **History** stay folded. Tap **Show** to open one; the app remembers your choice.',
       'Scroll to **Warp and weft** to see each yarn and its cost.',
       'Scroll to **Production centre** for metres and yarn per loom per day.',
       'Scroll to **Units · profit per pick** to compare units.',
@@ -75,7 +77,10 @@ export const TOPICS = [
     ],
     how: [
       'Realisation per pick = (selling price − yarn cost with shortage − finishing cost) ÷ picks.',
-      'Profit per pick = realisation per pick − the unit\'s cost per pick.',
+      'Profit per pick = realisation per pick − the unit\'s cost per pick. It uses realisation with VATAV.',
+      'Metres per loom per day = RPM × 1,440 × the unit\'s loom efficiency ÷ (PPI × 39.37) × panna. Double panna is used where two reed spaces fit the loom\'s reed width.',
+      'Warp and weft kg per loom per day include shortage. The Production centre shows them per loom group; the unit cards show spindles for units with TFO.',
+      'Loom realisation = realisation per pick with VATAV × metres per loom per day × PPI.',
     ],
     related: ['edit-fabric', 'temp-sale-rate', 'temp-rates', 'share'],
   },
@@ -99,6 +104,14 @@ export const TOPICS = [
       'For the same quality at a new RS, open it and tap **Duplicate for new RS**.',
       'Changing the price sets the sale date to today.',
       '[[Shortage]] starts at 10% on warp and weft unless you change it.',
+      'Pick share splits picks between weft yarns, for example 1 and 1 for alternate picks. One weft yarn takes all picks.',
+      'VATAV is the discount off the selling price. Leave it blank if there is none.',
+      'For RFD the selling price is per RFD metre.',
+      'RFD shortage (shrinkage) grosses up yarn cost and processing.',
+      'Transportation is per RFD metre. Brokering is taken on the full selling price.',
+      'Beam length is in metres, per loom width of the units ticked.',
+      'A dobby quality shows dobby looms only. Other qualities show one length per width, used for dobby looms too.',
+      'On a laptop, Ctrl+S (⌘S on a Mac) saves the form.',
     ],
     related: ['fabric', 'yarns'],
   },
@@ -162,6 +175,10 @@ export const TOPICS = [
       'A [[TPM yarn]] is made from a base yarn. Pick that base yarn when you add it.',
       'A TPM yarn costs its base yarn\'s rate plus the twisting charge (delta).',
       'A new rate keeps the old one, with its date, for history.',
+      'A TPM yarn\'s count starts as its base yarn\'s. Type the twisted denier if it differs.',
+    ],
+    how: [
+      'TPM yarn rate = base yarn rate + delta. The delta is ₹50 unless you change it on the yarn, so the TPM rate follows every base rate change.',
     ],
     related: ['temp-rates', 'units'],
   },
@@ -184,6 +201,12 @@ export const TOPICS = [
       'A unit needs loom groups before it shows in the Planner.',
       'Cost per pick is used to work out profit for every fabric in the unit.',
       'TFO speeds per yarn are added on the unit page, under **TFO speed table**.',
+      'Each TFO type is a set of machines that runs at its own speed. Every machine has 2 sides; each side runs one yarn quality.',
+      'Enter TFO RPM already multiplied by 2. The app does not double it.',
+    ],
+    how: [
+      'TFO output per spindle per day = RPM ÷ TPM × 1,440 minutes × efficiency × denier ÷ 9,000,000 kg.',
+      'Spindle requirement per loom = kg of each TPM yarn a loom uses per day ÷ output per spindle, for each TFO type, single and double panna. It uses the fabric\'s loom RPM and the unit\'s loom efficiency.',
     ],
     related: ['planner', 'words'],
   },
@@ -292,6 +315,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.26.0', 'New look across the app. The fabric page is shorter: jump buttons under the title, and Construction, Beam length and History fold away. The Planner shows four main figures first, with All figures for the rest. Boxes you can type in now look like boxes, and deleting asks in the app.'],
   ['1.25.0', 'Temporary rate on a TPM yarn: type it under the base yarn, and Save to master can change the delta, the base rate or both. Share a fabric as Basic or Detailed: the Detailed PDF and Excel carry every figure and how it is worked out.'],
   ['1.24.0', 'Faster: the app opens at once from the copy saved on your phone and loads in full only when something changed. With no signal it shows that copy. Cancel now asks before throwing away changes, long names wrap, and Planner tiles say when they cover only some looms.'],
   ['1.23.2', 'New app logo and icon: a stack of swatch cards with the Hanuman H.'],

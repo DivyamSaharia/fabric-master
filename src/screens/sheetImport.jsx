@@ -216,7 +216,7 @@ export function SheetImport({ open, onClose, idx, unitId, list, plan, onApply })
             <p>Upload a screenshot or photo of the daily planning sheet. It is read on this phone; nothing is uploaded.</p>
             <input ref={fileRef} type="file" accept="image/*" class="visually-hidden" aria-label="Planning sheet photo" onChange={(e) => onFile(e.currentTarget.files && e.currentTarget.files[0])} />
             <Button onClick={() => fileRef.current && fileRef.current.click()}>Choose photo</Button>
-            {error ? <div class="notice" style={{ margin: '12px 0 0' }}>{error}</div> : null}
+            {error ? <div class="notice flat">{error}</div> : null}
           </div>
           <p class="section-footer">Reads the PLANNING column of SIZE 190 and SIZE 280, the current and target speeds, and NO PROGRAM (stopped looms). The first import loads the reader (about 7 MB) once; later ones work offline.</p>
         </section>
@@ -272,7 +272,7 @@ export function SheetImport({ open, onClose, idx, unitId, list, plan, onApply })
             <section class="section">
               <button type="button" class="link-btn" onClick={() => setShowZero(!showZero)}>{showZero ? 'Hide' : 'Show'} {zero.length} {zero.length === 1 ? 'quality' : 'qualities'} with no looms planned</button>
               {showZero ? (
-                <div class="group" style={{ marginTop: '8px' }}>
+                <div class="group mt8">
                   {zero.map((row) => (
                     <div class="imp-row muted">
                       <div class="imp-top"><div class="imp-name">{row.r.name}</div><span class="pline-meta">{row.width} · 0</span></div>
@@ -344,7 +344,7 @@ function ImportRow({ row, pixels, list, groups, q, skipped, loomsText, loomsBad,
   return (
     <div class={`imp-row ${skipped ? 'muted' : ''}`}>
       <div class="imp-top">
-        <div style={{ minWidth: 0 }}>
+        <div class="min0">
           <div class="imp-name">{row.r.name || '(name not read)'}</div>
           {showNameCrop ? <Crop pixels={pixels} rect={row.r.rect.name} h={22} /> : null}
         </div>
@@ -381,7 +381,7 @@ function ImportRow({ row, pixels, list, groups, q, skipped, loomsText, loomsBad,
                   ))}
                 </div>
                 {r.source === 'manual' ? (
-                  <input class={`pbox imp-num ${r.check.error ? 'need' : ''}`} type="text" inputmode="numeric" placeholder="RPM" aria-label={`RPM ${row.r.name}`} value={rpmState.manual ?? ''} onInput={(e) => onRpm({ manual: e.currentTarget.value })} style={{ marginTop: '8px' }} autofocus />
+                  <input class={`pbox imp-num ${r.check.error ? 'need' : ''}`} type="text" inputmode="numeric" placeholder="RPM" aria-label={`RPM ${row.r.name}`} value={rpmState.manual ?? ''} onInput={(e) => onRpm({ manual: e.currentTarget.value })} autofocus />
                 ) : null}
                 {r.check.error ? <div class="imp-err">{r.check.error}</div> : null}
                 {r.check.warnings.map((w) => <div class="imp-warn">{w}</div>)}

@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'preact/hooks';
 import { getIndex, me, people, refresh, resetDemo, saveSettings, testConnection, toast, useStore } from '../store.js';
 import { back, go } from '../router.js';
+import { askConfirm } from '../confirm.js';
 import { Button, Field, Icon, NavBar, Row, Section, Segmented, Sheet, useWide, whenText } from '../ui.jsx';
 import { HelpButton } from './guide.jsx';
 import { exportListXlsx, openWhatsAppText } from '../export/exports.js';
 import { computeRows } from './fabrics.jsx';
 
-export const APP_VERSION = '1.25.0';
+export const APP_VERSION = '1.26.0';
 
 // What to send someone so they can open the app on their own phone or laptop.
 export function inviteText(person, url, appUrl) {
@@ -95,7 +96,7 @@ function People() {
   }
 
   async function remove() {
-    if (!window.confirm(`Remove ${open.name}'s access? Their key stops working straight away. Everyone else keeps theirs.`)) return;
+    if (!(await askConfirm({ title: `Remove ${open.name}'s access?`, text: 'Their key stops working straight away. Everyone else keeps theirs.', yes: `Remove ${open.name}`, danger: true }))) return;
     setBusy('remove');
     try {
       setList(await people.remove(open.id));
@@ -214,7 +215,7 @@ export function Settings() {
         <Row label="What's new" sub={`Version ${APP_VERSION}`} onClick={() => go('/guide/new')} chevron />
       </Section>
       <Section header="Data source" footer={mode === 'demo' ? 'Demo keeps sample data on this device only. Nothing reaches your Drive.' : 'Paste the URL and key shown after deploying the script in your Sheet (see SETUP.md).'}>
-        <div class="row"><div style={{ width: '100%' }}><Segmented label="Data source" options={[{ value: 'demo', label: 'Demo on this device' }, { value: 'sheet', label: 'Google Sheet' }]} value={mode} onChange={setMode} /></div></div>
+        <div class="row"><div class="fill"><Segmented label="Data source" options={[{ value: 'demo', label: 'Demo on this device' }, { value: 'sheet', label: 'Google Sheet' }]} value={mode} onChange={setMode} /></div></div>
         {mode === 'sheet' ? (
           <>
             <Field label="Web app URL" value={url} onInput={setUrl} placeholder="https://script.google.com/…/exec" type="url" />
@@ -263,7 +264,7 @@ export function Settings() {
         }} chevron />
         {st.settings.mode !== 'sheet' ? (
           <Row label="Reset demo data" danger onClick={async () => {
-            if (!window.confirm('Replace the demo data on this device with the original sample?')) return;
+            if (!(await askConfirm({ title: 'Reset demo data?', text: 'The demo data on this device goes back to the original sample.', yes: 'Reset demo data', danger: true }))) return;
             await resetDemo();
             toast('Demo data reset');
           }} />

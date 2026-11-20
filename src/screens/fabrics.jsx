@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, loomRealisation, loomRealisationForUnit, num, productionForUnit, rateSources, spindleProfit, spindlesForUnit, tfoPerSide, truthy, unitHasTfo, unitProfit, yarnConsumption, TFO_CLASSES } from '../calc.js';
-import { beamRowsOf, beamSlots, groupLabel, slotLabel } from '../machines.js';
+import { beamRowsOf, beamSlots, groupLabel, slotLabelIn } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
   addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, retry, saveFabric, savedFilters, setAssignments, setCover, clearTempPrice, clearTempRate, toast, useStore,
 } from '../store.js';
 import { back, go, replace, useLeaveGuard } from '../router.js';
+import { askConfirm } from '../confirm.js';
 import { loadListState, saveListState, savedScroll, saveScroll } from '../listState.js';
-import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, SearchPicker, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, useWide, BrandHero, History } from '../ui.jsx';
+import { Badge, Button, Chip, Empty, Field, FoldSection, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, SearchPicker, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, openSection, useWide, BrandHero, History } from '../ui.jsx';
 import { GuideHint, HelpButton } from './guide.jsx';
 import { TempPriceSection, TempRateRow } from './tempRates.jsx';
 import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
@@ -139,7 +140,7 @@ export function FabricRow({ row, idx, unit, onClick, sort }) {
         ) : row.calc.vatavPct ? (
           <div class="small">{fmt.pick(row.calc.realisationPerPick)} without</div>
         ) : (
-          <div class="small">per pick</div>
+          <div class="small">no VATAV</div>
         )}
       </div>
       )}
@@ -212,8 +213,8 @@ export function FabricTable({ rows, idx, unit }) {
                   c.key === 'name' ? (
                     <td class="txt">
                       <div class="tq">
-                        <div class="tthumb">{cover ? <PhotoImg photo={cover} size="thumb" /> : <Swatch seed={r.fabric.id} size={36} radius={7} />}</div>
-                        <div style={{ minWidth: 0 }}>
+                        <div class="tthumb">{cover ? <PhotoImg photo={cover} size="thumb" /> : <Swatch seed={r.fabric.id} size={36} radius={6} />}</div>
+                        <div class="min0">
                           <div class="tname">{r.fabric.name || 'Untitled'}</div>
                           <div class="tmeta">{[r.fabric.weave, r.calc.tfoClass, r.calc.finish].filter(Boolean).join(' · ')}</div>
                         </div>
@@ -287,24 +288,23 @@ export function FabricList({ query }) {
         large
         title={wide ? 'Fabrics' : 'Fabric Database'}
         hero={wide ? null : <BrandHero />}
-        left={<><IconButton label="Settings" onClick={() => go('/settings')}><Icon.gear /></IconButton><HelpButton screen="fabrics" /></>}
+        left={wide ? <HelpButton screen="fabrics" /> : <><IconButton label="Settings" onClick={() => go('/settings')}><Icon.gear /></IconButton><HelpButton screen="fabrics" /></>}
         right={
           <>
             <IconButton label="Export list to Excel" onClick={exportList} disabled={busy || !rows.length}><Icon.share /></IconButton>
-            <IconButton label="Filters" onClick={() => setSheet(true)}><Icon.filter /></IconButton>
             <IconButton label="Add fabric" onClick={() => go('/fabric/new')}><Icon.plus size={26} /></IconButton>
           </>
         }
       />
       <StatusBanner />
       <GuideHint />
-      <div class="stack" style={{ padding: 0, gap: '10px', marginTop: '10px' }}>
+      <div class="stack flush top">
         <SearchBox value={search} onInput={setSearch} placeholder="Search quality or yarn" />
         <div class="pad">
           {unitOptions.length <= 4 ? (
             <Segmented small label="Unit" options={unitOptions} value={unitId} onChange={setUnitId} />
           ) : (
-            <div class="chips" style={{ padding: 0 }}>
+            <div class="chips flat">
               {unitOptions.map((o) => <Chip on={unitId === o.value} onClick={() => setUnitId(o.value)}>{o.label}</Chip>)}
             </div>
           )}
@@ -321,7 +321,7 @@ export function FabricList({ query }) {
       </div>
       {st.status.error && !Object.keys(idx.fabricsById).length ? null : <div class="list-meta">
         <span>{rows.length} {rows.length === 1 ? 'fabric' : 'fabrics'} · {unit ? unit.name : 'all units'}</span>
-        <span>{wide ? 'Click a heading to sort · press / to search' : filters.sort === 'spindle' ? 'Profit / pick per spindle · TPM fabrics' : loomSortWidth(filters.sort) !== null ? `₹ per loom per day · ${fmt.int(loomSortWidth(filters.sort))} cm looms` : '₹ / pick with VATAV'}</span>
+        <span class={wide ? 'plain' : ''}>{wide ? 'Click a heading to sort. Press / to search, Ctrl+S to save a form.' : filters.sort === 'spindle' ? 'Profit / pick per spindle · TPM fabrics' : loomSortWidth(filters.sort) !== null ? `₹ per loom per day · ${fmt.int(loomSortWidth(filters.sort))} cm looms` : '₹ / pick with VATAV'}</span>
       </div>}
       {rows.length ? (
         wide ? (
@@ -339,7 +339,7 @@ export function FabricList({ query }) {
         <Empty
           title={Object.keys(idx.fabricsById).length ? 'No fabrics match' : 'No fabrics yet'}
           text={Object.keys(idx.fabricsById).length ? 'Change the search, unit or filters.' : 'Add your first fabric. Add yarns first so you can pick them for warp and weft.'}
-          action={Object.keys(idx.fabricsById).length ? null : <div style={{ width: '220px' }}><Button onClick={() => go('/fabric/new')}>Add fabric</Button></div>}
+          action={Object.keys(idx.fabricsById).length ? null : <div class="btn-narrow"><Button onClick={() => go('/fabric/new')}>Add fabric</Button></div>}
         />
       )}
       <FilterSheet open={sheet} onClose={() => setSheet(false)} filters={filters} setFilters={setFilters} idx={idx} count={rows.length} unit={unit} />
@@ -389,7 +389,7 @@ function FilterSheet({ open, onClose, filters, setFilters, idx, count, unit }) {
       onClose={onClose}
       title="Sort and filter"
       footer={
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div class="btn-pair">
           <Button kind="secondary" onClick={() => setFilters(defaultFilters())}>Reset</Button>
           <Button onClick={onClose}>Show {count}</Button>
         </div>
@@ -399,7 +399,7 @@ function FilterSheet({ open, onClose, filters, setFilters, idx, count, unit }) {
         <Section header="Saved filters">
           {saved.map((s) => (
             <div class="row">
-              <button type="button" class="row-main" style={{ border: 0, background: 'none', padding: 0, textAlign: 'left' }} onClick={() => { setFilters({ ...defaultFilters(), ...s.filters }); toast(`Applied “${s.name}”`); }}>
+              <button type="button" class="row-main row-btn" onClick={() => { setFilters({ ...defaultFilters(), ...s.filters }); toast(`Applied “${s.name}”`); }}>
                 <div class="row-label">{s.name}</div>
               </button>
               <TextButton danger onClick={() => { savedFilters.remove(s.name); setSaved(savedFilters.list()); }}>Remove</TextButton>
@@ -418,13 +418,13 @@ function FilterSheet({ open, onClose, filters, setFilters, idx, count, unit }) {
         </label>
       </Section>
       <Section header="Weave">
-        <div class="chips" style={{ padding: '10px 12px' }}>{WEAVES.map((w) => <Chip on={f.weaves.includes(w)} onClick={() => up({ weaves: toggleIn(f.weaves, w) })}>{w}</Chip>)}</div>
+        <div class="chips boxed">{WEAVES.map((w) => <Chip on={f.weaves.includes(w)} onClick={() => up({ weaves: toggleIn(f.weaves, w) })}>{w}</Chip>)}</div>
       </Section>
       <Section header="TFO class">
-        <div class="chips" style={{ padding: '10px 12px', flexWrap: 'wrap' }}>{TFO_CLASSES.map((c) => <Chip on={f.classes.includes(c)} onClick={() => up({ classes: toggleIn(f.classes, c) })}>{c}</Chip>)}</div>
+        <div class="chips boxed">{TFO_CLASSES.map((c) => <Chip on={f.classes.includes(c)} onClick={() => up({ classes: toggleIn(f.classes, c) })}>{c}</Chip>)}</div>
       </Section>
       <Section header="Finish and loom type">
-        <div class="chips" style={{ padding: '10px 12px', flexWrap: 'wrap' }}>
+        <div class="chips boxed">
           {['Greige', 'RFD'].map((x) => <Chip on={f.finish === x} onClick={() => up({ finish: f.finish === x ? '' : x })}>{x}</Chip>)}
           {['Airjet', 'Waterjet'].map((x) => <Chip on={f.loomType === x} onClick={() => up({ loomType: f.loomType === x ? '' : x })}>{x}</Chip>)}
         </div>
@@ -465,7 +465,7 @@ function RangeRow({ label, min, max, onChange }) {
   return (
     <div class="row">
       <div class="row-main"><div class="row-label">{label}</div></div>
-      <div style={{ display: 'flex', gap: '8px', width: '62%' }}>
+      <div class="range-pair">
         <label class="mini"><span>Min</span><input inputmode="decimal" value={min} onInput={(e) => onChange(e.currentTarget.value, max)} aria-label={`${label} minimum`} /></label>
         <label class="mini"><span>Max</span><input inputmode="decimal" value={max} onInput={(e) => onChange(min, e.currentTarget.value)} aria-label={`${label} maximum`} /></label>
       </div>
@@ -474,6 +474,48 @@ function RangeRow({ label, min, max, onChange }) {
 }
 
 // ---------------- detail ----------------
+// Jump buttons that stay under the fabric page's title (B1 a). On a phone the button for the part on screen is lit.
+const JUMPS = [['sec-summary', 'Summary'], ['sec-rates', 'Rates'], ['sec-construction', 'Construction'], ['sec-costing', 'Costing'], ['sec-units', 'Units'], ['sec-production', 'Production']];
+const headerHeight = () => {
+  const h = typeof document !== 'undefined' ? document.querySelector('.navbar') : null;
+  return h ? h.offsetHeight : 0;
+};
+function JumpBar({ hasUnits }) {
+  const wide = useWide();
+  const items = JUMPS.filter(([id]) => hasUnits || id !== 'sec-production');
+  const [on, setOn] = useState(items[0][0]);
+  useEffect(() => {
+    if (wide) return undefined;
+    const f = () => {
+      const h = headerHeight();
+      let cur = items[0][0];
+      for (const [id] of items) {
+        const el = document.getElementById(id);
+        if (el && el.getBoundingClientRect().top - h - 16 <= 0) cur = id;
+      }
+      setOn(cur);
+    };
+    f();
+    window.addEventListener('scroll', f, { passive: true });
+    return () => window.removeEventListener('scroll', f);
+  }, [hasUnits, wide]);
+  const jump = (id) => {
+    openSection(id);
+    setOn(id);
+    requestAnimationFrame(() => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const top = id === items[0][0] ? 0 : el.getBoundingClientRect().top + window.scrollY - headerHeight() - 6;
+      window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    });
+  };
+  return (
+    <nav class="jumpbar" aria-label="Jump to">
+      {items.map(([id, label]) => <Chip on={!wide && on === id} onClick={() => jump(id)}>{label}</Chip>)}
+    </nav>
+  );
+}
+
 export function FabricDetail({ id }) {
   useStore();
   const idx = getIndex();
@@ -557,6 +599,25 @@ export function FabricDetail({ id }) {
     setUploading(false);
   }
 
+  // Loom realisation per loom width; one tile when every width gives the same figure (C7).
+  const lrTiles = dayUnit ? dayTiles.map((d) => {
+    const l = d.loom;
+    const v = loomRealisation(calc, l);
+    const why = l && l.mPerDay !== null ? (calc.realisationNetPerPick === null ? 'realisation not available' : 'set the pick on the fabric') : l ? l.reason : d.reason;
+    return { width: d.width, panna: d.panna, l, v, why };
+  }) : [];
+  const sameLr = lrTiles.length > 1 && lrTiles.every((t) => t.v !== null && t.v === lrTiles[0].v && t.panna === lrTiles[0].panna);
+  const lrShown = sameLr ? [{ ...lrTiles[0], widths: lrTiles.map((t) => t.width) }] : lrTiles.map((t) => ({ ...t, widths: t.width ? [t.width] : [] }));
+  // the last small tile fills the rest of its row, so no hole is left (C7): phone 2 columns, laptop 3
+  const nSmall = 4 + lrShown.length;
+  const fillCls = (i) => {
+    if (i !== nSmall - 1) return '';
+    const ph = nSmall % 2 ? ' pf' : '';
+    const lp = nSmall % 3 === 1 ? ' lf3' : nSmall % 3 === 2 ? ' lf2' : '';
+    return ph + lp;
+  };
+  const widthsText = (ws) => (ws.length ? ` · ${ws.map((w) => fmt.int(w)).join(' and ')} cm` : '');
+
   return (
     <div>
       <NavBar
@@ -570,11 +631,12 @@ export function FabricDetail({ id }) {
             <TextButton onClick={() => go(`/fabric/${id}/edit`)}>Edit</TextButton>
           </>
         }
+        strip={<JumpBar hasUnits={units.length > 0} />}
       />
       <div class="detail-cols">
       <div class="col">
-      <div class="hero">
-        {photos.length ? (
+      {photos.length ? (
+        <div class="hero">
           <div class="carousel" onScroll={(e) => setSlide(Math.round(e.currentTarget.scrollLeft / Math.max(1, e.currentTarget.clientWidth)))}>
             {photos.map((p) => (
               <button type="button" class="slide" onClick={() => setViewer(p)} aria-label="Open photo">
@@ -582,18 +644,25 @@ export function FabricDetail({ id }) {
               </button>
             ))}
           </div>
-        ) : (
-          <Swatch seed={id} size="100%" radius={0} />
-        )}
-        <button type="button" class="hero-add" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
-          {uploading ? <span class="spinner" aria-hidden="true" /> : <Icon.camera size={18} />}
-          {uploading ? 'Uploading' : 'Add photo'}
+          <button type="button" class="hero-add" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
+            {uploading ? <span class="spinner" aria-hidden="true" /> : <Icon.camera size={18} />}
+            {uploading ? 'Uploading' : 'Add photo'}
+          </button>
+          <span class="pill pill-right">{Math.min(slide + 1, photos.length)} / {photos.length}</span>
+        </div>
+      ) : (
+        // no photo yet: one line, so the figures start on the first screen (B2)
+        <button type="button" class="photo-add" onClick={() => fileRef.current && fileRef.current.click()} disabled={uploading}>
+          {uploading ? <span class="spinner" aria-hidden="true" /> : <Icon.camera size={22} />}
+          <span class="pa-main">
+            <span class="pa-title">{uploading ? 'Uploading…' : 'Add photo'}</span>
+            <span class="pa-sub">No photos yet</span>
+          </span>
         </button>
-        <input ref={fileRef} class="hidden-input" type="file" accept="image/*" multiple onChange={onFiles} aria-label="Add photo" />
-        {photos.length ? <span class="pill" style={{ right: '10px' }}>{Math.min(slide + 1, photos.length)} / {photos.length}</span> : <span class="pill" style={{ left: '10px' }}>No photos yet</span>}
-      </div>
+      )}
+      <input ref={fileRef} class="hidden-input" type="file" accept="image/*" multiple onChange={onFiles} aria-label="Add photo" />
 
-      <div class="title-block">
+      <div class="title-block" id="sec-summary">
         <h1>{fabric.name}</h1>
         <div class="title-sub">{[fabric.weave, fabric.design_note, fabric.end_use].filter(Boolean).join(' · ') || 'No weave or end use set'}</div>
         <FabricBadges fabric={fabric} calc={calc} />
@@ -638,11 +707,18 @@ export function FabricDetail({ id }) {
           <div class="t-value">{calc.vatavPct ? `${fmt.n(calc.vatavPct, calc.vatavPct % 1 ? 1 : 0)}%` : 'None'}</div>
           <div class="t-sub">{calc.vatavPct ? `${fmt.rs(calc.vatavAmount)} off per ${rfd ? 'RFD m' : 'm'}` : 'no discount set'}</div>
         </div>
-        <div class="tile">
+        <div class={`tile${fillCls(3)}`}>
           <div class="t-label">Sale rate</div>
           <div class="t-value">{calc.price === null ? 'Not set' : fmt.rs(calc.price)}{calc.priceTemp ? <span class="badge amber tag-temp">Temp</span> : null}</div>
           <div class="t-sub">{calc.price === null ? 'add a selling price' : calc.priceTemp ? `temporary · master ${calc.masterPrice === null ? 'not set' : fmt.rs(calc.masterPrice)}` : `${rfd ? 'per RFD metre' : 'per metre'}${fmt.date(fabric.sale_date) ? ` · ${fmt.date(fabric.sale_date)}` : ''}`}</div>
         </div>
+        {lrShown.map((t, i) => (
+          <div class={`tile loomreal${fillCls(4 + i)}`} title={t.v !== null ? `${fmt.pick(calc.realisationNetPerPick)} per pick × ${fmt.int(t.l.mPerDay)} m × ${calc.ppi} PPI · ${dayUnit.name}${dayAssumed ? ' (fabric not assigned to it)' : ''}` : undefined}>
+            <div class="t-label">Loom realisation{widthsText(t.widths)}</div>
+            <div class="t-value">{t.v === null ? '—' : fmt.rs(t.v, 0)}</div>
+            <div class="t-sub">{t.v !== null ? `per loom per day · ${t.panna === 2 ? 'double' : 'single'} panna` : t.why}</div>
+          </div>
+        ))}
         {dayTiles.length ? dayTiles.map((d) => {
           const l = d.loom;
           const ok = l && l.mPerDay !== null;
@@ -663,18 +739,6 @@ export function FabricDetail({ id }) {
             <div class="t-sub">assign a unit to see it</div>
           </div>
         )}
-        {dayUnit ? dayTiles.map((d) => {
-          const l = d.loom;
-          const v = loomRealisation(calc, l);
-          const why = l && l.mPerDay !== null ? (calc.realisationNetPerPick === null ? 'realisation not available' : 'set the pick on the fabric') : l ? l.reason : d.reason;
-          return (
-            <div class="tile loomreal" title={v !== null ? `${fmt.pick(calc.realisationNetPerPick)} per pick × ${fmt.int(l.mPerDay)} m × ${calc.ppi} PPI · ${dayUnit.name}${dayAssumed ? ' (fabric not assigned to it)' : ''}` : undefined}>
-              <div class="t-label">Loom realisation{d.width ? ` · ${fmt.int(d.width)} cm` : ''}</div>
-              <div class="t-value">{v === null ? '—' : fmt.rs(v, 0)}</div>
-              <div class="t-sub">{v !== null ? `per loom per day · ${d.panna === 2 ? 'double' : 'single'} panna` : why}</div>
-            </div>
-          );
-        }) : null}
         {tfoTiles.map((t) => (
           <div class="tile span tfo">
             <div class="t-label">TFO per side · {t.type.name}</div>
@@ -700,10 +764,10 @@ export function FabricDetail({ id }) {
       />
 
       {sources.length ? (
-        <Section header="Yarn rates" footer="Pick an older rate to see cost, realisation and profit at that rate; only this page changes. Or type a temporary rate: it applies to every fabric using the yarn, on this device only, until you reset it. Nothing is saved to the yarn master until you use Save to master in the Temporary rates panel. A TPM yarn takes its base yarn's rate plus its delta, unless you type a temporary rate on the TPM yarn itself; that one wins over the base yarn's.">
+        <Section header="Yarn rates" footer="Pick an older rate, or type a temporary rate (this device only)." guide="temp-rates">
           {sources.map((src) => (
             <>
-            <label class="row field">
+            <label class={`row field${src.dates.length ? ' stacked' : ''}`}>
               <span class="row-label">
                 {src.yarn.name}
                 {src.usedBy.some((y) => y.id !== src.yarn.id) ? <span class="hint"> for {src.usedBy.filter((y) => y.id !== src.yarn.id).map((y) => y.name).join(', ')}</span> : null}
@@ -729,7 +793,12 @@ export function FabricDetail({ id }) {
         </Section>
       ) : null}
 
-      <Section header="Construction">
+      <FoldSection
+        fold="construction"
+        id="sec-construction"
+        header="Construction"
+        summary={[fabric.reed ? `Reed ${fabric.reed}` : null, calc.ppi ? `${calc.ppi} PPI` : null, calc.rs ? `RS ${calc.rs}″` : null, calc.totalEnds !== null ? `${fmt.int(calc.totalEnds)} ends` : null].filter(Boolean).join(' · ') || 'Not filled in yet'}
+      >
         <Row label="Reed" value={fabric.reed || '—'} />
         <Row label="Pick (PPI)" value={calc.ppi ?? '—'} />
         <Row label="Total ends" value={calc.totalEnds === null ? '—' : fmt.int(calc.totalEnds)} />
@@ -739,11 +808,11 @@ export function FabricDetail({ id }) {
         <Row label="Weft shortage" value={fabric.weft_shortage_pct !== '' && fabric.weft_shortage_pct !== undefined ? `${fabric.weft_shortage_pct}%` : '—'} />
         <Row label="Loom RPM (single panna)" value={num(fabric.loom_rpm) ? fmt.int(num(fabric.loom_rpm)) : '—'} />
         <Row label="Loom RPM (double panna)" value={num(fabric.loom_rpm_dp) ? fmt.int(num(fabric.loom_rpm_dp)) : '—'} />
-      </Section>
+      </FoldSection>
       </div>
 
       <div class="col">
-      <Section header="Warp and weft" footer={calc.rmCost !== null ? `RM cost ${fmt.rs(calc.rmCost)} per greige metre, shortage included.` : null}>
+      <Section id="sec-costing" header="Warp and weft" footer={calc.rmCost !== null ? `RM cost ${fmt.rs(calc.rmCost)} per greige metre, shortage included.` : null}>
         {[...calc.warp, ...calc.weft].map((x) => (
           <Row
             label={x.yarn ? x.yarn.name : 'Yarn missing'}
@@ -783,28 +852,32 @@ export function FabricDetail({ id }) {
         </Section>
       )}
 
-      <Section header="Units · profit per pick" footer={`Profit per pick uses realisation with VATAV. ${calc.tpmLines.length && units.some((u) => truthy(u.has_tfo)) ? 'Spindles are per loom, for each TFO type of the unit.' : 'Warp and weft kg are per loom per day.'} Double panna weaves two widths on one loom.`}>
+      <Section id="sec-units" header="Units · profit per pick" footer={`Profit per pick uses realisation with VATAV.${calc.tpmLines.length && units.some((u) => truthy(u.has_tfo)) ? ' Spindles are per loom, per TFO type.' : ''}`} guide="fabric">
         {units.map((u) => <UnitCard unit={u} fabric={fabric} calc={calc} idx={idx} />)}
         {!units.length ? <Row label="Not in any unit yet" sub="Assign it to see profit per pick and spindles." /> : null}
         <button type="button" class="add-row" onClick={() => setAssignOpen(true)}><Icon.plus size={20} />{units.length ? 'Change units' : 'Assign to units'}</button>
       </Section>
 
       {units.length ? (
-        <Section header="Production centre" footer="Per loom per day at each unit's loom efficiency. Double panna where two reed spaces fit the reed width. Warp and weft include shortage.">
+        <Section id="sec-production" header="Production centre" footer="Per loom per day, shortage included." guide="fabric">
           {units.map((u) => <ProductionCard unit={u} fabric={fabric} calc={calc} idx={idx} />)}
         </Section>
       ) : null}
 
-      {units.length ? (
-        <Section header="Beam length" footer="Per loom group of the units it is assigned to. Set it in Edit.">
-          {beamRowsOf(id, idx).map((b) => (
-            <Row key={b.group.id} label={`${b.unit.name} · ${slotLabel(b)}`} value={b.length !== null ? `${fmt.n(b.length, 0)} m` : 'Not set'} />
-          ))}
-          {!beamRowsOf(id, idx).length ? <Row label="No loom groups yet" sub="Add loom groups to the unit to set beam lengths." /> : null}
-        </Section>
-      ) : null}
+      {units.length ? (() => {
+        const beams = beamRowsOf(id, idx);
+        const set = beams.filter((b) => b.length !== null).length;
+        return (
+          <FoldSection fold="beam" id="sec-beam" header="Beam length" footer="Set it in Edit." summary={beams.length ? `${set} of ${beams.length} loom ${beams.length === 1 ? 'width' : 'widths'} set` : 'No loom groups yet'}>
+            {beams.map((b) => (
+              <Row key={b.group.id} label={slotLabelIn(b.unit, b)} value={b.length !== null ? `${fmt.n(b.length, 0)} m` : 'Not set'} />
+            ))}
+            {!beams.length ? <Row label="No loom groups yet" sub="Add loom groups to the unit to set beam lengths." /> : null}
+          </FoldSection>
+        );
+      })() : null}
 
-      <History row={fabric} added what="fabric" />
+      <History row={fabric} added what="fabric" fold />
 
       <div class="actions">
         <Button kind="secondary" onClick={() => setExportOpen(true)}><Icon.share size={20} /> Export or share</Button>
@@ -817,15 +890,19 @@ export function FabricDetail({ id }) {
           }
         }}><Icon.copy size={20} /> Duplicate</Button>
         <RsDuplicate id={id} fabric={fabric} />
+      </div>
+      {/* the risky action sits apart, at the very end, smaller (B11) */}
+      <div class="danger-zone">
         <Button kind="danger" onClick={async () => {
-          if (!window.confirm(`Delete ${fabric.name}? This removes it from the Sheet, with its yarn lines, unit links, beam lengths and photos.`)) return;
+          const ok = await askConfirm({ title: `Delete ${fabric.name}?`, text: 'This removes it from the Sheet for everyone, with its yarn lines, unit links, beam lengths and photos.', yes: `Delete ${fabric.name}`, danger: true });
+          if (!ok) return;
           try {
             await deleteFabric(id);
             replace('/fabrics');
           } catch (e) {
             toast(e.message, 'error');
           }
-        }}><Icon.trash size={20} /> Delete fabric</Button>
+        }}><Icon.trash size={18} /> Delete fabric</Button>
       </div>
       </div>
       </div>
@@ -845,7 +922,7 @@ export function ProductionCard({ unit, fabric, calc, idx }) {
   return (
     <div class="unit-card prod-card">
       <div class="unit-head">
-        <div style={{ minWidth: 0 }}>
+        <div class="min0">
           <div class="row-label strong">{unit.name}</div>
           <div class="row-sub">{num(unit.loom_eff_pct) ? `loom efficiency ${fmt.n(num(unit.loom_eff_pct), num(unit.loom_eff_pct) % 1 ? 1 : 0)}%` : 'loom efficiency not set'}{groups.length ? '' : ' · no loom groups, shown per panna'}</div>
         </div>
@@ -904,11 +981,11 @@ export function UnitCard({ unit, fabric, calc, idx }) {
   return (
     <div class="unit-card">
       <div class="unit-head">
-        <div style={{ minWidth: 0 }}>
+        <div class="min0">
           <div class="row-label strong">{unit.name}</div>
           <div class="row-sub">{unit.type || 'Unit'} · cost {fmt.pick(p.costPerPick)} / pick{tfoNote ? ` · ${tfoNote}` : ''}</div>
         </div>
-        <div style={{ textAlign: 'right', flex: 'none' }}>
+        <div class="end-none">
           <div class={`row-label strong tnum ${p.profitPerPick === null ? '' : p.profitPerPick >= 0 ? 'good' : 'bad'}`}>{fmt.signedPick(p.profitPerPick)} / pick</div>
           <div class="row-sub tnum">{p.profitPerM === null ? '—' : `${fmt.rs(p.profitPerM)} / ${calc.finish === 'RFD' ? 'RFD m' : 'm'}`}</div>
         </div>
@@ -919,7 +996,8 @@ export function UnitCard({ unit, fabric, calc, idx }) {
           <span class={`pan-note tnum ${sp.value >= 0 ? 'good' : 'bad'}`}>{fmt.spin(sp.value)} / pick / spindle</span>
         </div>
       ) : null}
-      <PanBlocks calc={calc} fabric={fabric} unit={unit} idx={idx} />
+      {/* spindles per TFO type only: warp and weft kg live in the Production centre (B1 c) */}
+      {unitHasTfo(calc, unit, idx) ? <PanBlocks calc={calc} fabric={fabric} unit={unit} idx={idx} /> : null}
     </div>
   );
 }
@@ -1072,7 +1150,7 @@ function PhotoSheet({ photo, onClose }) {
       <div class="actions">
         {!truthy(photo.is_cover) ? <Button kind="secondary" busy={busy} onClick={async () => { setBusy(true); try { await setCover(photo); onClose(); } catch (e) { toast(e.message, 'error'); } setBusy(false); }}>Set as cover</Button> : <Button kind="secondary" disabled>This is the cover photo</Button>}
         <Button kind="danger" busy={busy} onClick={async () => {
-          if (!window.confirm('Delete this photo?')) return;
+          if (!(await askConfirm({ title: 'Delete this photo?', text: 'It is removed for everyone.', yes: 'Delete photo', danger: true }))) return;
           setBusy(true);
           try {
             await deletePhoto(photo);
@@ -1115,8 +1193,8 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
       <Section
         header="Report"
         footer={detailed
-          ? 'Detailed: everything on the fabric page, with yarn rates, the full cost breakdown, loom realisation and spindle figures, and the RPM and efficiency they assume. PDF and Excel only. For internal use: it shows costs, yarn rates and profit.'
-          : 'Basic: the spec sheet as always shared.'}
+          ? 'Every figure, with costs, yarn rates and profit. Internal use only.'
+          : 'The spec sheet as always shared.'}
       >
         <div class="row"><div class="seg-fill"><Segmented label="Report" options={[{ value: 'basic', label: 'Basic' }, { value: 'detailed', label: 'Detailed' }]} value={level} onChange={setLevel} /></div></div>
       </Section>
@@ -1259,8 +1337,8 @@ function FabricEditForm({ id }) {
               <label class="mini"><span>Ends</span><input inputmode="numeric" value={l.ends ?? ''} onInput={(e) => setLine(i, { ends: e.currentTarget.value })} aria-label="Ends" /></label>
             ) : (
               <>
-                <label class="mini" style={{ flex: '0 0 88px' }}><span>Share</span><input inputmode="decimal" value={l.parts ?? ''} onInput={(e) => setLine(i, { parts: e.currentTarget.value })} aria-label="Pick share" /></label>
-                <label class="mini"><span>Pattern</span><input value={l.pattern ?? ''} placeholder="2S:2Z" onInput={(e) => setLine(i, { pattern: e.currentTarget.value })} aria-label="Pattern" style={{ textAlign: 'right' }} /></label>
+                <label class="mini share"><span>Share</span><input inputmode="decimal" value={l.parts ?? ''} onInput={(e) => setLine(i, { parts: e.currentTarget.value })} aria-label="Pick share" /></label>
+                <label class="mini"><span>Pattern</span><input value={l.pattern ?? ''} placeholder="2S:2Z" onInput={(e) => setLine(i, { pattern: e.currentTarget.value })} aria-label="Pattern" /></label>
               </>
             )}
             <LineOut calc={preview} line={l} index={i} lines={lines} />
@@ -1275,20 +1353,20 @@ function FabricEditForm({ id }) {
       <NavBar
         title={existing ? 'Edit fabric' : 'New fabric'}
         left={<TextButton onClick={() => back(existing ? `/fabric/${id}` : '/fabrics')}>Cancel</TextButton>}
-        right={<TextButton bold onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</TextButton>}
+        right={<TextButton bold onClick={save} disabled={busy} title="Save (Ctrl+S)">{busy ? 'Saving…' : 'Save'}</TextButton>}
       />
-      <Section header="Identity" footer={String(f.name || '').trim() ? `Shown as ${fabricLabel(f)}. The RS${f.finish === 'RFD' ? ' and (RFD) are' : ' is'} added to the name automatically.` : 'Enter the quality without the RS. The RS (and (RFD) for RFD fabrics) is added to the name automatically.'}>
+      <Section header="Identity" footer={String(f.name || '').trim() ? `Shown as ${fabricLabel(f)}.` : 'Type the quality without the RS; the app adds it.'}>
         <Field label="Quality name" required value={f.name} onInput={up('name')} placeholder="e.g. Natural Crape" autofocus={!existing} />
-        <div class="row"><div style={{ width: '100%' }}><Segmented label="Weave" options={WEAVES} value={f.weave} onChange={up('weave')} /></div></div>
+        <div class="row"><div class="fill"><Segmented label="Weave" options={WEAVES} value={f.weave} onChange={up('weave')} /></div></div>
         <Field label="Design note" value={f.design_note} onInput={up('design_note')} placeholder="e.g. 2/1 twill" />
         <Field label="End use" value={f.end_use} onInput={up('end_use')} placeholder="Optional" />
       </Section>
 
-      <Section header="Construction" footer="Shortage % covers crimp and wastage, entered separately for warp and weft.">
-        <NumField label="Reed" hint="optional" value={f.reed} onInput={up('reed')} />
+      <Section header="Construction" footer="Shortage % covers crimp and wastage.">
+        <NumField label="Reed" value={f.reed} onInput={up('reed')} placeholder="optional" />
         <NumField label="Pick (PPI)" required value={f.ppi} onInput={up('ppi')} />
         <NumField label="Reed space" required value={f.reed_space_in} onInput={up('reed_space_in')} suffix="in" />
-        <NumField label="Greige width" value={f.greige_width_in} onInput={up('greige_width_in')} suffix="in" />
+        <NumField label="Greige width" value={f.greige_width_in} onInput={up('greige_width_in')} suffix="in" placeholder="optional" />
         <NumField label="Warp shortage" required value={f.warp_shortage_pct} onInput={up('warp_shortage_pct')} suffix="%" />
         <NumField label="Weft shortage" required value={f.weft_shortage_pct} onInput={up('weft_shortage_pct')} suffix="%" />
       </Section>
@@ -1298,14 +1376,14 @@ function FabricEditForm({ id }) {
         <button type="button" class="add-row" onClick={() => addLine('warp')}><Icon.plus size={20} />Add warp yarn</button>
       </Section>
 
-      <Section header="Weft" footer="Pick share splits picks between weft yarns, e.g. 1 and 1 for alternate picks. One weft yarn takes all picks.">
+      <Section header="Weft" footer="Pick share splits picks between weft yarns." guide="edit-fabric">
         {lineBlock('weft')}
         <button type="button" class="add-row" onClick={() => addLine('weft')}><Icon.plus size={20} />Add weft yarn</button>
       </Section>
       {!opts.length ? <p class="section-footer">No yarns yet. Add them in the Yarns tab first.</p> : null}
 
-      <Section header="Price and finishing" footer={rfd ? 'Changing the selling price sets the sale date to today; change the date if the sale was on another day. For RFD the selling price is per RFD metre. VATAV is the discount off that price. Shrinkage grosses up RM and processing; transportation is per RFD metre; brokering is taken on the full selling price.' : 'Changing the selling price sets the sale date to today; change the date if the sale was on another day. VATAV is the discount off the selling price. Leave it blank if there is none.'}>
-        <div class="row"><div style={{ width: '100%' }}><Segmented label="Finish" options={['Greige', 'RFD']} value={f.finish === 'RFD' ? 'RFD' : 'Greige'} onChange={up('finish')} /></div></div>
+      <Section header="Price and finishing" footer="A new selling price dates the sale today." guide="edit-fabric">
+        <div class="row"><div class="fill"><Segmented label="Finish" options={['Greige', 'RFD']} value={f.finish === 'RFD' ? 'RFD' : 'Greige'} onChange={up('finish')} /></div></div>
         <NumField label="Selling price" hint={rfd ? 'per RFD m' : 'per m'} prefix="₹" value={f.price} onInput={setPrice} />
         <Field label="Sale date" hint={saleAuto ? 'today, price changed' : 'last sale'} type="date" value={String(f.sale_date || '').slice(0, 10)} onInput={(v) => { setSaleTouched(true); up('sale_date')(v); }} />
         <NumField label="VATAV" hint="discount" value={f.vatav_pct} onInput={up('vatav_pct')} suffix="%" placeholder="0" />
@@ -1313,15 +1391,15 @@ function FabricEditForm({ id }) {
           <>
             <NumField label="RFD shortage" hint="shrinkage" value={f.rfd_shortage_pct} onInput={up('rfd_shortage_pct')} suffix="%" />
             <NumField label="Processing charge" hint="per m" prefix="₹" value={f.processing_charge} onInput={up('processing_charge')} />
-            <NumField label="Transportation" hint="per RFD m" prefix="₹" value={f.transport_charge} onInput={up('transport_charge')} />
+            <NumField label="Transportation" hint="per RFD m" prefix="₹" value={f.transport_charge} onInput={up('transport_charge')} placeholder="optional" />
             <NumField label="Brokering" value={f.brokering_pct} onInput={up('brokering_pct')} suffix="%" />
           </>
         ) : null}
       </Section>
 
-      <Section header="Loom" footer="Used for spindles, or warp and weft kg, per loom per day. Double panna weaves two widths on one loom. Loom efficiency is set on each unit.">
-        <NumField label="Loom RPM (single panna)" value={f.loom_rpm} onInput={up('loom_rpm')} />
-        <NumField label="Loom RPM (double panna)" value={f.loom_rpm_dp} onInput={up('loom_rpm_dp')} />
+      <Section header="Loom" footer="Loom efficiency is set on each unit." guide="edit-fabric">
+        <NumField label="Loom RPM (single panna)" value={f.loom_rpm} onInput={up('loom_rpm')} placeholder="not set" />
+        <NumField label="Loom RPM (double panna)" value={f.loom_rpm_dp} onInput={up('loom_rpm_dp')} placeholder="optional" />
       </Section>
 
       <Section header="Units">
@@ -1331,9 +1409,9 @@ function FabricEditForm({ id }) {
         {!units.length ? <Row label="No units yet" sub="Add units in the Units tab." /> : null}
       </Section>
 
-      <Section header="Beam length" footer="Machine length in metres for each loom width of the units above. A dobby quality shows dobby looms only; any other quality shows one length per width, used for its dobby looms too. Leave blank if not set.">
+      <Section header="Beam length" footer="Metres, per loom width of the units above." guide="edit-fabric">
         {slots.map((slot) => (
-          <NumField key={slot.key} label={`${slot.unit.name} · ${slotLabel(slot)}`} value={slotValue(slot)} onInput={(v) => setBeams((m) => ({ ...m, ...Object.fromEntries(slot.groupIds.map((g) => [g, v])) }))} suffix="m" />
+          <NumField key={slot.key} label={slotLabelIn(slot.unit, slot)} value={slotValue(slot)} onInput={(v) => setBeams((m) => ({ ...m, ...Object.fromEntries(slot.groupIds.map((g) => [g, v])) }))} suffix="m" placeholder="not set" />
         ))}
         {unitIds.length && !slots.length ? <Row label="No matching loom group" sub={String(f.weave).toLowerCase() === 'dobby' ? 'A dobby quality needs a dobby loom group in its units.' : 'Add loom groups to its units.'} /> : null}
         {!unitIds.length ? <Row label="Pick a unit first" sub="Beam lengths are per loom group of its units." /> : null}

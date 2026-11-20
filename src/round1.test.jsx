@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, beforeAll, vi } from 'vitest';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/preact';
 import { App } from './app.jsx';
+import { answer, confirmOpen } from './testUtil.js';
 import { resetListState } from './listState.js';
 import { resetDemo } from './store.js';
 import { local } from './storage.js';
@@ -28,34 +29,30 @@ describe('A1: Cancel asks before throwing away changes', () => {
   it('fabric editor: no question without changes; with changes, "stay" keeps the form and "discard" leaves', async () => {
     await open('#/fabric/f_crepe/edit');
     const name = await screen.findByLabelText('Quality name');
-    const ask = vi.fn(() => false);
-    window.confirm = ask;
     fireEvent.input(name, { target: { value: 'Poly Crepe Changed' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(ask).toHaveBeenCalledWith('Discard changes?');
+    // the app's own sheet asks (1.26.0, B10); Keep editing stays
+    expect(await answer(false)).toBe('Discard changes?');
     expect(screen.getByLabelText('Quality name').value).toBe('Poly Crepe Changed');
     // typing it back as it was: nothing to lose, no question
     fireEvent.input(screen.getByLabelText('Quality name'), { target: { value: 'Poly Crepe' } });
-    ask.mockClear();
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(ask).not.toHaveBeenCalled();
+    expect(confirmOpen()).toBe(false);
     await waitFor(() => expect(screen.queryByLabelText('Quality name')).toBeNull());
   });
 
   it('fabric editor: discarding leaves, and saving never asks', async () => {
     await open('#/fabric/f_crepe/edit');
     fireEvent.input(await screen.findByLabelText('Quality name'), { target: { value: 'Poly Crepe X' } });
-    window.confirm = vi.fn(() => true);
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    await answer(true);
     await waitFor(() => expect(screen.queryByLabelText('Quality name')).toBeNull());
     cleanup();
     await open('#/fabric/f_crepe/edit');
     fireEvent.input(await screen.findByLabelText('Quality name'), { target: { value: 'Poly Crepe Saved' } });
-    const ask = vi.fn(() => false);
-    window.confirm = ask;
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.queryByLabelText('Quality name')).toBeNull());
-    expect(ask).not.toHaveBeenCalled();
+    expect(confirmOpen()).toBe(false);
     await resetDemo();
   });
 
@@ -64,27 +61,23 @@ describe('A1: Cancel asks before throwing away changes', () => {
     await screen.findByText('Poly Crepe 60 (RFD)', { selector: '.nav-title' }).catch(() => null);
     window.location.hash = '#/fabric/f_crepe/edit';
     fireEvent.input(await screen.findByLabelText('Quality name'), { target: { value: 'Gesture test' } });
-    const ask = vi.fn(() => false);
-    window.confirm = ask;
     window.location.hash = '#/fabric/f_crepe'; // what a back gesture does to the address
-    await waitFor(() => expect(ask).toHaveBeenCalled());
+    expect(await answer(false)).toBe('Discard changes?');
     expect(screen.getByLabelText('Quality name').value).toBe('Gesture test');
   });
 
   it('yarn and unit editors ask as well', async () => {
     await open('#/yarn/y_fdy75');
     const fields = await screen.findAllByRole('textbox');
-    const ask = vi.fn(() => false);
-    window.confirm = ask;
     fireEvent.input(fields[0], { target: { value: 'Changed yarn' } });
     fireEvent.click(screen.getByRole('button', { name: 'Back' }));
-    expect(ask).toHaveBeenCalledTimes(1);
+    expect(await answer(false)).toBe('Discard changes?');
     cleanup();
     await open('#/unit/u_2/edit');
     const unitFields = await screen.findAllByRole('textbox');
     fireEvent.input(unitFields[0], { target: { value: 'Changed unit' } });
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
-    expect(ask).toHaveBeenCalledTimes(2);
+    expect(await answer(false)).toBe('Discard changes?');
   });
 });
 
@@ -128,6 +121,9 @@ describe('A6: Planner tiles say when they cover only part of the plan', () => {
     const note = document.querySelector('.notice');
     const tiles = document.querySelector('.ptiles');
     expect(note.compareDocumentPosition(tiles) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // the four headline tiles: three of them cover only part of the plan; All figures shows the rest (B3)
+    expect(document.querySelectorAll('.ptiles .t-part').length).toBe(3);
+    fireEvent.click(screen.getByRole('button', { name: /^All figures/ }));
     const parts = [...document.querySelectorAll('.ptiles .t-part')];
     expect(parts.length).toBeGreaterThan(3);
     expect(parts.every((p) => p.textContent === '10 of 20 looms')).toBe(true);

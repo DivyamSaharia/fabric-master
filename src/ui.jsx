@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { backendMode, getIndex, getPhoto, refresh, useStore } from './store.js';
 import { back, go, tab } from './router.js';
+import { answerConfirm, confirmState, onConfirm } from './confirm.js';
+import { local } from './storage.js';
 
 // Laptop layout from this width up; phones and narrow windows keep the iPhone layout.
 export const WIDE_QUERY = '(min-width: 1024px)';
@@ -64,7 +66,14 @@ export function BrandHero() {
   );
 }
 
-export function NavBar({ title, backLabel, backTo, onBack, left, right, large, hero }) {
+// Strip shown under every top bar (the Temporary rates strip), set once by app.jsx. It stays in view (B14).
+let NavStrip = null;
+export const setNavStrip = (C) => {
+  NavStrip = C;
+};
+
+// strip: this screen's own row that stays under the top bar (fabric jump buttons, Planner figures).
+export function NavBar({ title, backLabel, backTo, onBack, left, right, large, hero, strip }) {
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
     const f = () => setScrolled(window.scrollY > (large ? 44 : 2));
@@ -81,9 +90,12 @@ export function NavBar({ title, backLabel, backTo, onBack, left, right, large, h
   return (
     <>
       <header class={`navbar ${scrolled ? 'scrolled' : ''}`}>
-        <div class="nav-side">{left || backBtn}</div>
-        <div class={`nav-title ${large && !scrolled ? 'hidden' : ''}`}>{title}</div>
-        <div class="nav-side right">{right}</div>
+        <div class="nav-row">
+          <div class="nav-side">{left || backBtn}</div>
+          <div class={`nav-title ${large && !scrolled ? 'hidden' : ''}`}>{title}</div>
+          <div class="nav-side right">{right}</div>
+        </div>
+        <div class="nav-strips">{NavStrip ? <NavStrip /> : null}{strip || null}</div>
       </header>
       {large ? hero || <h1 class="large-title">{title}</h1> : null}
     </>
@@ -96,18 +108,60 @@ export const IconButton = ({ label, onClick, children, disabled }) => (
   </button>
 );
 
-export const TextButton = ({ onClick, children, bold, disabled, danger }) => (
-  <button type="button" class={`text-btn ${bold ? 'bold' : ''} ${danger ? 'danger' : ''}`} onClick={onClick} disabled={disabled}>
+export const TextButton = ({ onClick, children, bold, disabled, danger, title }) => (
+  <button type="button" class={`text-btn ${bold ? 'bold' : ''} ${danger ? 'danger' : ''}`} onClick={onClick} disabled={disabled} title={title}>
     {children}
   </button>
 );
 
-export function Section({ header, footer, children, flush }) {
+// The grey note under a section: one line, and "How this is worked out" opens the Guide topic (B4).
+function Footer({ footer, guide }) {
+  if (!footer && !guide) return null;
   return (
-    <section class="section">
+    <p class="section-footer">
+      {footer}
+      {guide ? <>{footer ? ' ' : null}<button type="button" class="link-btn guide-link" onClick={() => go(`/guide/${guide}`)}>How this is worked out</button></> : null}
+    </p>
+  );
+}
+
+export function Section({ header, footer, children, flush, id, guide }) {
+  return (
+    <section class="section" id={id}>
       {header ? <h2 class="section-header">{header}</h2> : null}
       <div class={`group ${flush ? 'flush' : ''}`}>{children}</div>
-      {footer ? <p class="section-footer">{footer}</p> : null}
+      <Footer footer={footer} guide={guide} />
+    </section>
+  );
+}
+
+// Folded sections (B1 b): shut until tapped; the choice is remembered on this device.
+const FOLD_KEY = 'fm.fold.v1';
+export const openSection = (id) => window.dispatchEvent(new CustomEvent('fm-open-section', { detail: id }));
+export function FoldSection({ fold, id, header, summary, footer, guide, children }) {
+  const [open, setOpen] = useState(() => !!(local.get(FOLD_KEY, {}) || {})[fold]);
+  const set = (v) => {
+    setOpen(v);
+    local.set(FOLD_KEY, { ...(local.get(FOLD_KEY, {}) || {}), [fold]: v });
+  };
+  useEffect(() => {
+    const f = (e) => { if (e.detail === id) set(true); };
+    window.addEventListener('fm-open-section', f);
+    return () => window.removeEventListener('fm-open-section', f);
+  }, [id]);
+  return (
+    <section class="section" id={id}>
+      <button type="button" class="fold-head" aria-expanded={open ? 'true' : 'false'} onClick={() => set(!open)}>
+        <span>{header}</span>
+        <span class="fold-mark">{open ? 'Hide' : 'Show'}<Icon.chevron size={11} /></span>
+      </button>
+      {open ? <div class="group">{children}</div> : (
+        <button type="button" class="fold-sum" onClick={() => set(true)} aria-label={`Show ${header}`}>
+          <span class="min0">{summary}</span>
+          <span class="row-chevron"><Icon.chevron size={13} /></span>
+        </button>
+      )}
+      {open ? <Footer footer={footer} guide={guide} /> : null}
     </section>
   );
 }
@@ -141,14 +195,16 @@ export function Field({ label, hint, value, onInput, type = 'text', inputmode, p
   useEffect(() => {
     if (autofocus && ref.current) ref.current.focus();
   }, [autofocus]);
+  // numbers and dates get a compact box, so the label keeps its room (B12); text fields fill the row
+  const compact = !!(prefix || suffix || inputmode || type === 'date');
   return (
-    <label class="row field">
+    <label class={`row field${compact ? ' cmp' : ''}`}>
       <span class="row-label">
         {label}
         {required ? <span class="req"> *</span> : null}
         {hint ? <span class="hint"> {hint}</span> : null}
       </span>
-      <span class="field-input">
+      <span class={`field-input${compact ? ' compact' : ''}${type === 'date' ? ' date' : ''}`}>
         {prefix ? <span class="affix">{prefix}</span> : null}
         <input
           ref={ref}
@@ -271,8 +327,9 @@ export function Toggle({ label, value, onChange }) {
 
 export const Badge = ({ kind = 'gray', children }) => <span class={`badge ${kind}`}>{children}</span>;
 
+// TPM badges are neutral grey and bold; amber means a warning or a temporary rate (C5).
 export function classBadge(tfoClass) {
-  return <Badge kind={tfoClass === 'Non-TPM' ? 'gray' : 'amber'}>{tfoClass}</Badge>;
+  return <Badge kind={tfoClass === 'Non-TPM' ? 'gray' : 'gray tpm'}>{tfoClass}</Badge>;
 }
 
 export function Chip({ on, onClick, children }) {
@@ -324,6 +381,21 @@ export const Button = ({ onClick, children, kind = 'primary', disabled, busy }) 
     {children}
   </button>
 );
+
+// The app's own confirm sheet (B10): a red button that names what will be deleted.
+export function ConfirmHost() {
+  const [c, setC] = useState(confirmState());
+  useEffect(() => onConfirm(() => setC(confirmState())), []);
+  return (
+    <Sheet open={!!c} onClose={() => answerConfirm(false)} title={c ? c.title : ''}>
+      {c && c.text ? <p class="confirm-text">{c.text}</p> : null}
+      <div class="confirm-btns">
+        <Button kind={c && c.danger ? 'danger-fill' : 'primary'} onClick={() => answerConfirm(true)}>{c ? c.yes : ''}</Button>
+        <Button kind="secondary" onClick={() => answerConfirm(false)}>{c ? c.no : 'Cancel'}</Button>
+      </div>
+    </Sheet>
+  );
+}
 
 const TABS = [
   { id: 'fabrics', label: 'Fabrics', icon: Icon.fabrics },
@@ -442,7 +514,7 @@ export function SearchBox({ value, onInput, placeholder }) {
   return (
     <label class="search">
       <Icon.search size={16} />
-      <input type="search" data-search value={value} placeholder={placeholder} aria-label={placeholder} onInput={(e) => onInput(e.currentTarget.value)} />
+      <input type="search" data-search value={value} placeholder={placeholder} aria-label={placeholder} title="Press / to search" onInput={(e) => onInput(e.currentTarget.value)} />
     </label>
   );
 }
@@ -474,7 +546,7 @@ export function whenText(v) {
 }
 
 // "Last edited" and "Added" rows for a fabric, yarn or unit, with a link to its full history.
-export function History({ row, added, what }) {
+export function History({ row, added, what, fold }) {
   if (!row || !row.id) return null;
   const sheet = backendMode() === 'sheet';
   const line = (label, by, at) => <Row label={label} value={by || whenText(at) || '—'} valueSub={by ? whenText(at) : undefined} />;
@@ -483,5 +555,9 @@ export function History({ row, added, what }) {
   if (added && (row.created_at || row.created_by)) rows.push(line('Added', row.created_by, row.created_at));
   if (sheet) rows.push(<Row label={`All changes to this ${what}`} onClick={() => go(`/changes?ref=${encodeURIComponent(row.id)}`)} chevron />);
   if (!rows.length) return null;
+  if (fold) {
+    const last = row.updated_at || row.updated_by ? ['Last edited', row.updated_by, whenText(row.updated_at)] : ['Added', row.created_by, whenText(row.created_at)];
+    return <FoldSection fold="history" id="sec-history" header="History" summary={last.filter(Boolean).join(' · ')}>{rows}</FoldSection>;
+  }
   return <Section header="History">{rows}</Section>;
 }

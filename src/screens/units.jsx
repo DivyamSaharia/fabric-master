@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'preact/hooks';
 import { fabricCalc, fmt, isTpm, num, spindlesForUnit, tfoEff, tfoOutput, truthy, yarnDenier } from '../calc.js';
 import { deleteSpeed, deleteUnit, getIndex, saveSpeed, saveUnit, toast, useStore } from '../store.js';
 import { back, go, replace, useLeaveGuard } from '../router.js';
+import { askConfirm } from '../confirm.js';
 import { PanBlocks } from './fabrics.jsx';
 import { DEFAULT_SPINDLES_PER_SIDE, typeCapacity } from '../machines.js';
 import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, Section, Segmented, SelectField, Sheet, TextButton, Toggle, classBadge, History } from '../ui.jsx';
@@ -32,7 +33,7 @@ export function UnitList() {
           })}
         </div>
       ) : (
-        <Empty title="No units yet" text="Add each airjet or waterjet unit with its cost per pick." action={<div style={{ width: '220px' }}><Button onClick={() => go('/unit/new')}>Add unit</Button></div>} />
+        <Empty title="No units yet" text="Add each airjet or waterjet unit with its cost per pick." action={<div class="btn-narrow"><Button onClick={() => go('/unit/new')}>Add unit</Button></div>} />
       )}
     </div>
   );
@@ -72,7 +73,7 @@ export function UnitDetail({ id }) {
   return (
     <div>
       <NavBar title={unit.name} backLabel="Units" backTo="/units" right={<><HelpButton screen="units" /><TextButton onClick={() => go(`/unit/${id}/edit`)}>Edit</TextButton></>} />
-      <div class="title-block" style={{ paddingTop: '4px' }}>
+      <div class="title-block pt4">
         <h1>{unit.name}</h1>
         <div class="title-sub">{[unit.type, unit.notes].filter(Boolean).join(' · ') || 'Unit'}</div>
       </div>
@@ -101,7 +102,7 @@ export function UnitDetail({ id }) {
           </Section>
 
 
-          <Section header="TFO speed table" footer={<><strong class="note-strong">Enter RPM already multiplied by 2. The app does not double it.</strong> Output per spindle = RPM ÷ TPM × 1,440 minutes × efficiency × denier ÷ 9,000,000.</>}>
+          <Section header="TFO speed table" footer={<strong class="note-strong">Enter RPM already multiplied by 2. The app does not double it.</strong>} guide="units">
             {yarnIds.map((yid) =>
               byYarn[yid]
                 .slice()
@@ -138,7 +139,7 @@ export function UnitDetail({ id }) {
       </div>
       {hasTfo ? (
         <div class="col">
-          <Section header="Spindle requirement · per loom" footer={tpmFabrics.length ? "For each TPM fabric in this unit, on every TFO type, for single and double panna. Uses the fabric's loom RPM and this unit's loom efficiency." : null}>
+          <Section header="Spindle requirement · per loom" footer={tpmFabrics.length ? 'Per loom, for each TFO type, single and double panna.' : null} guide={tpmFabrics.length ? 'units' : undefined}>
             {tpmFabrics.map(({ f, c }) => <SpindleCard fabric={f} calc={c} unit={unit} idx={idx} />)}
             {!tpmFabrics.length ? <Row label="No TPM fabrics in this unit" /> : null}
           </Section>
@@ -155,9 +156,9 @@ function SpindleCard({ fabric, calc, unit, idx }) {
   const spins = spindlesForUnit(calc, fabric, unit, idx);
   const multi = calc.tpmLines.length > 1;
   return (
-    <button type="button" class="unit-card" style={{ border: 0, background: 'none', textAlign: 'left', width: '100%', color: 'inherit' }} onClick={() => go(`/fabric/${fabric.id}`)}>
+    <button type="button" class="unit-card row-btn" onClick={() => go(`/fabric/${fabric.id}`)}>
       <div class="unit-head">
-        <div style={{ minWidth: 0 }}>
+        <div class="min0">
           <div class="row-label strong">{fabric.name}</div>
           <div class="row-sub">{calc.tpmLines.map((x) => `${x.line.side} ${x.yarn.name}`).join(' · ')}</div>
         </div>
@@ -193,7 +194,7 @@ function SpeedSheet({ speed, unit, idx, onClose }) {
       onClose={onClose}
       title={speed.id ? 'Edit speed' : 'Add speed'}
       footer={
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div class="btn-pair">
           {speed.id ? <Button kind="danger" busy={busy} onClick={async () => { setBusy(true); try { await deleteSpeed(speed.id); onClose(); } catch (e) { toast(e.message, 'error'); } setBusy(false); }}>Remove</Button> : null}
           <Button busy={busy} onClick={async () => {
             if (!s.yarn_id || !s.tfo_type_id || !num(s.rpm)) {
@@ -277,7 +278,7 @@ function UnitEditForm({ id }) {
     }
     const keptTypes = u.has_tfo ? types : [];
     const dropping = (idx.tfoTypesByUnit[id] || []).filter((t) => !keptTypes.some((x) => x.id === t.id));
-    if (dropping.length && !window.confirm(`Removing ${dropping.map((t) => t.name).join(', ')} also removes its speeds. Continue?`)) return;
+    if (dropping.length && !(await askConfirm({ title: `Remove ${dropping.map((t) => t.name).join(', ')}?`, text: 'Its TFO speeds are removed too.', yes: 'Remove and save', danger: true }))) return;
     setBusy(true);
     try {
       const uid = await saveUnit(
@@ -299,11 +300,11 @@ function UnitEditForm({ id }) {
       <NavBar
         title={existing ? 'Edit unit' : 'New unit'}
         left={<TextButton onClick={() => back(existing ? `/unit/${id}` : '/units')}>Cancel</TextButton>}
-        right={<TextButton bold onClick={save} disabled={busy}>{busy ? 'Saving…' : 'Save'}</TextButton>}
+        right={<TextButton bold onClick={save} disabled={busy} title="Save (Ctrl+S)">{busy ? 'Saving…' : 'Save'}</TextButton>}
       />
       <Section header="Unit" footer="Cost per pick is ₹ per metre per pick of PPI, one constant per unit. Loom efficiency applies to every fabric in the unit.">
         <Field label="Name" required value={u.name} onInput={up('name')} placeholder="e.g. Unit 2" />
-        <div class="row"><div style={{ width: '100%' }}><Segmented label="Loom type" options={['Airjet', 'Waterjet']} value={u.type || 'Airjet'} onChange={up('type')} /></div></div>
+        <div class="row"><div class="fill"><Segmented label="Loom type" options={['Airjet', 'Waterjet']} value={u.type || 'Airjet'} onChange={up('type')} /></div></div>
         <NumField label="Cost per pick" prefix="₹" value={u.cost_per_pick} onInput={up('cost_per_pick')} placeholder="0.200" />
         <NumField label="Loom efficiency" value={u.loom_eff_pct} onInput={up('loom_eff_pct')} suffix="%" placeholder="93" />
         <Field label="Notes" value={u.notes} onInput={up('notes')} placeholder="e.g. Toyota airjet" />
@@ -313,20 +314,20 @@ function UnitEditForm({ id }) {
         {groups.map((g, i) => (
           <div class="line">
             <div class="line-top">
-              <label class="mini" style={{ flex: 2 }}><span>Make</span><input value={g.make ?? ''} onInput={(e) => setGroup(i, { make: e.currentTarget.value })} aria-label="Make" style={{ textAlign: 'right' }} /></label>
+              <label class="mini wide2"><span>Make</span><input value={g.make ?? ''} onInput={(e) => setGroup(i, { make: e.currentTarget.value })} aria-label="Make" /></label>
               <IconButton label="Remove loom group" onClick={() => setGroups((gs) => gs.filter((_, j) => j !== i))}><span class="bad"><Icon.trash size={20} /></span></IconButton>
             </div>
             <div class="line-bottom">
               <label class="mini"><span>Width cm</span><input inputmode="decimal" value={g.reed_width_cm ?? ''} onInput={(e) => setGroup(i, { reed_width_cm: e.currentTarget.value })} aria-label="Reed width in cm" /></label>
               <label class="mini"><span>Looms</span><input inputmode="numeric" value={g.looms ?? ''} onInput={(e) => setGroup(i, { looms: e.currentTarget.value })} aria-label="Number of looms" /></label>
             </div>
-            <div class="line-bottom"><div style={{ width: '100%' }}><Segmented small label="Shedding" options={['Plain', 'Cam', 'Dobby']} value={g.shedding || 'Plain'} onChange={(v) => setGroup(i, { shedding: v })} /></div></div>
+            <div class="line-bottom"><div class="fill"><Segmented small label="Shedding" options={['Plain', 'Cam', 'Dobby']} value={g.shedding || 'Plain'} onChange={(v) => setGroup(i, { shedding: v })} /></div></div>
           </div>
         ))}
         <button type="button" class="add-row" onClick={() => setGroups((gs) => [...gs, { make: '', reed_width_cm: '', shedding: 'Plain', looms: '' }])}><Icon.plus size={20} />Add loom group</button>
       </Section>
 
-      <Section header="TFO" footer={u.has_tfo ? 'Each TFO type is a set of machines that runs at its own speed. Every machine has 2 sides; each side runs one yarn quality. Speeds are added on the unit page.' : null}>
+      <Section header="TFO" footer={u.has_tfo ? 'Speeds are added on the unit page.' : null} guide={u.has_tfo ? 'units' : undefined}>
         <Toggle label="TFO division" value={!!u.has_tfo} onChange={up('has_tfo')} />
         {u.has_tfo ? <NumField label="Default TFO efficiency" hint="for types without their own" value={u.tfo_default_eff} onInput={up('tfo_default_eff')} suffix="%" placeholder="90" /> : null}
       </Section>
@@ -335,7 +336,7 @@ function UnitEditForm({ id }) {
           {types.map((t, i) => (
             <div class="line">
               <div class="line-top">
-                <label class="mini" style={{ flex: 1 }}><span>Name</span><input value={t.name ?? ''} placeholder="M/C 1–12" onInput={(e) => setType(i, { name: e.currentTarget.value })} aria-label="TFO type name" style={{ textAlign: 'right' }} /></label>
+                <label class="mini"><span>Name</span><input value={t.name ?? ''} placeholder="M/C 1–12" onInput={(e) => setType(i, { name: e.currentTarget.value })} aria-label="TFO type name" /></label>
                 <IconButton label="Remove TFO type" onClick={() => setTypes((ts) => ts.filter((_, j) => j !== i))}><span class="bad"><Icon.trash size={20} /></span></IconButton>
               </div>
               <div class="line-bottom">
@@ -352,9 +353,9 @@ function UnitEditForm({ id }) {
       ) : null}
 
       {existing ? (
-        <div class="actions">
+        <div class="danger-zone">
           <Button kind="danger" onClick={async () => {
-            if (!window.confirm(`Delete ${existing.name}? Its fabric links, loom groups, TFO types and speeds go too. Fabrics stay.`)) return;
+            if (!(await askConfirm({ title: `Delete ${existing.name}?`, text: 'Its fabric links, loom groups, TFO types and speeds go too, for everyone. Fabrics stay.', yes: `Delete ${existing.name}`, danger: true }))) return;
             try {
               await deleteUnit(existing.id);
               allowLeave();

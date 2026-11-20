@@ -6,6 +6,8 @@ import { useEffect, useMemo, useRef, useState } from 'preact/hooks';
 import { fmt, num } from '../calc.js';
 import { deletePlan, duplicatePlan, getIndex, savePlan, toast, useStore } from '../store.js';
 import { local } from '../storage.js';
+import { askConfirm } from '../confirm.js';
+import { go } from '../router.js';
 import {
   cleanPlan, computePlan, defaultPlanName, emptyPlan, groupLabel, groupOptions, keys, linesToPlan,
   allUnitsRollup, planSig, planSummary, planToLines, plannerUnits, resetAll, todayIst, tpmYarns, withSetting,
@@ -20,7 +22,7 @@ export const ALL = 'all';
 // ---------- the working draft, per unit, on this device ----------
 function readStore() {
   const s = local.get(KEY, null);
-  return s && typeof s === 'object' ? { unitId: s.unitId || '', drafts: s.drafts && typeof s.drafts === 'object' ? s.drafts : {}, assignedOnly: !!s.assignedOnly, showMoney: s.showMoney !== false } : { unitId: '', drafts: {}, assignedOnly: false, showMoney: true };
+  return s && typeof s === 'object' ? { unitId: s.unitId || '', drafts: s.drafts && typeof s.drafts === 'object' ? s.drafts : {}, assignedOnly: !!s.assignedOnly, showMoney: s.showMoney !== false, allFigures: !!s.allFigures } : { unitId: '', drafts: {}, assignedOnly: false, showMoney: true, allFigures: false };
 }
 
 const blankDraft = (unitId) => {
@@ -111,16 +113,14 @@ function Labeled({ label, children }) {
   );
 }
 
-// ---------- in-page confirm ----------
-function Confirm({ open, title, text, yes, onYes, onClose, danger }) {
+// The four headline figures in a slim strip under the top bar, once their tiles have scrolled away (B3).
+function PlanStrip({ items }) {
   return (
-    <Sheet open={open} onClose={onClose} title={title}>
-      <p class="confirm-text">{text}</p>
-      <div class="actions" style={{ marginTop: '16px' }}>
-        <Button kind={danger ? 'danger' : 'primary'} onClick={() => { onClose(); onYes(); }}>{yes}</Button>
-        <Button kind="secondary" onClick={onClose}>Cancel</Button>
-      </div>
-    </Sheet>
+    <div class="pstrip" aria-label="Headline figures">
+      {items.map((x) => (
+        <div><div class="r-label">{x.label}</div><div class={`r-value ${x.tone || ''}`}>{x.value}</div></div>
+      ))}
+    </div>
   );
 }
 
@@ -141,6 +141,20 @@ export function Planner() {
   const unsaved = planSig(plan) !== draft.savedSig || (draft.planId && !planRow);
   const [sheet, setSheet] = useState(null); // 'save' | 'plans' | 'export' | 'reset' | 'clear' | 'import'
   const pendingFocus = useRef(null);
+  // the slim figures strip shows once the headline tiles have scrolled under the top bar (B3)
+  const tilesRef = useRef(null);
+  const [stripOn, setStripOn] = useState(false);
+  useEffect(() => {
+    const f = () => {
+      const el = tilesRef.current;
+      const bar = document.querySelector('.navbar .nav-row');
+      if (!el || !bar) return;
+      setStripOn(el.getBoundingClientRect().bottom < bar.getBoundingClientRect().bottom);
+    };
+    f();
+    window.addEventListener('scroll', f, { passive: true });
+    return () => window.removeEventListener('scroll', f);
+  }, []);
 
   useEffect(() => local.set(KEY, store), [store]);
 
@@ -181,7 +195,7 @@ export function Planner() {
         idx={idx}
         wide={wide}
         showMoney={showMoney}
-        top={<div class="stack" style={{ padding: 0, gap: '10px' }}>{unitPicker}{moneyToggle}</div>}
+        top={<div class="stack flush">{unitPicker}{moneyToggle}</div>}
         onOpenUnit={(id) => setStore((s) => ({ ...s, unitId: id }))}
       />
     );
@@ -237,6 +251,12 @@ export function Planner() {
   };
 
   const nSettings = Object.keys(plan.settings || {}).length;
+  const resetSettings = async () => {
+    if (await askConfirm({ title: 'Reset all settings?', text: `Every edited setting in this plan (${nSettings}) goes back to the master value. Looms, sides and receipts stay.`, yes: 'Reset all settings' })) setPlan(resetAll);
+  };
+  const clearPlan = async () => {
+    if (await askConfirm({ title: 'Clear the plan?', text: 'This empties the working plan on this device: looms, sides, receipts and edited settings. Saved plans are not touched.', yes: 'Clear plan', danger: true })) setDraft(blankDraft(unitId));
+  };
   const hasInputs = plan.looms.length || plan.sides.length || plan.receipts.length || nSettings;
   const t = model.totals;
   const hasTfo = model.hasTfo;
@@ -249,6 +269,27 @@ export function Planner() {
   const yarnOptions = (exclude) => [
     { group: 'TPM yarns', options: tpmList.filter((y) => !exclude.includes(y.yarn.id)).map((y) => ({ value: y.yarn.id, label: y.yarn.name })) },
   ];
+
+  // Four headline tiles; the rest open with All figures (B3). Yarns short is the Net TPM balance tile's second line (C7).
+  const shortLine = hasTfo && model.balance.length ? `${fmt.int(t.short)} of ${fmt.int(model.balance.length)} TPM ${model.balance.length === 1 ? 'yarn' : 'yarns'} short` : '';
+  const tiles = [
+    showMoney ? { key: 'real', label: 'Plant realisation', value: rs0(t.plantRealisation), el: <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={!t.realLooms ? 'enter looms with a price' : moneyPart ? 'per day' : `per day · ${fmt.int(t.realLooms)} looms`} part={moneyPart} accent /> } : null,
+    showMoney ? { key: 'profit', label: 'Plant profit', value: rs0(t.plantProfit), tone: t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : '', el: <Tile label="Plant profit" value={rs0(t.plantProfit)} sub={t.costPerPick === null ? 'set cost per pick on the unit' : `per day · at ${fmt.pick(t.costPerPick)} a pick`} part={moneyPart} tone={t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : ''} accent /> } : null,
+    hasTfo ? { key: 'net', label: 'Net TPM balance', value: signedKg(t.net), tone: t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : '', el: <Tile label="Net TPM balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} second={shortLine} secondTone={t.short ? 'bad' : ''} part={ratePart} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} accent={!showMoney} /> } : null,
+    { key: 'looms', label: 'Looms planned', value: `${fmt.int(t.looms)} of ${fmt.int(t.capacity)}`, tone: t.looms > t.capacity ? 'bad' : '', el: <Tile label="Looms planned" value={`${fmt.int(t.looms)} of ${fmt.int(t.capacity)}`} sub={t.looms > t.capacity ? 'more than the unit has' : 'looms in this unit'} tone={t.looms > t.capacity ? 'bad' : ''} /> },
+    showMoney ? { key: 'avgloom', el: <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub={t.avgLoomProfit !== null ? `per loom per day · profit ${rs0(t.avgLoomProfit)}` : 'per loom per day'} part={moneyPart} /> } : null,
+    showMoney ? { key: 'avgpick', el: <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="realisation with VATAV, weighted by output" part={moneyPart} /> } : null,
+    showMoney ? { key: 'ppp', el: <Tile label="Profit per pick" value={fmt.pick(t.avgProfitPerPick)} sub="average, weighted by output" part={moneyPart} tone={t.avgProfitPerPick !== null && t.avgProfitPerPick < 0 ? 'bad' : ''} /> } : null,
+    { key: 'yarn', label: 'Yarn used', value: kg(t.yarnKg, 0), el: <Tile label="Yarn used" value={kg(t.yarnKg, 0)} sub="per day, all yarns, shortage included" part={ratePart} accent={!showMoney && !hasTfo} /> },
+    { key: 'prod', label: 'Production', value: mtr(t.metresPerDay), el: <Tile label="Production" value={mtr(t.metresPerDay)} sub="greige metres per day" part={ratePart} /> },
+    hasTfo ? { key: 'tpmc', el: <Tile label="TPM consumption" value={kg(t.tpmConsumption, 0)} sub="per day, shortage included" part={ratePart} /> } : null,
+    hasTfo ? { key: 'tfo', el: <Tile label="TFO output" value={kg(t.tfoOutput, 0)} sub="per day from the sides entered" /> } : null,
+    hasTfo ? { key: 'out', el: <Tile label="From outside" value={kg(t.received, 0)} sub="average per day" /> } : null,
+  ].filter(Boolean);
+  const order = showMoney ? ['real', 'profit', 'net', 'looms', 'yarn', 'prod'] : ['yarn', 'net', 'looms', 'prod'];
+  const headKeys = order.filter((k) => tiles.some((x) => x.key === k)).slice(0, 4);
+  const headline = headKeys.map((k) => tiles.find((x) => x.key === k));
+  const rest = tiles.filter((x) => !headKeys.includes(x.key));
 
   return (
     <div class="planner">
@@ -263,8 +304,9 @@ export function Planner() {
             <TextButton bold onClick={() => setSheet('save')}>Save</TextButton>
           </>
         }
+        strip={stripOn ? <PlanStrip items={headline} /> : null}
       />
-      <div class="stack" style={{ padding: 0, gap: '10px' }}>
+      <div class="stack flush">
         {unitPicker}
         <div class="plan-head">
           <div class="plan-title">
@@ -278,8 +320,8 @@ export function Planner() {
           </div>
           <div class="plan-btns">
             <button type="button" class="chip" onClick={() => setSheet('import')}>Import sheet photo</button>
-            <button type="button" class="chip" disabled={!nSettings} onClick={() => setSheet('reset')}>Reset all{nSettings ? ` · ${nSettings}` : ''}</button>
-            <button type="button" class="chip" disabled={!hasInputs && !planRow} onClick={() => setSheet('clear')}>Clear plan</button>
+            <button type="button" class="chip" disabled={!nSettings} onClick={resetSettings}>Reset all{nSettings ? ` · ${nSettings}` : ''}</button>
+            <button type="button" class="chip danger" disabled={!hasInputs && !planRow} onClick={clearPlan}>Clear plan</button>
           </div>
         </div>
         {moneyToggle}
@@ -288,21 +330,17 @@ export function Planner() {
       {/* what the tiles leave out comes first, so a part-total is never read as the whole plan */}
       <Notes model={model} showMoney={showMoney} />
 
-      <div class="ptiles">
-        {showMoney ? <Tile label="Plant realisation" value={rs0(t.plantRealisation)} sub={!t.realLooms ? 'enter looms with a price' : moneyPart ? 'per day' : `per day · ${fmt.int(t.realLooms)} looms`} part={moneyPart} accent /> : null}
-        {showMoney ? <Tile label="Plant profit" value={rs0(t.plantProfit)} sub={t.costPerPick === null ? 'set cost per pick on the unit' : `per day · at ${fmt.pick(t.costPerPick)} a pick`} part={moneyPart} tone={t.plantProfit !== null && t.plantProfit < 0 ? 'bad' : ''} accent /> : null}
-        {showMoney ? <Tile label="Average loom" value={rs0(t.avgLoomRealisation)} sub={t.avgLoomProfit !== null ? `per loom per day · profit ${rs0(t.avgLoomProfit)}` : 'per loom per day'} part={moneyPart} /> : null}
-        {showMoney ? <Tile label="Average per pick" value={fmt.pick(t.avgPerPick)} sub="realisation with VATAV, weighted by output" part={moneyPart} /> : null}
-        {showMoney ? <Tile label="Profit per pick" value={fmt.pick(t.avgProfitPerPick)} sub="average, weighted by output" part={moneyPart} tone={t.avgProfitPerPick !== null && t.avgProfitPerPick < 0 ? 'bad' : ''} /> : null}
-        <Tile label="Yarn used" value={kg(t.yarnKg, 0)} sub="per day, all yarns, shortage included" part={ratePart} accent={!showMoney} />
-        <Tile label="Looms planned" value={`${fmt.int(t.looms)} of ${fmt.int(t.capacity)}`} sub={t.looms > t.capacity ? 'more than the unit has' : 'looms in this unit'} tone={t.looms > t.capacity ? 'bad' : ''} />
-        <Tile label="Production" value={mtr(t.metresPerDay)} sub="greige metres per day" part={ratePart} />
-        {hasTfo ? <Tile label="TPM consumption" value={kg(t.tpmConsumption, 0)} sub="per day, shortage included" part={ratePart} /> : null}
-        {hasTfo ? <Tile label="TFO output" value={kg(t.tfoOutput, 0)} sub="per day from the sides entered" /> : null}
-        {hasTfo ? <Tile label="From outside" value={kg(t.received, 0)} sub="average per day" /> : null}
-        {hasTfo ? <Tile label="Net TPM balance" value={signedKg(t.net)} sub={t.net < -0.05 ? 'short across TPM yarns' : 'surplus across TPM yarns'} part={ratePart} tone={t.net < -0.05 ? 'bad' : t.net > 0.05 ? 'good' : ''} /> : null}
-        {hasTfo ? <Tile label="Yarns short" value={String(t.short)} sub={`of ${model.balance.length} TPM ${model.balance.length === 1 ? 'yarn' : 'yarns'}`} part={ratePart} tone={t.short ? 'bad' : ''} /> : null}
+      <div class="ptiles" ref={tilesRef}>
+        {headline.map((x) => x.el)}
+        {store.allFigures ? rest.map((x) => x.el) : null}
       </div>
+      {rest.length ? (
+        <div class="ptiles-more">
+          <button type="button" class="chip" aria-expanded={store.allFigures ? 'true' : 'false'} onClick={() => setStore((x) => ({ ...x, allFigures: !x.allFigures }))}>
+            {store.allFigures ? 'Fewer figures' : `All figures · ${rest.length} more`}
+          </button>
+        </div>
+      ) : null}
 
       {hasTfo ? (
         <section class="section">
@@ -432,7 +470,7 @@ export function Planner() {
       <section class="section">
         <h2 class="section-header">Production by quality</h2>
         <ProductionTable rows={model.production} total={t.metresPerDay} wide={wide} />
-        <p class="section-footer">Metres per day = looms × RPM × 1,440 × efficiency ÷ (PPI × 39.37) × panna, summed over loom groups. Greige metres, before shortage.</p>
+        <p class="section-footer">Greige metres per day, before shortage. <button type="button" class="link-btn guide-link" onClick={() => go('/guide/planner')}>How this is worked out</button></p>
       </section>
 
       <section class="section">
@@ -445,7 +483,7 @@ export function Planner() {
         <section class="section">
           <h2 class="section-header">TPM balance</h2>
           <BalanceTable rows={model.balance} wide={wide} />
-          <p class="section-footer">Balance = TFO output + received from outside − consumption (warp and weft, shortage included), kg per day.</p>
+          <p class="section-footer">Kg per day: TFO output plus received, minus consumption. <button type="button" class="link-btn guide-link" onClick={() => go('/guide/planner')}>How this is worked out</button></p>
         </section>
       ) : null}
 
@@ -466,19 +504,18 @@ export function Planner() {
           toast(`Imported ${n.qualities} ${n.qualities === 1 ? 'quality' : 'qualities'}, ${n.looms} looms${n.stopped ? ` · ${n.stopped} stopped` : ''}. Save to keep it.`);
         }}
       />
-      <Confirm open={sheet === 'reset'} onClose={() => setSheet(null)} title="Reset all settings?" text={`Every edited setting in this plan (${nSettings}) goes back to the master value. Looms, sides and receipts stay.`} yes="Reset all" onYes={() => setPlan(resetAll)} />
-      <Confirm open={sheet === 'clear'} onClose={() => setSheet(null)} danger title="Clear the plan?" text="This empties the working plan on this device: looms, sides, receipts and edited settings. Saved plans are not touched." yes="Clear plan" onYes={() => setDraft(blankDraft(unitId))} />
     </div>
   );
 }
 
 // part: "12 of 40 looms" when the figure covers only some of the planned looms (shown in amber)
-function Tile({ label, value, sub, tone, accent, part }) {
+function Tile({ label, value, sub, tone, accent, part, second, secondTone }) {
   return (
     <div class={`tile ${accent ? 'accent' : ''}`}>
       <div class="t-label">{label}</div>
       <div class={`t-value ${tone || ''}`}>{value}</div>
       <div class="t-sub">{sub}</div>
+      {second ? <div class={`t-second ${secondTone || ''}`}>{second}</div> : null}
       {part ? <div class="t-part">{part}</div> : null}
     </div>
   );
@@ -846,7 +883,7 @@ function PlansSheet({ open, onClose, idx, unitId, hasTfo, plans, currentId, unsa
               return (
                 <div class="plan-item">
                   <div class="plan-item-top">
-                    <div style={{ minWidth: 0 }}>
+                    <div class="min0">
                       <div class="pline-name">{p.name || 'Plan'}{p.id === currentId ? <span class="pcard-make"> · open</span> : null}</div>
                       <div class="pline-meta">{fmt.date(p.plan_date)}{p.updated_by ? ` · ${p.updated_by}` : ''}</div>
                     </div>
@@ -919,12 +956,12 @@ function ExportSheet({ open, onClose, model, planRow, unsaved, showMoney }) {
         <div class="group">
           <Toggle label="Include revenue (₹)" value={money} onChange={setMoney} />
           <button type="button" class="row" disabled={!!busy} onClick={() => run('pdf')}>
-            <span class="row-chevron" style={{ color: 'var(--accent)' }}><Icon.pdf /></span>
+            <span class="row-chevron accent-icon"><Icon.pdf /></span>
             <div class="row-main"><div class="row-label">PDF</div><div class="row-sub">{model.hasTfo ? (money ? 'Tiles, looms, TFO, yarn consumption and TPM balance' : 'Looms, TFO, yarn consumption and TPM balance, with no rupee figures') : money ? 'Tiles, looms, production and yarn consumption' : 'Looms, production and yarn consumption, with no rupee figures'}</div></div>
             {busy === 'pdf' ? <span class="spinner" aria-hidden="true" /> : null}
           </button>
           <button type="button" class="row" disabled={!!busy} onClick={() => run('xlsx')}>
-            <span class="row-chevron" style={{ color: 'var(--accent)' }}><Icon.grid /></span>
+            <span class="row-chevron accent-icon"><Icon.grid /></span>
             <div class="row-main"><div class="row-label">Excel</div><div class="row-sub">{money ? (model.hasTfo ? 'One sheet each: Summary, Looms, Production, TFO, Received, Yarn consumption, TPM balance' : 'One sheet each: Summary, Looms, Production, Yarn consumption') : 'The same sheets, with no rupee figures'}</div></div>
             {busy === 'xlsx' ? <span class="spinner" aria-hidden="true" /> : null}
           </button>
@@ -958,7 +995,7 @@ function AllUnits({ idx, wide, showMoney, top, onOpenUnit }) {
             return (
               <div class="plan-item">
                 <div class="plan-item-top">
-                  <div style={{ minWidth: 0 }}>
+                  <div class="min0">
                     <div class="pline-name">{u.unit.name}</div>
                     <div class="pline-meta">{u.row ? `${u.row.name || 'Plan'} · ${fmt.date(u.row.plan_date)}` : 'No saved plan yet'}</div>
                   </div>

@@ -2,7 +2,7 @@ import { useEffect } from 'preact/hooks';
 import { init, setPendingShare, startAutoSync, useStore } from './store.js';
 import { shareFile } from './export/exports.js';
 import { useRoute } from './router.js';
-import { Sidebar, TabBar, useWide } from './ui.jsx';
+import { ConfirmHost, Sidebar, TabBar, setNavStrip, useWide } from './ui.jsx';
 import { FabricDetail, FabricEdit, FabricList } from './screens/fabrics.jsx';
 import { YarnEdit, YarnList } from './screens/yarns.jsx';
 import { UnitDetail, UnitEdit, UnitList } from './screens/units.jsx';
@@ -10,8 +10,11 @@ import { Ranking } from './screens/ranking.jsx';
 import { Planner } from './screens/planner.jsx';
 import { Settings } from './screens/settings.jsx';
 import { Changes } from './screens/changes.jsx';
-import { TempRatesStrip } from './screens/tempRates.jsx';
+import { TempRatesPanel, TempRatesStrip } from './screens/tempRates.jsx';
 import { Guide } from './screens/guide.jsx';
+
+// The Temporary rates strip sits inside every top bar, so it stays in view while you scroll (B14).
+setNavStrip(TempRatesStrip);
 
 function resolve({ path, query }) {
   const [a, b, c] = path;
@@ -84,15 +87,16 @@ export function App() {
     <div class={`shell ${wide ? 'wide' : ''}`}>
       {wide ? <Sidebar active={r.tab} settingsOpen={route.path[0] === 'settings' || route.path[0] === 'changes'} /> : null}
       <div class={`app ${r.modal ? 'no-tabs' : ''}`}>
-        <TempRatesStrip />
         {r.el}
+        <TempRatesPanel />
       </div>
       {r.modal || wide ? null : <TabBar active={r.tab} />}
+      <ConfirmHost />
       {st.toast ? <div class={`toast ${st.toast.kind === 'error' ? 'error' : ''}`} role="status">{st.toast.message}</div> : null}
       {st.pendingShare ? (
-        <div class="toast" role="status" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+        <div class="toast share" role="status">
           <span>{st.pendingShare.file.name} is ready</span>
-          <button type="button" class="text-btn bold" style={{ color: '#a6ce38', height: '32px' }} onClick={async () => {
+          <button type="button" class="text-btn bold" onClick={async () => {
             const p = st.pendingShare;
             setPendingShare(null);
             try {
@@ -101,7 +105,7 @@ export function App() {
               /* user can retry from the export sheet */
             }
           }}>Share</button>
-          <button type="button" class="text-btn" style={{ color: '#ffffff', height: '32px' }} aria-label="Dismiss" onClick={() => setPendingShare(null)}>✕</button>
+          <button type="button" class="text-btn dismiss" aria-label="Dismiss" onClick={() => setPendingShare(null)}>✕</button>
         </div>
       ) : null}
     </div>

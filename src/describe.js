@@ -27,13 +27,15 @@ export function yarnSub(yarn, idx) {
   return [yarn.material, yarn.form, yarnCountLabel(yarn, idx), yarn.count_unit === 'Ne' && d ? `≈${fmt.n(d, 0)}D` : null].filter(Boolean).join(' · ');
 }
 
+// Yarn list (phone): the rate and "per kg" on the right; how the rate is made (base + delta, temporary,
+// master) goes on the left under the name, so the description keeps its width (B15).
 export function rateLabel(yarn, idx) {
   const r = yarnRate(yarn, idx);
-  if (!r) return { value: '—', sub: 'No rate' };
-  if (r.tpmTemp) return { value: fmt.rate(r.rate), temp: true, sub: r.masterRate === null ? 'per kg · temporary' : `per kg · temporary, master ${fmt.rate(r.masterRate)}` };
-  if (r.delta !== undefined) return { value: fmt.rate(r.rate), temp: !!r.temp, sub: `per kg · base ${fmt.rate(r.baseRate)}${r.temp ? ' (temp)' : ''} + ${fmt.rate(r.delta)}` };
-  if (r.temp) return { value: fmt.rate(r.rate), temp: true, sub: r.masterRate === null ? 'per kg · temporary' : `per kg · temporary, master ${fmt.rate(r.masterRate)}` };
-  return { value: fmt.rate(r.rate), sub: 'per kg' };
+  if (!r) return { value: '—', sub: 'No rate', basis: '' };
+  if (r.tpmTemp) return { value: fmt.rate(r.rate), temp: true, sub: 'per kg', basis: r.masterRate === null ? 'temporary' : `temporary, master ${fmt.rate(r.masterRate)}` };
+  if (r.delta !== undefined) return { value: fmt.rate(r.rate), temp: !!r.temp, sub: 'per kg', basis: `base ${fmt.rate(r.baseRate)}${r.temp ? ' (temp)' : ''} + ${fmt.rate(r.delta)}` };
+  if (r.temp) return { value: fmt.rate(r.rate), temp: true, sub: 'per kg', basis: r.masterRate === null ? 'temporary' : `temporary, master ${fmt.rate(r.masterRate)}` };
+  return { value: fmt.rate(r.rate), sub: 'per kg', basis: '' };
 }
 
 export function yarnOptions(idx) {

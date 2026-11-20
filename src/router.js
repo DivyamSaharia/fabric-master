@@ -1,19 +1,28 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
+import { askConfirm } from './confirm.js';
 
 let depth = 0;
 
 // ---------- leaving a form with unsaved changes ----------
-// An editor sets a guard while it is open. Cancel, Back, a tab, or the phone's back gesture then asks first.
-let guard = null;
+// An editor sets a guard while it is open. Cancel, Back, a tab, or the phone's back gesture then asks first,
+// in the app's own confirm sheet. "Discard" goes on with the move that was stopped (retry).
+let guard = null; // { ok(): true when there is nothing to lose, allow(): stop asking, message }
 let ours = false; // the next hashchange comes from go / back / replace, already asked
 let skipNext = false; // the next hashchange is us undoing a back gesture the person cancelled
 
-function mayLeave() {
+function mayLeave(retry) {
   if (!guard) return true;
-  if (guard()) {
+  if (guard.ok()) {
     guard = null;
     return true;
   }
+  const g = guard;
+  askConfirm({ title: g.message, text: 'What you changed on this form is not saved yet.', yes: 'Discard changes', no: 'Keep editing', danger: true }).then((yes) => {
+    if (!yes) return;
+    g.allow();
+    if (guard === g) guard = null;
+    if (retry) retry();
+  });
   return false;
 }
 
@@ -29,8 +38,11 @@ if (typeof window !== 'undefined') {
       ours = false;
       return;
     }
-    if (!mayLeave()) {
-      // back gesture or browser Back while the form has changes, and the person chose to stay
+    if (!mayLeave(() => {
+      ours = true;
+      history.back();
+    })) {
+      // back gesture or browser Back while the form has changes: stay on the form while the sheet asks
       skipNext = true;
       e.stopImmediatePropagation();
       history.forward();
@@ -45,7 +57,7 @@ export function useLeaveGuard(isDirty, message = 'Discard changes?') {
   const allowed = useRef(false);
   dirty.current = isDirty;
   useEffect(() => {
-    const g = () => allowed.current || !dirty.current || window.confirm(message);
+    const g = { ok: () => allowed.current || !dirty.current, allow: () => { allowed.current = true; }, message };
     guard = g;
     const onUnload = (e) => {
       if (!allowed.current && dirty.current) {
@@ -83,7 +95,7 @@ export function useRoute() {
 }
 
 export function go(path) {
-  if (!mayLeave()) return;
+  if (!mayLeave(() => go(path))) return;
   const next = path.startsWith('/') ? path : `/${path}`;
   depth += 1;
   if (location.hash !== `#${next}`) ours = true;
@@ -92,7 +104,7 @@ export function go(path) {
 }
 
 export function replace(path) {
-  if (!mayLeave()) return;
+  if (!mayLeave(() => replace(path))) return;
   const url = `${location.pathname}${location.search}#${path.startsWith('/') ? path : `/${path}`}`;
   history.replaceState(null, '', url);
   window.dispatchEvent(new HashChangeEvent('hashchange'));
@@ -100,7 +112,7 @@ export function replace(path) {
 }
 
 export function back(fallback) {
-  if (!mayLeave()) return;
+  if (!mayLeave(() => back(fallback))) return;
   if (depth > 0) {
     depth -= 1;
     ours = true;
@@ -112,7 +124,7 @@ export function back(fallback) {
 
 // Switching tabs resets the stack.
 export function tab(path) {
-  if (!mayLeave()) return;
+  if (!mayLeave(() => tab(path))) return;
   depth = 0;
   replace(path);
 }
