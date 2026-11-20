@@ -79,6 +79,7 @@ export const TOPICS = [
       'Realisation per pick = (selling price − yarn cost with shortage − finishing cost) ÷ picks.',
       'Profit per pick = realisation per pick − the unit\'s cost per pick. It uses realisation with VATAV.',
       'Metres per loom per day = RPM × 1,440 × the unit\'s loom efficiency ÷ (PPI × 39.37) × panna. Double panna is used where two reed spaces fit the loom\'s reed width.',
+      'A 280 cm loom uses the fabric\'s double panna RPM (the 280 cm RPM), even when it weaves a single panna. A 190 or 210 cm loom uses the single panna RPM. If the 280 cm RPM is blank, the 280 cm figures stay blank until it is set.',
       'Warp and weft kg per loom per day include shortage. The Production centre shows them per loom group; the unit cards show spindles for units with TFO.',
       'Loom realisation = realisation per pick with VATAV × metres per loom per day × PPI.',
     ],
@@ -315,6 +316,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.26.1', '280 cm looms now use the fabric\'s double panna RPM (the 280 cm RPM) also when a wide fabric runs single panna, on the fabric page, Production centre and Detailed share. Where that RPM is blank, the 280 cm figures ask for it.'],
   ['1.26.0', 'New look across the app. The fabric page is shorter: jump buttons under the title, and Construction, Beam length and History fold away. The Planner shows four main figures first, with All figures for the rest. Boxes you can type in now look like boxes, and deleting asks in the app.'],
   ['1.25.0', 'Temporary rate on a TPM yarn: type it under the base yarn, and Save to master can change the delta, the base rate or both. Share a fabric as Basic or Detailed: the Detailed PDF and Excel carry every figure and how it is worked out.'],
   ['1.24.0', 'Faster: the app opens at once from the copy saved on your phone and loads in full only when something changed. With no signal it shows that copy. Cancel now asks before throwing away changes, long names wrap, and Planner tiles say when they cover only some looms.'],

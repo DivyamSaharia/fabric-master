@@ -1,0 +1,1058 @@
+{
+ "Fabrics": [
+  {
+   "id": "f_mvgig63pg5i3",
+   "name": "Natural Crape",
+   "weave": "Plain",
+   "design_note": "Natural Crape-L-67 (3802)",
+   "end_use": "",
+   "reed": "",
+   "ppi": "80",
+   "reed_space_in": "67",
+   "greige_width_in": "",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "103",
+   "finish": "Greige",
+   "rfd_shortage_pct": "",
+   "processing_charge": "",
+   "brokering_pct": "",
+   "loom_rpm": "1041",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "5",
+   "loom_rpm_dp": ""
+  },
+  {
+   "id": "f_mvgig63tfc5n",
+   "name": "Gajji Silk",
+   "weave": "Dobby",
+   "design_note": "Gajji Silk (6101)",
+   "end_use": "",
+   "reed": "",
+   "ppi": "76",
+   "reed_space_in": "64",
+   "greige_width_in": "",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "128",
+   "finish": "Greige",
+   "rfd_shortage_pct": "",
+   "processing_charge": "",
+   "brokering_pct": "",
+   "loom_rpm": "998",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "5",
+   "loom_rpm_dp": "700"
+  },
+  {
+   "id": "f_mvgig63xrhbj",
+   "name": "Gajji Silk",
+   "weave": "Dobby",
+   "design_note": "Gajji Silk-73 (8902)",
+   "end_use": "",
+   "reed": "",
+   "ppi": "76",
+   "reed_space_in": "73",
+   "greige_width_in": "",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "148",
+   "finish": "Greige",
+   "rfd_shortage_pct": "",
+   "processing_charge": "",
+   "brokering_pct": "",
+   "loom_rpm": "997",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "5",
+   "loom_rpm_dp": ""
+  },
+  {
+   "id": "f_mvgig6450w8e",
+   "name": "Salsa Butty",
+   "weave": "Dobby",
+   "design_note": "Salsa Butty-70 (5923)",
+   "end_use": "",
+   "reed": "",
+   "ppi": "80",
+   "reed_space_in": "70",
+   "greige_width_in": "",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "65",
+   "finish": "RFD",
+   "rfd_shortage_pct": "",
+   "processing_charge": "2",
+   "brokering_pct": "",
+   "loom_rpm": "970",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "5",
+   "loom_rpm_dp": "",
+   "updated_by": "",
+   "created_by": "",
+   "transport_charge": "0.5"
+  },
+  {
+   "id": "f_mvgig64mgmi8",
+   "name": "Tissue",
+   "weave": "Plain",
+   "design_note": "Tissue Big (6801)",
+   "end_use": "",
+   "reed": "",
+   "ppi": "74",
+   "reed_space_in": "64",
+   "greige_width_in": "",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "85",
+   "finish": "Greige",
+   "rfd_shortage_pct": "",
+   "processing_charge": "",
+   "brokering_pct": "",
+   "loom_rpm": "975",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "5"
+  },
+  {
+   "id": "f_mvgne94s8x05",
+   "name": "Natural Crape",
+   "weave": "Plain",
+   "design_note": "Natural Crape-L-67 (3802)",
+   "end_use": "",
+   "reed": "",
+   "ppi": "80",
+   "reed_space_in": "74",
+   "greige_width_in": "",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "125",
+   "finish": "Greige",
+   "rfd_shortage_pct": "",
+   "processing_charge": "",
+   "brokering_pct": "",
+   "loom_rpm": "1041",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "5"
+  },
+  {
+   "id": "f_mvia19e0ckof",
+   "name": "Gajji Silk",
+   "weave": "Dobby",
+   "design_note": "Gajji Silk (6101)",
+   "end_use": "",
+   "reed": "",
+   "ppi": "76",
+   "reed_space_in": "64",
+   "greige_width_in": "",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "140",
+   "finish": "RFD",
+   "rfd_shortage_pct": "3.62",
+   "processing_charge": "5.5",
+   "brokering_pct": "1",
+   "loom_rpm": "998",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "5",
+   "loom_rpm_dp": "700",
+   "updated_by": "",
+   "created_by": "",
+   "transport_charge": "0.5"
+  },
+  {
+   "id": "f_mvw81fbe6iqv",
+   "name": "Organza Plain",
+   "weave": "Plain",
+   "design_note": "",
+   "end_use": "",
+   "reed": "",
+   "ppi": "72",
+   "reed_space_in": "65",
+   "greige_width_in": "",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "78",
+   "finish": "Greige",
+   "rfd_shortage_pct": "",
+   "processing_charge": "",
+   "brokering_pct": "",
+   "loom_rpm": "1000",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "5",
+   "loom_rpm_dp": ""
+  },
+  {
+   "id": "f_mvrtgxn7ogk5",
+   "name": "Pv satin chiffon",
+   "weave": "Cam",
+   "design_note": "4/1",
+   "end_use": "",
+   "reed": "80",
+   "ppi": "64",
+   "reed_space_in": "72",
+   "greige_width_in": "71",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "46.75",
+   "finish": "Greige",
+   "rfd_shortage_pct": "",
+   "processing_charge": "",
+   "brokering_pct": "",
+   "loom_rpm": "900",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "3",
+   "loom_rpm_dp": ""
+  },
+  {
+   "id": "f_mvkx6zb7e8vr",
+   "name": "PV Chanderi",
+   "weave": "Plain",
+   "design_note": "",
+   "end_use": "",
+   "reed": "",
+   "ppi": "62",
+   "reed_space_in": "64",
+   "greige_width_in": "",
+   "warp_shortage_pct": "10",
+   "weft_shortage_pct": "10",
+   "price": "32",
+   "finish": "Greige",
+   "rfd_shortage_pct": "",
+   "processing_charge": "",
+   "brokering_pct": "",
+   "loom_rpm": "",
+   "loom_eff_pct": "",
+   "notes": "",
+   "created_at": "",
+   "updated_at": "",
+   "vatav_pct": "3",
+   "loom_rpm_dp": ""
+  }
+ ],
+ "FabricYarns": [
+  {
+   "id": "l0",
+   "fabric_id": "f_mvgig63pg5i3",
+   "side": "warp",
+   "yarn_id": "y_mvgfrkvq13ya",
+   "ends": "9000",
+   "parts": "",
+   "sort": "0"
+  },
+  {
+   "id": "l1",
+   "fabric_id": "f_mvgig63pg5i3",
+   "side": "weft",
+   "yarn_id": "y_mvgf6t827a34",
+   "ends": "",
+   "parts": "1",
+   "sort": "1"
+  },
+  {
+   "id": "l2",
+   "fabric_id": "f_mvgig63tfc5n",
+   "side": "warp",
+   "yarn_id": "y_mvgfrkvq13ya",
+   "ends": "12920",
+   "parts": "",
+   "sort": "2"
+  },
+  {
+   "id": "l3",
+   "fabric_id": "f_mvgig63tfc5n",
+   "side": "weft",
+   "yarn_id": "y_mvgig63g9rsc",
+   "ends": "",
+   "parts": "1",
+   "sort": "3"
+  },
+  {
+   "id": "l4",
+   "fabric_id": "f_mvgig63xrhbj",
+   "side": "warp",
+   "yarn_id": "y_mvgfrkvq13ya",
+   "ends": "14744",
+   "parts": "",
+   "sort": "4"
+  },
+  {
+   "id": "l5",
+   "fabric_id": "f_mvgig63xrhbj",
+   "side": "weft",
+   "yarn_id": "y_mvgig63g9rsc",
+   "ends": "",
+   "parts": "1",
+   "sort": "5"
+  },
+  {
+   "id": "l6",
+   "fabric_id": "f_mvgig6450w8e",
+   "side": "warp",
+   "yarn_id": "y_mvggl7wlcl2q",
+   "ends": "7872",
+   "parts": "",
+   "sort": "6"
+  },
+  {
+   "id": "l7",
+   "fabric_id": "f_mvgig6450w8e",
+   "side": "weft",
+   "yarn_id": "y_mvgig639k9jq",
+   "ends": "",
+   "parts": "31.04",
+   "sort": "7"
+  },
+  {
+   "id": "l8",
+   "fabric_id": "f_mvgig6450w8e",
+   "side": "weft",
+   "yarn_id": "y_mvgig63dql3x",
+   "ends": "",
+   "parts": "31.04",
+   "sort": "8"
+  },
+  {
+   "id": "l9",
+   "fabric_id": "f_mvgig6450w8e",
+   "side": "weft",
+   "yarn_id": "y_mvgig63fkh1l",
+   "ends": "",
+   "parts": "17.92",
+   "sort": "9"
+  },
+  {
+   "id": "l10",
+   "fabric_id": "f_mvgig64mgmi8",
+   "side": "warp",
+   "yarn_id": "y_mvgfrkvq13ya",
+   "ends": "5728",
+   "parts": "",
+   "sort": "10"
+  },
+  {
+   "id": "l11",
+   "fabric_id": "f_mvgig64mgmi8",
+   "side": "weft",
+   "yarn_id": "y_mvgf6t7ye4oz",
+   "ends": "",
+   "parts": "37",
+   "sort": "11"
+  },
+  {
+   "id": "l12",
+   "fabric_id": "f_mvgig64mgmi8",
+   "side": "weft",
+   "yarn_id": "y_mvgig63bfy6w",
+   "ends": "",
+   "parts": "37",
+   "sort": "12"
+  },
+  {
+   "id": "l13",
+   "fabric_id": "f_mvgne94s8x05",
+   "side": "warp",
+   "yarn_id": "y_mvgfrkvq13ya",
+   "ends": "9940",
+   "parts": "",
+   "sort": "13"
+  },
+  {
+   "id": "l14",
+   "fabric_id": "f_mvgne94s8x05",
+   "side": "weft",
+   "yarn_id": "y_mvgf6t827a34",
+   "ends": "",
+   "parts": "1",
+   "sort": "14"
+  },
+  {
+   "id": "l15",
+   "fabric_id": "f_mvia19e0ckof",
+   "side": "warp",
+   "yarn_id": "y_mvgfrkvq13ya",
+   "ends": "12920",
+   "parts": "",
+   "sort": "15"
+  },
+  {
+   "id": "l16",
+   "fabric_id": "f_mvia19e0ckof",
+   "side": "weft",
+   "yarn_id": "y_mvgig63g9rsc",
+   "ends": "",
+   "parts": "1",
+   "sort": "16"
+  },
+  {
+   "id": "l17",
+   "fabric_id": "f_mvw81fbe6iqv",
+   "side": "warp",
+   "yarn_id": "y_mvdvpxsy37ao",
+   "ends": "5800",
+   "parts": "",
+   "sort": "17"
+  },
+  {
+   "id": "l18",
+   "fabric_id": "f_mvw81fbe6iqv",
+   "side": "weft",
+   "yarn_id": "y_mvdvpxsy37ao",
+   "ends": "",
+   "parts": "1",
+   "sort": "18"
+  },
+  {
+   "id": "l19",
+   "fabric_id": "f_mvrtgxn7ogk5",
+   "side": "warp",
+   "yarn_id": "y_mvggl7wnh5bx",
+   "ends": "14600",
+   "parts": "",
+   "sort": "19"
+  },
+  {
+   "id": "l20",
+   "fabric_id": "f_mvrtgxn7ogk5",
+   "side": "weft",
+   "yarn_id": "y_mvrroj0d8geq",
+   "ends": "",
+   "parts": "1",
+   "sort": "20"
+  },
+  {
+   "id": "l21",
+   "fabric_id": "f_mvkx6zb7e8vr",
+   "side": "warp",
+   "yarn_id": "y_mvggl7wjuli6",
+   "ends": "8500",
+   "parts": "",
+   "sort": "21"
+  },
+  {
+   "id": "l22",
+   "fabric_id": "f_mvkx6zb7e8vr",
+   "side": "weft",
+   "yarn_id": "y_mvgg7km07zyn",
+   "ends": "",
+   "parts": "1",
+   "sort": "22"
+  }
+ ],
+ "Yarns": [
+  {
+   "id": "y_mvgfrkvq13ya",
+   "name": "60/24 SIZED",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Viscose",
+   "form": "",
+   "count": "60",
+   "count_unit": "D",
+   "filaments": "24",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvgf6t8195rf",
+   "name": "60/24 VISCOSE",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Viscose",
+   "form": "",
+   "count": "60",
+   "count_unit": "D",
+   "filaments": "24",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvgf6t827a34",
+   "name": "60/24 VISCOSE 1650 TPM",
+   "kind": "tpm",
+   "base_yarn_id": "y_mvgf6t8195rf",
+   "material": "",
+   "form": "",
+   "count": "65",
+   "count_unit": "D",
+   "filaments": "",
+   "tpm": "1650",
+   "tpm_delta": "50"
+  },
+  {
+   "id": "y_mvgig63g9rsc",
+   "name": "60 Ecovero",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Viscose",
+   "form": "Spun",
+   "count": "60",
+   "count_unit": "D",
+   "filaments": "",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvggl7wlcl2q",
+   "name": "20/1 NYLON SD BEAM",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Nylon",
+   "form": "Mono",
+   "count": "20",
+   "count_unit": "D",
+   "filaments": "1",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvgig639k9jq",
+   "name": "20 Nylon Jari S/Z",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Nylon",
+   "form": "Jari",
+   "count": "88",
+   "count_unit": "D",
+   "filaments": "",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvgig63dql3x",
+   "name": "20/1 Nylon SD Weft",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Nylon",
+   "form": "Mono",
+   "count": "20",
+   "count_unit": "D",
+   "filaments": "1",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvgig63fkh1l",
+   "name": "Matte Zari",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "",
+   "form": "",
+   "count": "110",
+   "count_unit": "D",
+   "filaments": "",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvgf6t7xf512",
+   "name": "58/24 VIS",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Viscose",
+   "form": "",
+   "count": "58",
+   "count_unit": "D",
+   "filaments": "24",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvgf6t7ye4oz",
+   "name": "58/24 VIS 1109 TPM",
+   "kind": "tpm",
+   "base_yarn_id": "y_mvgf6t7xf512",
+   "material": "",
+   "form": "",
+   "count": "60",
+   "count_unit": "D",
+   "filaments": "",
+   "tpm": "1109",
+   "tpm_delta": "50"
+  },
+  {
+   "id": "y_mvgig63bfy6w",
+   "name": "20 Nylon Gold S/Z",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Nylon",
+   "form": "Jari",
+   "count": "88",
+   "count_unit": "D",
+   "filaments": "",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvdvoz3rmung",
+   "name": "60/08",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Viscose",
+   "form": "",
+   "count": "60",
+   "count_unit": "D",
+   "filaments": "8",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvdvpxsy37ao",
+   "name": "60/08 1109 TPM",
+   "kind": "tpm",
+   "base_yarn_id": "y_mvdvoz3rmung",
+   "material": "",
+   "form": "",
+   "count": "62",
+   "count_unit": "D",
+   "filaments": "",
+   "tpm": "1109",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvggl7wnh5bx",
+   "name": "20/1 BRT MONO BEAM",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Polyester",
+   "form": "Mono",
+   "count": "20",
+   "count_unit": "D",
+   "filaments": "1",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvrroj0d8geq",
+   "name": "30 vsf Ht",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "",
+   "form": "",
+   "count": "30",
+   "count_unit": "Ne",
+   "filaments": "",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvggl7wjuli6",
+   "name": "20/1 POLY SD BEAM",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Polyester",
+   "form": "Mono",
+   "count": "20",
+   "count_unit": "D",
+   "filaments": "1",
+   "tpm": "",
+   "tpm_delta": ""
+  },
+  {
+   "id": "y_mvgg7km07zyn",
+   "name": "30 VSF",
+   "kind": "base",
+   "base_yarn_id": "",
+   "material": "Viscose",
+   "form": "Spun",
+   "count": "30",
+   "count_unit": "Ne",
+   "filaments": "",
+   "tpm": "",
+   "tpm_delta": ""
+  }
+ ],
+ "YarnRates": [
+  {
+   "id": "r0",
+   "yarn_id": "y_mvgfrkvq13ya",
+   "rate": "742",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r1",
+   "yarn_id": "y_mvgf6t8195rf",
+   "rate": "678",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r2",
+   "yarn_id": "y_mvgf6t8195rf",
+   "rate": "708",
+   "effective_date": "2026-11-10"
+  },
+  {
+   "id": "r3",
+   "yarn_id": "y_mvgf6t8195rf",
+   "rate": "710",
+   "effective_date": "2026-11-20"
+  },
+  {
+   "id": "r4",
+   "yarn_id": "y_mvgig63g9rsc",
+   "rate": "380",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r5",
+   "yarn_id": "y_mvgig63g9rsc",
+   "rate": "416.5",
+   "effective_date": "2026-10-30"
+  },
+  {
+   "id": "r6",
+   "yarn_id": "y_mvggl7wlcl2q",
+   "rate": "310",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r7",
+   "yarn_id": "y_mvggl7wlcl2q",
+   "rate": "300",
+   "effective_date": "2026-10-31"
+  },
+  {
+   "id": "r8",
+   "yarn_id": "y_mvgig639k9jq",
+   "rate": "750",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r9",
+   "yarn_id": "y_mvgig639k9jq",
+   "rate": "615",
+   "effective_date": "2026-10-21"
+  },
+  {
+   "id": "r10",
+   "yarn_id": "y_mvgig63dql3x",
+   "rate": "335",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r11",
+   "yarn_id": "y_mvgig63fkh1l",
+   "rate": "333.35",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r12",
+   "yarn_id": "y_mvgf6t7xf512",
+   "rate": "704",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r13",
+   "yarn_id": "y_mvgig63bfy6w",
+   "rate": "740",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r14",
+   "yarn_id": "y_mvgig63bfy6w",
+   "rate": "615",
+   "effective_date": "2026-10-21"
+  },
+  {
+   "id": "r15",
+   "yarn_id": "y_mvdvoz3rmung",
+   "rate": "725.25",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r16",
+   "yarn_id": "y_mvdvpxsy37ao",
+   "rate": "775.25",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r17",
+   "yarn_id": "y_mvggl7wnh5bx",
+   "rate": "245",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r18",
+   "yarn_id": "y_mvggl7wnh5bx",
+   "rate": "240",
+   "effective_date": "2026-10-23"
+  },
+  {
+   "id": "r19",
+   "yarn_id": "y_mvggl7wnh5bx",
+   "rate": "230",
+   "effective_date": "2026-10-28"
+  },
+  {
+   "id": "r20",
+   "yarn_id": "y_mvrroj0d8geq",
+   "rate": "293",
+   "effective_date": "2026-10-28"
+  },
+  {
+   "id": "r21",
+   "yarn_id": "y_mvggl7wjuli6",
+   "rate": "220",
+   "effective_date": "2026-10-20"
+  },
+  {
+   "id": "r22",
+   "yarn_id": "y_mvggl7wjuli6",
+   "rate": "210",
+   "effective_date": "2026-09-24"
+  },
+  {
+   "id": "r23",
+   "yarn_id": "y_mvggl7wjuli6",
+   "rate": "200",
+   "effective_date": "2026-10-26"
+  },
+  {
+   "id": "r24",
+   "yarn_id": "y_mvgg7km07zyn",
+   "rate": "253",
+   "effective_date": "2026-11-20"
+  }
+ ],
+ "Units": [
+  {
+   "id": "u_mvdwlskosl2i",
+   "name": "Weavelon 2",
+   "type": "Airjet",
+   "cost_per_pick": "0.21",
+   "has_tfo": "TRUE",
+   "tfo_default_eff": "85",
+   "loom_eff_pct": "93"
+  },
+  {
+   "id": "u_mvopm5i5fj4q",
+   "name": "Weavelon 1",
+   "type": "Airjet",
+   "cost_per_pick": "0.14",
+   "has_tfo": "FALSE",
+   "loom_eff_pct": "90"
+  }
+ ],
+ "LoomGroups": [
+  {
+   "id": "lg_mvdwlskoejlg",
+   "unit_id": "u_mvdwlskosl2i",
+   "make": "Toyota",
+   "reed_width_cm": "190",
+   "shedding": "Plain",
+   "looms": "16"
+  },
+  {
+   "id": "lg_mvdwlskopkjb",
+   "unit_id": "u_mvdwlskosl2i",
+   "make": "Toyota",
+   "reed_width_cm": "280",
+   "shedding": "Dobby",
+   "looms": "14"
+  },
+  {
+   "id": "lg_w2_190dobby",
+   "unit_id": "u_mvdwlskosl2i",
+   "make": "Toyota",
+   "reed_width_cm": "190",
+   "shedding": "Dobby",
+   "looms": "24"
+  },
+  {
+   "id": "lg_w2_280plain",
+   "unit_id": "u_mvdwlskosl2i",
+   "make": "Toyota",
+   "reed_width_cm": "280",
+   "shedding": "Plain",
+   "looms": "18"
+  },
+  {
+   "id": "lg_mvta3nuvjwtr",
+   "unit_id": "u_mvopm5i5fj4q",
+   "make": "Red Flag",
+   "reed_width_cm": "190",
+   "shedding": "Plain",
+   "looms": "146"
+  },
+  {
+   "id": "lg_mvtaat7ijdmy",
+   "unit_id": "u_mvopm5i5fj4q",
+   "make": "Red flag",
+   "reed_width_cm": "190",
+   "shedding": "Cam",
+   "looms": "70"
+  },
+  {
+   "id": "lg_mvtaat7iywi5",
+   "unit_id": "u_mvopm5i5fj4q",
+   "make": "Red Flag",
+   "reed_width_cm": "210",
+   "shedding": "Plain",
+   "looms": "24"
+  }
+ ],
+ "TfoTypes": [
+  {
+   "id": "tt_mvdwlskor31b",
+   "unit_id": "u_mvdwlskosl2i",
+   "name": "New machines (13-16)",
+   "machines": "4",
+   "spindles_per_side": "252",
+   "efficiency": "80"
+  },
+  {
+   "id": "tt_mvdwlskof702",
+   "unit_id": "u_mvdwlskosl2i",
+   "name": "Old machines (1-12)",
+   "machines": "12",
+   "spindles_per_side": "252",
+   "efficiency": "80"
+  }
+ ],
+ "TfoSpeeds": [
+  {
+   "id": "s0",
+   "unit_id": "u_mvdwlskosl2i",
+   "tfo_type_id": "tt_mvdwlskor31b",
+   "yarn_id": "y_mvdvpxsy37ao",
+   "rpm": "18000",
+   "efficiency": ""
+  },
+  {
+   "id": "s1",
+   "unit_id": "u_mvdwlskosl2i",
+   "tfo_type_id": "tt_mvdwlskof702",
+   "yarn_id": "y_mvdvpxsy37ao",
+   "rpm": "20000",
+   "efficiency": ""
+  },
+  {
+   "id": "s2",
+   "unit_id": "u_mvdwlskosl2i",
+   "tfo_type_id": "tt_mvdwlskof702",
+   "yarn_id": "y_mvgf6t7qv7ff",
+   "rpm": "23000",
+   "efficiency": ""
+  },
+  {
+   "id": "s3",
+   "unit_id": "u_mvdwlskosl2i",
+   "tfo_type_id": "tt_mvdwlskof702",
+   "yarn_id": "y_mvgf6t7ue66p",
+   "rpm": "18000",
+   "efficiency": ""
+  },
+  {
+   "id": "s4",
+   "unit_id": "u_mvdwlskosl2i",
+   "tfo_type_id": "tt_mvdwlskof702",
+   "yarn_id": "y_mvgf6t7ye4oz",
+   "rpm": "20000",
+   "efficiency": ""
+  },
+  {
+   "id": "s5",
+   "unit_id": "u_mvdwlskosl2i",
+   "tfo_type_id": "tt_mvdwlskof702",
+   "yarn_id": "y_mvgf6t827a34",
+   "rpm": "20000",
+   "efficiency": ""
+  },
+  {
+   "id": "s6",
+   "unit_id": "u_mvdwlskosl2i",
+   "tfo_type_id": "tt_mvdwlskor31b",
+   "yarn_id": "y_mvgf6t827a34",
+   "rpm": "18000",
+   "efficiency": ""
+  }
+ ],
+ "Assignments": [
+  {
+   "id": "a0",
+   "fabric_id": "f_mvgig63pg5i3",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "a1",
+   "fabric_id": "f_mvgig63tfc5n",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "a2",
+   "fabric_id": "f_mvgig63xrhbj",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "a3",
+   "fabric_id": "f_mvgig6450w8e",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "a4",
+   "fabric_id": "f_mvgig64mgmi8",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "a5",
+   "fabric_id": "f_mvgne94s8x05",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "a6",
+   "fabric_id": "f_mvia19e0ckof",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "a7",
+   "fabric_id": "f_mvw81fbe6iqv",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "a8",
+   "fabric_id": "f_mvrtgxn7ogk5",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "a9",
+   "fabric_id": "f_mvkx6zb7e8vr",
+   "unit_id": "u_mvdwlskosl2i"
+  },
+  {
+   "id": "aw1",
+   "fabric_id": "f_mvrtgxn7ogk5",
+   "unit_id": "u_mvopm5i5fj4q"
+  },
+  {
+   "id": "aw2",
+   "fabric_id": "f_mvkx6zb7e8vr",
+   "unit_id": "u_mvopm5i5fj4q"
+  }
+ ],
+ "Photos": []
+}

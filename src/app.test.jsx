@@ -76,7 +76,7 @@ describe('every screen renders with demo data', () => {
     await open('#/fabric/f_crepe');
     await screen.findByText('Sale rate');
     const tiles = [...document.querySelectorAll('.tiles .tile')];
-    expect(tiles.length).toBe(9);
+    expect(tiles.length).toBe(10);
     expect(tiles.map((t) => t.querySelector('.t-label').textContent).join('|')).not.toMatch(/GSM|^Consumption|RM cost|RFD cost|Spindle/);
     expect(tiles[3].textContent).toContain('₹45.00');
     expect(tiles[3].textContent).toContain('per RFD metre');
@@ -85,25 +85,27 @@ describe('every screen renders with demo data', () => {
     expect(daily[0].textContent).toContain('15.9 kg');
     expect(daily[0].textContent).toContain('12.7 kg');
     expect(daily[0].textContent).toContain('(311 m) · single panna · 800 RPM · 85% eff. · Unit 2');
-    // loom realisation, right after the sale rate: 190 and 280 cm give the same figure here (both single panna),
-    // so they share one tile (1.26.0, C7); it fills the rest of its row on a phone
+    // 280 cm daily consumption: RS 60 runs single panna on 280 cm, at the 280 cm RPM (loom_rpm_dp), blank here (1.26.1)
+    expect(daily[1].textContent).toContain('Set double panna RPM on the fabric (used on 280 cm looms)');
+    // loom realisation, right after the sale rate: one tile per width now that 280 cm has no figure
     const ix = buildIndex(sampleTables());
     const cc = fabricCalc(ix.fabricsById.f_crepe, ix);
     const lr = loomRealisationForUnit(cc, ix.fabricsById.f_crepe, ix.unitsById.u_2, ix);
-    expect(lr[0].value).toBe(lr[1].value);
-    const loomTiles = tiles.filter((t) => /Loom realisation/.test(t.querySelector('.t-label').textContent));
-    expect(loomTiles.map((t) => t.querySelector('.t-label').textContent)).toEqual(['Loom realisation · 190 and 280 cm']);
-    expect(tiles.indexOf(loomTiles[0])).toBe(4);
-    expect(loomTiles[0].classList.contains('pf')).toBe(true);
     expect(lr[0].value).toBeGreaterThan(0);
+    expect(lr[1].value).toBeNull();
+    const loomTiles = tiles.filter((t) => /Loom realisation/.test(t.querySelector('.t-label').textContent));
+    expect(loomTiles.map((t) => t.querySelector('.t-label').textContent)).toEqual(['Loom realisation · 190 cm', 'Loom realisation · 280 cm']);
+    expect(tiles.indexOf(loomTiles[0])).toBe(4);
     expect(loomTiles[0].querySelector('.t-value').textContent).toBe(fmt.rs(lr[0].value, 0));
     expect(loomTiles[0].textContent).toContain('per loom per day · single panna');
-    expect(tiles[7].textContent).toContain('TFO per side · M/C 1–12');
-    expect(tiles[7].textContent).toContain('Weft · 75D TPM 2000 S/Z');
-    expect(tiles[7].textContent).toContain('24.5 kg');
-    expect(tiles[7].textContent).toContain('90% eff. assumed');
-    expect(tiles[8].textContent).toContain('M/C 13–16');
-    expect(tiles[8].textContent).toContain('28.6 kg');
+    expect(loomTiles[1].querySelector('.t-value').textContent).toBe('—');
+    expect(loomTiles[1].textContent).toContain('Set double panna RPM on the fabric (used on 280 cm looms)');
+    expect(tiles[8].textContent).toContain('TFO per side · M/C 1–12');
+    expect(tiles[8].textContent).toContain('Weft · 75D TPM 2000 S/Z');
+    expect(tiles[8].textContent).toContain('24.5 kg');
+    expect(tiles[8].textContent).toContain('90% eff. assumed');
+    expect(tiles[9].textContent).toContain('M/C 13–16');
+    expect(tiles[9].textContent).toContain('28.6 kg');
     expect(screen.getByText('Transportation')).toBeTruthy();
     // spindle profitability is a row in the realisation section now
     expect(screen.getByText('Spindle profitability')).toBeTruthy();

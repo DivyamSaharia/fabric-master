@@ -321,10 +321,19 @@ export function tfoEff(speed, type, unit) {
 
 export const truthy = (v) => v === true || v === 'TRUE' || v === 'true' || v === 1;
 
-// Loom output per day for single (panna 1) or double (panna 2) panna.
-// Uses the fabric's loom RPM for that panna and the unit's loom efficiency. Double panna weaves two widths.
-export function loomPerDay(calc, fabric, unit, panna = 1) {
-  const rpm = num(panna === 2 ? fabric && fabric.loom_rpm_dp : fabric && fabric.loom_rpm);
+// Looms this wide or wider run at the fabric's loom_rpm_dp (the 280 cm RPM), single or double panna.
+// Same cut-off as the Planner (planner.js WIDE_LOOM_CM).
+export const WIDE_LOOM_CM = 250;
+const fmtCm = (w) => String(Math.round(w));
+
+// Loom output per day for single (panna 1) or double (panna 2) panna, at the unit's loom efficiency.
+// With a loom width (cm): a wide loom (≥ 250 cm) uses loom_rpm_dp, a narrower one loom_rpm, whatever the panna.
+// With no width (unit cards, Basic share, spindle profitability): single panna uses loom_rpm, double loom_rpm_dp.
+// Double panna weaves two widths; single panna output is not doubled.
+export function loomPerDay(calc, fabric, unit, panna = 1, widthCm = null) {
+  const w = num(widthCm);
+  const wide = w !== null ? w >= WIDE_LOOM_CM : panna === 2;
+  const rpm = num(wide ? fabric && fabric.loom_rpm_dp : fabric && fabric.loom_rpm);
   const eff = num(unit && unit.loom_eff_pct);
   const mPerDay = rpm && eff && calc.ppi ? ((rpm * MIN_PER_DAY * (eff / 100)) / (calc.ppi * IN_PER_M)) * panna : null;
   return {
@@ -333,7 +342,7 @@ export function loomPerDay(calc, fabric, unit, panna = 1) {
     mPerDay,
     warpKg: mPerDay !== null && calc.warpGpm !== null ? (mPerDay * calc.warpGpm) / 1000 : null,
     weftKg: mPerDay !== null && calc.weftGpm !== null ? (mPerDay * calc.weftGpm) / 1000 : null,
-    reason: mPerDay !== null ? null : rpm ? (eff ? 'Set the pick on the fabric' : 'Set loom efficiency on the unit') : `Set ${panna === 2 ? 'double' : 'single'} panna RPM on the fabric`,
+    reason: mPerDay !== null ? null : rpm ? (eff ? 'Set the pick on the fabric' : 'Set loom efficiency on the unit') : w !== null && wide && panna === 1 ? `Set double panna RPM on the fabric (used on ${fmtCm(w)} cm looms)` : `Set ${wide ? 'double' : 'single'} panna RPM on the fabric`,
   };
 }
 
@@ -452,7 +461,7 @@ export function productionForUnit(calc, fabric, unit, idx) {
       const panna = groupPanna(calc.rs, group);
       const looms = num(group.looms);
       if (!panna) return { group, panna: null, looms, loom: null, reason: calc.rs ? 'Reed space wider than this loom' : 'Set the reed space on the fabric' };
-      const loom = loomPerDay(calc, fabric, unit, panna);
+      const loom = loomPerDay(calc, fabric, unit, panna, num(group.reed_width_cm));
       const all = (v) => (v !== null && looms ? v * looms : null);
       return { group, panna, looms, loom, total: { mPerDay: all(loom.mPerDay), warpKg: all(loom.warpKg), weftKg: all(loom.weftKg) }, yarns: yarnConsumption(calc, loom.mPerDay, looms), reason: loom.reason };
     });
