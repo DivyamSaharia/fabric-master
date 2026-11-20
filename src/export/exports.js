@@ -260,7 +260,7 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
   doc.setFont('DejaVu', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...grey);
-  doc.text(doc.splitTextToSize('Realisation per pick = (selling price − RM cost with shortage − finishing cost) ÷ picks; with VATAV, the VATAV discount is also taken off. Figures use the latest yarn rates.' + (tempRatesText(idx) ? ` ${tempRatesText(idx)}` : ''), W), M, tempRatesText(idx) ? 285 : 289);
+  doc.text(doc.splitTextToSize('Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also taken off. Figures use the latest yarn rates.' + (tempRatesText(idx) ? ` ${tempRatesText(idx)}` : ''), W), M, tempRatesText(idx) ? 285 : 289);
   const blob = doc.output('blob');
   await deliver(blob, fileName(fabric.name, 'spec', 'pdf'), `${fabric.name} spec sheet`, opts);
 }

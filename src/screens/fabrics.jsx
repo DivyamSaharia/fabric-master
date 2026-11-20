@@ -11,6 +11,7 @@ import { Badge, Button, Chip, Empty, Field, Icon, IconButton, NavBar, NumField, 
 import { GuideHint, HelpButton } from './guide.jsx';
 import { TempPriceSection, TempRateRow } from './tempRates.jsx';
 import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
+import { exportFabricPdfDetailed, exportFabricXlsxDetailed } from '../export/detailed.js';
 
 const WEAVES = ['Plain', 'Cam', 'Dobby'];
 const SPINDLE_SORT = { value: 'spindle', label: 'Spindle profit ↓' };
@@ -1085,9 +1086,15 @@ function PhotoSheet({ photo, onClose }) {
 function ExportSheet({ open, onClose, fabric, calc, idx }) {
   const [toDrive, setToDrive] = useState(backendMode() === 'sheet');
   const [busy, setBusy] = useState('');
+  // Basic (what was always shared) or Detailed (PDF and Excel only). Back to Basic each time the sheet opens.
+  const [level, setLevel] = useState('basic');
   useEffect(() => {
-    if (open) preloadExports().catch(() => {});
+    if (open) {
+      setLevel('basic');
+      preloadExports().catch(() => {});
+    }
   }, [open]);
+  const detailed = level === 'detailed';
   const text = whatsappText(fabric, calc, idx);
   const run = async (kind, fn) => {
     setBusy(kind);
@@ -1101,11 +1108,28 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
   const sheetMode = backendMode() === 'sheet';
   return (
     <Sheet open={open} onClose={onClose} title="Export">
-      <Section header={`${fabric.name} · ${calc.finish}`}>
-        <Row label="PDF spec sheet" sub="Photo, construction, consumption, finishing, realisation" onClick={() => run('pdf', () => exportFabricPdf(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'pdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'pdf'} />
-        <Row label="WhatsApp message" sub="Opens WhatsApp with the text below" onClick={() => openWhatsAppText(text)} chevron />
-        <Row label="Excel sheet" sub="Construction, consumption and cost breakdown" onClick={() => run('xlsx', () => exportFabricXlsx(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'xlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'xlsx'} />
-        <Row label="Copy text" sub="Paste it anywhere" onClick={async () => {
+      <Section
+        header="Report"
+        footer={detailed
+          ? 'Detailed: everything on the fabric page, with yarn rates, the full cost breakdown, loom realisation and spindle figures, and the RPM and efficiency they assume. PDF and Excel only.'
+          : 'Basic: the spec sheet as always shared.'}
+      >
+        <div class="row"><Segmented label="Report" options={[{ value: 'basic', label: 'Basic' }, { value: 'detailed', label: 'Detailed' }]} value={level} onChange={setLevel} /></div>
+      </Section>
+      <Section header={`${fabric.name} · ${calc.finish}`} footer={detailed ? 'WhatsApp and Copy text always send the Basic text.' : null}>
+        {detailed ? (
+          <>
+            <Row label="Detailed PDF" sub="Logo, key figures, every table, how each figure is worked out" onClick={() => run('dpdf', () => exportFabricPdfDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'dpdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'dpdf'} />
+            <Row label="Detailed Excel" sub="The same sections on one sheet, numbers as numbers" onClick={() => run('dxlsx', () => exportFabricXlsxDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'dxlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'dxlsx'} />
+          </>
+        ) : (
+          <>
+            <Row label="PDF spec sheet" sub="Photo, construction, consumption, finishing, realisation" onClick={() => run('pdf', () => exportFabricPdf(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'pdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'pdf'} />
+            <Row label="Excel sheet" sub="Construction, consumption and cost breakdown" onClick={() => run('xlsx', () => exportFabricXlsx(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'xlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'xlsx'} />
+          </>
+        )}
+        <Row label="WhatsApp message" sub={detailed ? 'Basic text only' : 'Opens WhatsApp with the text below'} onClick={() => openWhatsAppText(text)} chevron />
+        <Row label="Copy text" sub={detailed ? 'Basic text only' : 'Paste it anywhere'} onClick={async () => {
           try {
             await navigator.clipboard.writeText(text);
             toast('Copied');

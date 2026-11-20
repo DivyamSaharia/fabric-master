@@ -118,6 +118,9 @@ export const TOPICS = [
       'It applies to every fabric that uses that yarn, until you reset it.',
       'An amber strip at the top reminds you while one is on.',
       'Tap **Save to master** in that strip to make it the real rate for everyone.',
+      'A TPM yarn has its own **Temporary TPM rate** line under its base yarn. It wins over the base yarn rate.',
+      'Save to master for a TPM yarn asks what to change: the delta, the base rate, or both.',
+      'It shows how many yarns and fabrics will change before you save.',
     ],
     related: ['fabric', 'yarns'],
   },
@@ -239,10 +242,14 @@ export const TOPICS = [
     steps: [
       'Open the fabric or plan you want to send.',
       'Tap the share button at the top.',
+      'Choose **Basic** or **Detailed** at the top. Basic is the usual spec sheet.',
       'Choose **PDF**, **Excel** or WhatsApp.',
       'Send it from the share screen of your phone.',
     ],
     tips: [
+      '**Detailed** adds yarn rates, the full cost breakdown, loom realisation and spindle figures.',
+      'It also shows the RPM and efficiency each figure assumes. It comes as PDF or Excel only.',
+      'The share screen opens on **Basic** every time, so the detailed report is never sent by mistake.',
       'For plans, turn off **Include revenue (₹)** to send a copy with no money figures.',
       'Saved plans can be shared from **Saved plans** without opening them.',
       'File names start with the date, like 2026-10-29_plan_weavelon-2.',
@@ -284,6 +291,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.25.0', 'Temporary rate on a TPM yarn: type it under the base yarn, and Save to master can change the delta, the base rate or both. Share a fabric as Basic or Detailed: the Detailed PDF and Excel carry every figure and how it is worked out.'],
   ['1.24.0', 'Faster: the app opens at once from the copy saved on your phone and loads in full only when something changed. With no signal it shows that copy. Cancel now asks before throwing away changes, long names wrap, and Planner tiles say when they cover only some looms.'],
   ['1.23.2', 'New app logo and icon: a stack of swatch cards with the Hanuman H.'],
   ['1.23.1', 'Production centre: removed the "all looms" figures, so it shows per loom per day only.'],

@@ -23,3 +23,15 @@ it.skipIf(!OUT)('writes sample exports', async () => {
   expect(saved.length).toBe(4);
   for (let i = 0; i < saved.length; i++) fs.writeFileSync(`${OUT}/${names[i]}`, Buffer.from(await saved[i].arrayBuffer()));
 }, 60000);
+
+it.skipIf(!OUT)('writes sample Detailed exports', async () => {
+  const { buildDetailedPdf, buildDetailedXlsx, setLogoForTests } = await import('./export/detailed.js');
+  setLogoForTests(`data:image/png;base64,${fs.readFileSync('public/icon-192.png').toString('base64')}`);
+  const idx = buildIndex(sampleTables());
+  for (const id of ['f_crepe', 'f_geo']) {
+    const f = idx.fabricsById[id];
+    const c = fabricCalc(f, idx);
+    fs.writeFileSync(`${OUT}/sample_${id}_detailed.pdf`, Buffer.from(await (await buildDetailedPdf(f, c, idx)).arrayBuffer()));
+    fs.writeFileSync(`${OUT}/sample_${id}_detailed.xlsx`, Buffer.from(await (await buildDetailedXlsx(f, c, idx)).arrayBuffer()));
+  }
+}, 60000);
