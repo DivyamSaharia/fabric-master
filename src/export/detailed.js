@@ -570,29 +570,61 @@ export async function exportFabricPdfDetailed(fabric, calc, idx, opts = {}) {
 }
 
 // ---------- Excel: one sheet, the same sections top to bottom ----------
-export function detailedAoa(model) {
+// Number formats (1.30.0). Only the display changes; every cell value is the same as before.
+//   ₹ per pick 0.000 · other ₹ #,##0.00 · a % figure shows as a plain number; the unit column or the heading says %
+export const Z_PICK = '0.000';
+export const Z_PICK_SPINDLE = '0.000000'; // ₹ per pick per spindle is about 0.0003, so 0.000 would show zero
+export const Z_RS = '#,##0.00';
+// the unit text (label/value rows) or the column heading (tables) says what a number is
+export function zFor(text) {
+  const t = String(text || '');
+  if (/pick\s*\/\s*spindle/i.test(t)) return Z_PICK_SPINDLE;
+  if (t.includes('₹') && /pick/i.test(t)) return Z_PICK;
+  if (t.includes('₹')) return Z_RS;
+  return null;
+}
+// rows of the sheet with the format of each cell (null = none); aoa and formats are built in one pass
+function detailedSheet(model) {
   const aoa = [];
-  aoa.push([`Hanuman Group · Detailed fabric report · INTERNAL: ${model.contains || 'contains costs, yarn rates and profit'}`]);
-  aoa.push([model.title]);
-  aoa.push([model.subtitle]);
-  aoa.push([`Date: ${fmt.date(model.date)}`]);
-  aoa.push([]);
-  aoa.push(['KEY FIGURES']);
-  for (const f of model.figures) aoa.push(f.v === '' || f.v === undefined ? [f.label, f.value, '', f.sub || ''] : [f.label, f.v, f.u || '', f.sub || '']);
+  const z = [];
+  const add = (row, fmts = []) => {
+    aoa.push(row);
+    z.push(fmts);
+  };
+  add([`Hanuman Group · Detailed fabric report · INTERNAL: ${model.contains || 'contains costs, yarn rates and profit'}`]);
+  add([model.title]);
+  add([model.subtitle]);
+  add([`Date: ${fmt.date(model.date)}`]);
+  add([]);
+  add(['KEY FIGURES']);
+  for (const f of model.figures) {
+    if (f.v === '' || f.v === undefined) add([f.label, f.value, '', f.sub || '']);
+    else add([f.label, f.v, f.u || '', f.sub || ''], [null, zFor(f.u)]);
+  }
   for (const s of model.sections) {
-    aoa.push([]);
-    aoa.push([s.title.toUpperCase(), ...(s.note ? [s.note] : [])]);
-    if (s.kind === 'table') aoa.push(s.head);
+    add([]);
+    add([s.title.toUpperCase(), ...(s.note ? [s.note] : [])]);
+    let colZ = [];
+    if (s.kind === 'table') {
+      add(s.head);
+      colZ = s.head.map(zFor);
+    }
     for (const r of s.rows) {
       const cells = Array.isArray(r) ? r : r.cells;
-      if (s.kind === 'table') aoa.push(cells.map(cellValueOrText));
-      else aoa.push([cellText(cells[0]), cellValueOrText(cells[1]), cells[1] && typeof cells[1] === 'object' && cellValue(cells[1]) !== '' ? cells[1].u || '' : '', cellText(cells[2] || '')]);
+      if (s.kind === 'table') add(cells.map(cellValueOrText), colZ);
+      else {
+        const u = cells[1] && typeof cells[1] === 'object' && cellValue(cells[1]) !== '' ? cells[1].u || '' : '';
+        add([cellText(cells[0]), cellValueOrText(cells[1]), u, cellText(cells[2] || '')], [null, zFor(u)]);
+      }
     }
   }
-  aoa.push([]);
-  aoa.push(['HOW THESE FIGURES ARE WORKED OUT']);
-  for (const n of model.notes) aoa.push([n]);
-  return aoa;
+  add([]);
+  add(['HOW THESE FIGURES ARE WORKED OUT']);
+  for (const n of model.notes) add([n]);
+  return { aoa, z };
+}
+export function detailedAoa(model) {
+  return detailedSheet(model).aoa;
 }
 // numbers go in as numbers; a blank number keeps its text ('—' or the reason)
 const cellValueOrText = (c) => {
@@ -600,17 +632,43 @@ const cellValueOrText = (c) => {
   return v === '' ? cellText(c) : v;
 };
 
+// SheetJS (community) cannot write a frozen pane or a page setup, so the sheet's XML gets them after writing:
+// the first two rows (INTERNAL line and fabric name) stay in view, and the print is landscape A4, one page wide.
+export const FROZEN_ROWS = 2;
+async function polishSheetXml(blob) {
+  const { unzipSync, zipSync, strFromU8, strToU8 } = await import('fflate');
+  const files = unzipSync(new Uint8Array(await blob.arrayBuffer()));
+  const path = 'xl/worksheets/sheet1.xml';
+  let xml = strFromU8(files[path]);
+  const pane = `<pane ySplit="${FROZEN_ROWS}" topLeftCell="A${FROZEN_ROWS + 1}" activePane="bottomLeft" state="frozen"/><selection pane="bottomLeft" activeCell="A${FROZEN_ROWS + 1}" sqref="A${FROZEN_ROWS + 1}"/>`;
+  xml = xml.replace(/<sheetView([^>]*?)\/>/, `<sheetView$1>${pane}</sheetView>`);
+  if (!xml.includes('<sheetPr')) xml = xml.replace(/(<worksheet[^>]*>)/, '$1<sheetPr><pageSetUpPr fitToPage="1"/></sheetPr>');
+  else xml = xml.replace(/<sheetPr([^>]*?)\/>/, '<sheetPr$1><pageSetUpPr fitToPage="1"/></sheetPr>');
+  const setup = '<pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/>';
+  xml = /<pageMargins[^>]*\/>/.test(xml) ? xml.replace(/(<pageMargins[^>]*\/>)/, `$1${setup}`) : xml.replace('</worksheet>', `${setup}</worksheet>`);
+  files[path] = strToU8(xml);
+  return new Blob([zipSync(files)], { type: blob.type });
+}
+
 export async function buildDetailedXlsx(fabric, calc, idx, money) {
   const { XLSX } = await preloadExports();
   const model = detailedModel(fabric, calc, idx, money);
-  const aoa = detailedAoa(model);
+  const { aoa, z } = detailedSheet(model);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
+  z.forEach((row, r) =>
+    row.forEach((fmtZ, c) => {
+      const cell = ws[XLSX.utils.encode_cell({ r, c })];
+      if (fmtZ && cell && cell.t === 'n') cell.z = fmtZ;
+    }),
+  );
   const widest = Math.max(...aoa.map((r) => r.length));
   ws['!cols'] = Array.from({ length: widest }, (_, i) => ({ wch: i === 0 ? 34 : i === 1 ? 26 : 18 }));
   ws['!merges'] = [0, 1, 2, 3].map((r) => ({ s: { r, c: 0 }, e: { r, c: Math.max(3, widest - 1) } }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Detailed report');
-  return writeBook(XLSX, wb);
+  const lastCol = XLSX.utils.encode_col(Math.max(3, widest - 1));
+  wb.Workbook = { Names: [{ Name: '_xlnm.Print_Area', Sheet: 0, Ref: `'Detailed report'!$A$1:$${lastCol}$${aoa.length}` }] };
+  return polishSheetXml(writeBook(XLSX, wb));
 }
 
 export async function exportFabricXlsxDetailed(fabric, calc, idx, opts = {}) {

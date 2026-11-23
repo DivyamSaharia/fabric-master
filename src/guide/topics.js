@@ -365,6 +365,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.30.0', 'The Detailed Excel file is easier to read: ₹ per pick shows 3 decimals, other ₹ shows 2 decimals with commas, the top two rows stay in view, and it prints one page wide.'],
   ['1.29.0', 'Fabric share has two kinds again: Basic (no ₹) and Detailed. Includes ₹ is gone. Under Detailed, Advanced switches off realisation, sale rate, yarn rates, costs or loom realisation. In Detailed, spindle profitability sits under the TFO and spindles table. The Basic Excel file now ends in _spec.xlsx.'],
   ['1.28.0', 'Fabric share: Basic now has no ₹ figures at all. Choose Includes ₹ to add them. Advanced switches off realisation, sale rate, yarn rates or costs.'],
   ['1.27.0', 'One search for the whole app, with Favourites, Recent and keys (/ or Ctrl K, 1–5 for tabs). Jump buttons light up on a laptop too. A TPM yarn shows its kg per spindle and per machine at each unit. The temporary TPM rate is now two boxes, delta and base rate. Try a loom RPM on a fabric, then save it or reset it.'],
