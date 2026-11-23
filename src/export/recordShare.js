@@ -3,8 +3,10 @@
 import { vi } from 'vitest';
 import { preloadExports } from './exports.js';
 import { today } from '../schema.js';
+import { fmt } from '../calc.js';
 
-const norm = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'string' ? x.split(today()).join('<today>') : x)));
+// today's date as yyyy-mm-dd and as printed ("23 Nov 2026") both become <today>, so a saved copy holds on any day
+const norm = (v) => JSON.parse(JSON.stringify(v, (k, x) => (typeof x === 'string' ? x.split(today()).join('<today>').split(fmt.date(today())).join('<today>') : x)));
 
 export async function recordPdf(run) {
   const libs = await preloadExports();

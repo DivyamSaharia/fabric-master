@@ -16,7 +16,7 @@
    ],
    [
     "text",
-    "23 Nov 2026"
+    "<today>"
    ],
    [
     "text",
@@ -169,9 +169,24 @@
       "Yarn",
       "Type",
       "Base yarn",
-      "Base ₹/kg",
-      "Delta ₹/kg",
-      "Rate used ₹/kg",
+      {
+       "content": "Base ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Delta ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate used ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
       "Basis"
      ]
     ],
@@ -210,11 +225,36 @@
      [
       "Side",
       "Yarn",
-      "Denier",
-      "Ends",
-      "Pick share %",
-      "g/m",
-      "kg/100 m"
+      {
+       "content": "Denier",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Ends",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Pick share %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -242,9 +282,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -253,9 +298,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -264,9 +314,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -275,9 +330,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -286,9 +346,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -297,9 +362,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -308,9 +378,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -327,9 +402,24 @@
      [
       "Side",
       "Yarn",
-      "kg/m",
-      "Rate ₹/kg",
-      "₹/m"
+      {
+       "content": "kg/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -353,9 +443,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -364,9 +459,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -375,9 +475,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -386,9 +491,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -397,9 +507,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -660,9 +775,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -676,9 +791,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -688,9 +808,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -833,36 +953,6 @@
      ],
      [
       {
-       "content": "Picks per sale metre",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ]
-       }
-      },
-      {
-       "content": "86.96",
-       "styles": {
-        "fontStyle": "bold",
-        "halign": "right"
-       }
-      },
-      {
-       "content": "PPI × greige m per RFD m",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ],
-        "fontSize": 7.5
-       }
-      }
-     ],
-     [
-      {
        "content": "Realisation per pick without VATAV",
        "styles": {
         "textColor": [
@@ -957,9 +1047,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -973,9 +1063,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -985,9 +1080,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -1145,12 +1240,42 @@
       "Loom width",
       "Loom type",
       "Panna",
-      "RPM",
-      "Efficiency %",
-      "m/day",
-      "Warp kg",
-      "Weft kg",
-      "Loom realisation ₹/day"
+      {
+       "content": "RPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Efficiency %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "m/day",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Warp kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Weft kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Loom realisation ₹/day",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -1192,8 +1317,18 @@
      [
       "Side",
       "Yarn",
-      "190 cm",
-      "280 cm"
+      {
+       "content": "190 cm",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "280 cm",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -1226,13 +1361,48 @@
       "TFO type",
       "TPM yarn",
       "Side",
-      "TFO RPM",
-      "TPM",
-      "TFO eff. %",
-      "Spindles / side",
-      "kg / side",
-      "Spindles · single panna",
-      "Spindles · double panna"
+      {
+       "content": "TFO RPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "TPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "TFO eff. %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Spindles / side",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg / side",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Spindles · single panna",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Spindles · double panna",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -1632,7 +1802,12 @@
      [
       "Unit",
       "Loom group",
-      "Beam length m"
+      {
+       "content": "Beam length m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -1668,8 +1843,9 @@
    [
     "text",
     [
-     "• Realisation per pick = (sale rate − RFD cost) / picks per sale metre; with VATAV, the VATAV amount is also taken off. RFD cost =",
-     "RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate."
+     "• Realisation per pick = (sale rate − RFD cost) / picks per sale metre (PPI × greige m per RFD m); with VATAV, the VATAV amount",
+     "is also taken off. RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % ×",
+     "sale rate."
     ]
    ],
    [
@@ -1703,7 +1879,7 @@
    ],
    [
     "text",
-    "Poly Crepe 60 (RFD) · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "Poly Crepe 60 (RFD) · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
@@ -1711,7 +1887,7 @@
    ],
    [
     "text",
-    "Poly Crepe 60 (RFD) · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "Poly Crepe 60 (RFD) · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
@@ -1757,7 +1933,7 @@
      ""
     ],
     [
-     "Date: 23 Nov 2026",
+     "Date: <today>",
      "",
      "",
      "",
@@ -2465,18 +2641,6 @@
      ""
     ],
     [
-     "Picks per sale metre",
-     86.96,
-     "",
-     "PPI × greige m per RFD m",
-     "",
-     "",
-     "",
-     "",
-     "",
-     ""
-    ],
-    [
      "Realisation per pick without VATAV",
      0.2577,
      "₹ / pick",
@@ -3089,7 +3253,7 @@
      ""
     ],
     [
-     "Realisation per pick = (sale rate − RFD cost) ÷ picks per sale metre; with VATAV, the VATAV amount is also taken off. RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate.",
+     "Realisation per pick = (sale rate − RFD cost) ÷ picks per sale metre (PPI × greige m per RFD m); with VATAV, the VATAV amount is also taken off. RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate.",
      "",
      "",
      "",
@@ -3168,7 +3332,7 @@
    ],
    [
     "text",
-    "23 Nov 2026"
+    "<today>"
    ],
    [
     "text",
@@ -3309,9 +3473,24 @@
       "Yarn",
       "Type",
       "Base yarn",
-      "Base ₹/kg",
-      "Delta ₹/kg",
-      "Rate used ₹/kg",
+      {
+       "content": "Base ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Delta ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate used ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
       "Basis"
      ]
     ],
@@ -3350,11 +3529,36 @@
      [
       "Side",
       "Yarn",
-      "Denier",
-      "Ends",
-      "Pick share %",
-      "g/m",
-      "kg/100 m"
+      {
+       "content": "Denier",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Ends",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Pick share %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -3382,9 +3586,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3393,9 +3602,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3404,9 +3618,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3415,9 +3634,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3426,9 +3650,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3437,9 +3666,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3448,9 +3682,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -3467,9 +3706,24 @@
      [
       "Side",
       "Yarn",
-      "kg/m",
-      "Rate ₹/kg",
-      "₹/m"
+      {
+       "content": "kg/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -3493,9 +3747,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3504,9 +3763,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3515,9 +3779,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3526,9 +3795,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -3537,9 +3811,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -3560,9 +3839,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -3576,9 +3855,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -3588,9 +3872,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -3733,36 +4017,6 @@
      ],
      [
       {
-       "content": "Picks per sale metre",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ]
-       }
-      },
-      {
-       "content": "68.00",
-       "styles": {
-        "fontStyle": "bold",
-        "halign": "right"
-       }
-      },
-      {
-       "content": "PPI",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ],
-        "fontSize": 7.5
-       }
-      }
-     ],
-     [
-      {
        "content": "Realisation per pick without VATAV",
        "styles": {
         "textColor": [
@@ -3857,9 +4111,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -3873,9 +4127,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -3885,9 +4144,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -4050,7 +4309,7 @@
    [
     "text",
     [
-     "• Realisation per pick = (sale rate − RM cost) / picks per sale metre; with VATAV, the VATAV amount is also taken off."
+     "• Realisation per pick = (sale rate − RM cost) / picks per sale metre (the PPI); with VATAV, the VATAV amount is also taken off."
     ]
    ],
    [
@@ -4076,7 +4335,7 @@
    ],
    [
     "text",
-    "PV Plain 60 · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "PV Plain 60 · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
@@ -4113,7 +4372,7 @@
      ""
     ],
     [
-     "Date: 23 Nov 2026",
+     "Date: <today>",
      "",
      "",
      "",
@@ -4563,15 +4822,6 @@
      ""
     ],
     [
-     "Picks per sale metre",
-     68,
-     "",
-     "PPI",
-     "",
-     "",
-     ""
-    ],
-    [
      "Realisation per pick without VATAV",
      0.263,
      "₹ / pick",
@@ -4698,7 +4948,7 @@
      ""
     ],
     [
-     "Realisation per pick = (sale rate − RM cost) ÷ picks per sale metre; with VATAV, the VATAV amount is also taken off.",
+     "Realisation per pick = (sale rate − RM cost) ÷ picks per sale metre (the PPI); with VATAV, the VATAV amount is also taken off.",
      "",
      "",
      "",
@@ -4753,7 +5003,7 @@
    ],
    [
     "text",
-    "23 Nov 2026"
+    "<today>"
    ],
    [
     "text",
@@ -4906,9 +5156,24 @@
       "Yarn",
       "Type",
       "Base yarn",
-      "Base ₹/kg",
-      "Delta ₹/kg",
-      "Rate used ₹/kg",
+      {
+       "content": "Base ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Delta ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate used ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
       "Basis"
      ]
     ],
@@ -4938,11 +5203,36 @@
      [
       "Side",
       "Yarn",
-      "Denier",
-      "Ends",
-      "Pick share %",
-      "g/m",
-      "kg/100 m"
+      {
+       "content": "Denier",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Ends",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Pick share %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -4970,9 +5260,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -4981,9 +5276,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -4992,9 +5292,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -5003,9 +5308,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -5014,9 +5324,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -5025,9 +5340,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -5036,9 +5356,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -5055,9 +5380,24 @@
      [
       "Side",
       "Yarn",
-      "kg/m",
-      "Rate ₹/kg",
-      "₹/m"
+      {
+       "content": "kg/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -5081,9 +5421,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -5092,9 +5437,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -5103,9 +5453,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -5114,9 +5469,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -5125,9 +5485,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -5388,9 +5753,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -5404,9 +5769,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -5416,9 +5786,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -5561,36 +5931,6 @@
      ],
      [
       {
-       "content": "Picks per sale metre",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ]
-       }
-      },
-      {
-       "content": "106.67",
-       "styles": {
-        "fontStyle": "bold",
-        "halign": "right"
-       }
-      },
-      {
-       "content": "PPI × greige m per RFD m",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ],
-        "fontSize": 7.5
-       }
-      }
-     ],
-     [
-      {
        "content": "Realisation per pick without VATAV",
        "styles": {
         "textColor": [
@@ -5685,9 +6025,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -5701,9 +6041,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -5713,9 +6058,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -5873,12 +6218,42 @@
       "Loom width",
       "Loom type",
       "Panna",
-      "RPM",
-      "Efficiency %",
-      "m/day",
-      "Warp kg",
-      "Weft kg",
-      "Loom realisation ₹/day"
+      {
+       "content": "RPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Efficiency %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "m/day",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Warp kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Weft kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Loom realisation ₹/day",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -5920,8 +6295,18 @@
      [
       "Side",
       "Yarn",
-      "190 cm",
-      "280 cm"
+      {
+       "content": "190 cm",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "280 cm",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -5954,13 +6339,48 @@
       "TFO type",
       "TPM yarn",
       "Side",
-      "TFO RPM",
-      "TPM",
-      "TFO eff. %",
-      "Spindles / side",
-      "kg / side",
-      "Spindles · single panna",
-      "Spindles · double panna"
+      {
+       "content": "TFO RPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "TPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "TFO eff. %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Spindles / side",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg / side",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Spindles · single panna",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Spindles · double panna",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -6040,7 +6460,12 @@
      [
       "Unit",
       "Loom group",
-      "Beam length m"
+      {
+       "content": "Beam length m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -6076,8 +6501,9 @@
    [
     "text",
     [
-     "• Realisation per pick = (sale rate − RFD cost) / picks per sale metre; with VATAV, the VATAV amount is also taken off. RFD cost =",
-     "RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate."
+     "• Realisation per pick = (sale rate − RFD cost) / picks per sale metre (PPI × greige m per RFD m); with VATAV, the VATAV amount",
+     "is also taken off. RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % ×",
+     "sale rate."
     ]
    ],
    [
@@ -6111,7 +6537,7 @@
    ],
    [
     "text",
-    "Georgette 60 (RFD) · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "Georgette 60 (RFD) · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
@@ -6119,7 +6545,7 @@
    ],
    [
     "text",
-    "Georgette 60 (RFD) · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "Georgette 60 (RFD) · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
@@ -6165,7 +6591,7 @@
      ""
     ],
     [
-     "Date: 23 Nov 2026",
+     "Date: <today>",
      "",
      "",
      "",
@@ -6861,18 +7287,6 @@
      ""
     ],
     [
-     "Picks per sale metre",
-     106.67,
-     "",
-     "PPI × greige m per RFD m",
-     "",
-     "",
-     "",
-     "",
-     "",
-     ""
-    ],
-    [
      "Realisation per pick without VATAV",
      0.2928,
      "₹ / pick",
@@ -7317,7 +7731,7 @@
      ""
     ],
     [
-     "Realisation per pick = (sale rate − RFD cost) ÷ picks per sale metre; with VATAV, the VATAV amount is also taken off. RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate.",
+     "Realisation per pick = (sale rate − RFD cost) ÷ picks per sale metre (PPI × greige m per RFD m); with VATAV, the VATAV amount is also taken off. RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate.",
      "",
      "",
      "",
@@ -7396,7 +7810,7 @@
    ],
    [
     "text",
-    "23 Nov 2026"
+    "<today>"
    ],
    [
     "text",
@@ -7537,9 +7951,24 @@
       "Yarn",
       "Type",
       "Base yarn",
-      "Base ₹/kg",
-      "Delta ₹/kg",
-      "Rate used ₹/kg",
+      {
+       "content": "Base ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Delta ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate used ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
       "Basis"
      ]
     ],
@@ -7578,11 +8007,36 @@
      [
       "Side",
       "Yarn",
-      "Denier",
-      "Ends",
-      "Pick share %",
-      "g/m",
-      "kg/100 m"
+      {
+       "content": "Denier",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Ends",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Pick share %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -7610,9 +8064,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7621,9 +8080,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7632,9 +8096,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7643,9 +8112,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7654,9 +8128,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7665,9 +8144,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7676,9 +8160,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -7695,9 +8184,24 @@
      [
       "Side",
       "Yarn",
-      "kg/m",
-      "Rate ₹/kg",
-      "₹/m"
+      {
+       "content": "kg/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -7721,9 +8225,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7732,9 +8241,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7743,9 +8257,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7754,9 +8273,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -7765,9 +8289,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -7788,9 +8317,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -7804,9 +8333,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -7816,9 +8350,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -7961,36 +8495,6 @@
      ],
      [
       {
-       "content": "Picks per sale metre",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ]
-       }
-      },
-      {
-       "content": "72.00",
-       "styles": {
-        "fontStyle": "bold",
-        "halign": "right"
-       }
-      },
-      {
-       "content": "PPI",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ],
-        "fontSize": 7.5
-       }
-      }
-     ],
-     [
-      {
        "content": "Realisation per pick without VATAV",
        "styles": {
         "textColor": [
@@ -8085,9 +8589,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -8101,9 +8605,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -8113,9 +8622,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -8273,12 +8782,42 @@
       "Loom width",
       "Loom type",
       "Panna",
-      "RPM",
-      "Efficiency %",
-      "m/day",
-      "Warp kg",
-      "Weft kg",
-      "Loom realisation ₹/day"
+      {
+       "content": "RPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Efficiency %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "m/day",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Warp kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Weft kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Loom realisation ₹/day",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -8309,7 +8848,12 @@
      [
       "Side",
       "Yarn",
-      "190 cm"
+      {
+       "content": "190 cm",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -8335,7 +8879,12 @@
      [
       "Unit",
       "Loom group",
-      "Beam length m"
+      {
+       "content": "Beam length m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -8366,7 +8915,7 @@
    [
     "text",
     [
-     "• Realisation per pick = (sale rate − RM cost) / picks per sale metre; with VATAV, the VATAV amount is also taken off."
+     "• Realisation per pick = (sale rate − RM cost) / picks per sale metre (the PPI); with VATAV, the VATAV amount is also taken off."
     ]
    ],
    [
@@ -8392,7 +8941,7 @@
    ],
    [
     "text",
-    "Viscose Nylon Dobby 60 · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "Viscose Nylon Dobby 60 · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
@@ -8400,7 +8949,7 @@
    ],
    [
     "text",
-    "Viscose Nylon Dobby 60 · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "Viscose Nylon Dobby 60 · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
@@ -8443,7 +8992,7 @@
      ""
     ],
     [
-     "Date: 23 Nov 2026",
+     "Date: <today>",
      "",
      "",
      "",
@@ -8993,17 +9542,6 @@
      ""
     ],
     [
-     "Picks per sale metre",
-     72,
-     "",
-     "PPI",
-     "",
-     "",
-     "",
-     "",
-     ""
-    ],
-    [
      "Realisation per pick without VATAV",
      0.2728,
      "₹ / pick",
@@ -9301,7 +9839,7 @@
      ""
     ],
     [
-     "Realisation per pick = (sale rate − RM cost) ÷ picks per sale metre; with VATAV, the VATAV amount is also taken off.",
+     "Realisation per pick = (sale rate − RM cost) ÷ picks per sale metre (the PPI); with VATAV, the VATAV amount is also taken off.",
      "",
      "",
      "",
@@ -9364,7 +9902,7 @@
    ],
    [
     "text",
-    "23 Nov 2026"
+    "<today>"
    ],
    [
     "text",
@@ -9517,9 +10055,24 @@
       "Yarn",
       "Type",
       "Base yarn",
-      "Base ₹/kg",
-      "Delta ₹/kg",
-      "Rate used ₹/kg",
+      {
+       "content": "Base ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Delta ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate used ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
       "Basis"
      ]
     ],
@@ -9558,11 +10111,36 @@
      [
       "Side",
       "Yarn",
-      "Denier",
-      "Ends",
-      "Pick share %",
-      "g/m",
-      "kg/100 m"
+      {
+       "content": "Denier",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Ends",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Pick share %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -9590,9 +10168,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9601,9 +10184,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9612,9 +10200,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9623,9 +10216,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9634,9 +10232,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9645,9 +10248,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9656,9 +10264,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -9675,9 +10288,24 @@
      [
       "Side",
       "Yarn",
-      "kg/m",
-      "Rate ₹/kg",
-      "₹/m"
+      {
+       "content": "kg/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -9701,9 +10329,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9712,9 +10345,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9723,9 +10361,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9734,9 +10377,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -9745,9 +10393,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -10008,9 +10661,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -10024,9 +10677,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -10036,9 +10694,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -10181,36 +10839,6 @@
      ],
      [
       {
-       "content": "Picks per sale metre",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ]
-       }
-      },
-      {
-       "content": "86.96",
-       "styles": {
-        "fontStyle": "bold",
-        "halign": "right"
-       }
-      },
-      {
-       "content": "PPI × greige m per RFD m",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ],
-        "fontSize": 7.5
-       }
-      }
-     ],
-     [
-      {
        "content": "Realisation per pick without VATAV",
        "styles": {
         "textColor": [
@@ -10305,9 +10933,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -10321,9 +10949,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -10333,9 +10966,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -10493,12 +11126,42 @@
       "Loom width",
       "Loom type",
       "Panna",
-      "RPM",
-      "Efficiency %",
-      "m/day",
-      "Warp kg",
-      "Weft kg",
-      "Loom realisation ₹/day"
+      {
+       "content": "RPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Efficiency %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "m/day",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Warp kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Weft kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Loom realisation ₹/day",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -10540,8 +11203,18 @@
      [
       "Side",
       "Yarn",
-      "190 cm",
-      "280 cm"
+      {
+       "content": "190 cm",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "280 cm",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -10574,13 +11247,48 @@
       "TFO type",
       "TPM yarn",
       "Side",
-      "TFO RPM",
-      "TPM",
-      "TFO eff. %",
-      "Spindles / side",
-      "kg / side",
-      "Spindles · single panna",
-      "Spindles · double panna"
+      {
+       "content": "TFO RPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "TPM",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "TFO eff. %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Spindles / side",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg / side",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Spindles · single panna",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Spindles · double panna",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -10980,7 +11688,12 @@
      [
       "Unit",
       "Loom group",
-      "Beam length m"
+      {
+       "content": "Beam length m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -11016,8 +11729,9 @@
    [
     "text",
     [
-     "• Realisation per pick = (sale rate − RFD cost) / picks per sale metre; with VATAV, the VATAV amount is also taken off. RFD cost =",
-     "RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate."
+     "• Realisation per pick = (sale rate − RFD cost) / picks per sale metre (PPI × greige m per RFD m); with VATAV, the VATAV amount",
+     "is also taken off. RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % ×",
+     "sale rate."
     ]
    ],
    [
@@ -11059,7 +11773,7 @@
    ],
    [
     "text",
-    "Poly Crepe 60 (RFD) · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "Poly Crepe 60 (RFD) · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
@@ -11067,7 +11781,7 @@
    ],
    [
     "text",
-    "Poly Crepe 60 (RFD) · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "Poly Crepe 60 (RFD) · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
@@ -11113,7 +11827,7 @@
      ""
     ],
     [
-     "Date: 23 Nov 2026",
+     "Date: <today>",
      "",
      "",
      "",
@@ -11821,18 +12535,6 @@
      ""
     ],
     [
-     "Picks per sale metre",
-     86.96,
-     "",
-     "PPI × greige m per RFD m",
-     "",
-     "",
-     "",
-     "",
-     "",
-     ""
-    ],
-    [
      "Realisation per pick without VATAV",
      0.2673,
      "₹ / pick",
@@ -12445,7 +13147,7 @@
      ""
     ],
     [
-     "Realisation per pick = (sale rate − RFD cost) ÷ picks per sale metre; with VATAV, the VATAV amount is also taken off. RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate.",
+     "Realisation per pick = (sale rate − RFD cost) ÷ picks per sale metre (PPI × greige m per RFD m); with VATAV, the VATAV amount is also taken off. RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate.",
      "",
      "",
      "",
@@ -12536,7 +13238,7 @@
    ],
    [
     "text",
-    "23 Nov 2026"
+    "<today>"
    ],
    [
     "text",
@@ -12677,9 +13379,24 @@
       "Yarn",
       "Type",
       "Base yarn",
-      "Base ₹/kg",
-      "Delta ₹/kg",
-      "Rate used ₹/kg",
+      {
+       "content": "Base ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Delta ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate used ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
       "Basis"
      ]
     ],
@@ -12718,11 +13435,36 @@
      [
       "Side",
       "Yarn",
-      "Denier",
-      "Ends",
-      "Pick share %",
-      "g/m",
-      "kg/100 m"
+      {
+       "content": "Denier",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Ends",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Pick share %",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -12750,9 +13492,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12761,9 +13508,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12772,9 +13524,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12783,9 +13540,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12794,9 +13556,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12805,9 +13572,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12816,9 +13588,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -12835,9 +13612,24 @@
      [
       "Side",
       "Yarn",
-      "kg/m",
-      "Rate ₹/kg",
-      "₹/m"
+      {
+       "content": "kg/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -12861,9 +13653,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12872,9 +13669,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12883,9 +13685,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12894,9 +13701,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       },
@@ -12905,9 +13717,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ]
        }
       }
@@ -12928,9 +13745,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -12944,9 +13761,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -12956,9 +13778,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -13101,36 +13923,6 @@
      ],
      [
       {
-       "content": "Picks per sale metre",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ]
-       }
-      },
-      {
-       "content": "68.00",
-       "styles": {
-        "fontStyle": "bold",
-        "halign": "right"
-       }
-      },
-      {
-       "content": "PPI",
-       "styles": {
-        "textColor": [
-         108,
-         108,
-         112
-        ],
-        "fontSize": 7.5
-       }
-      }
-     ],
-     [
-      {
        "content": "Realisation per pick without VATAV",
        "styles": {
         "textColor": [
@@ -13225,9 +14017,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          28,
@@ -13241,9 +14033,14 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
         ],
         "halign": "right"
        }
@@ -13253,9 +14050,9 @@
        "styles": {
         "fontStyle": "bold",
         "fillColor": [
-         244,
-         246,
-         241
+         226,
+         240,
+         214
         ],
         "textColor": [
          108,
@@ -13418,7 +14215,7 @@
    [
     "text",
     [
-     "• Realisation per pick = (sale rate − RM cost) / picks per sale metre; with VATAV, the VATAV amount is also taken off."
+     "• Realisation per pick = (sale rate − RM cost) / picks per sale metre (the PPI); with VATAV, the VATAV amount is also taken off."
     ]
    ],
    [
@@ -13451,11 +14248,19 @@
    ],
    [
     "text",
-    "PV Plain 60 · detailed report · 23 Nov 2026 · internal: contains costs, yarn rates and profit"
+    "PV Plain 60 · detailed report · <today> · internal: contains costs, yarn rates and profit"
    ],
    [
     "text",
-    "Page 1 of 1"
+    "Page 1 of 2"
+   ],
+   [
+    "text",
+    "PV Plain 60 · detailed report · <today> · internal: contains costs, yarn rates and profit"
+   ],
+   [
+    "text",
+    "Page 2 of 2"
    ]
   ],
   "xlsx": {
@@ -13488,7 +14293,7 @@
      ""
     ],
     [
-     "Date: 23 Nov 2026",
+     "Date: <today>",
      "",
      "",
      "",
@@ -13938,15 +14743,6 @@
      ""
     ],
     [
-     "Picks per sale metre",
-     68,
-     "",
-     "PPI",
-     "",
-     "",
-     ""
-    ],
-    [
      "Realisation per pick without VATAV",
      0.5903,
      "₹ / pick",
@@ -14073,7 +14869,7 @@
      ""
     ],
     [
-     "Realisation per pick = (sale rate − RM cost) ÷ picks per sale metre; with VATAV, the VATAV amount is also taken off.",
+     "Realisation per pick = (sale rate − RM cost) ÷ picks per sale metre (the PPI); with VATAV, the VATAV amount is also taken off.",
      "",
      "",
      "",

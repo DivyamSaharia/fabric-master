@@ -1,4 +1,4 @@
-// Writes the saved copy of today's (1.27.0) Basic share, before the ₹ switches: GOLDEN=1 npx vitest run src/export/basicGolden.test.jsx
+// Writes the saved copy of the 1.31.0 Basic share builders with every ₹ group on (new look; no Units or Beam length): GOLDEN=1 npx vitest run src/export/basicGolden.test.jsx
 import { it } from 'vitest';
 import fs from 'node:fs';
 import { buildIndex, fabricCalc } from '../calc.js';
@@ -27,5 +27,5 @@ it.skipIf(!process.env.GOLDEN)('writes the golden Basic share', async () => {
     const c = fabricCalc(f, idx);
     out.push({ id, pdf: await recordPdf(() => exportFabricPdf(f, c, idx)), xlsx: await recordXlsx(() => exportFabricXlsx(f, c, idx)), text: whatsappText(f, c, idx) });
   }
-  fs.writeFileSync('src/export/__golden__/basic-1.27.0.json', JSON.stringify(out, null, 1));
+  fs.writeFileSync('src/export/__golden__/basic-1.31.0.json', JSON.stringify(out, null, 1));
 }, 60000);

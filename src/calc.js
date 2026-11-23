@@ -249,6 +249,9 @@ export function fabricCalc(fabric, idx, asOf, picks) {
   const weftGpm = sum(weft, 'gpm');
   const totalGpm = warpGpm !== null && weftGpm !== null ? warpGpm + weftGpm : null;
   const gsm = totalGpm !== null && width ? totalGpm / (width * 0.0254) : null;
+  // shared files only (1.31.0): with no greige width, GSM is worked out on reed space and labelled so; reads low,
+  // as greige width is narrower than reed space. calc.gsm itself (list, filters, sort) stays greige width only.
+  const gsmReed = totalGpm !== null && !width && rs ? totalGpm / (rs * 0.0254) : null;
   const rmCost = totalGpm !== null ? sum([...warp, ...weft], 'costPerM') : null;
   if (totalGpm !== null && rmCost === null) missing.push('yarn rate');
 
@@ -303,7 +306,7 @@ export function fabricCalc(fabric, idx, asOf, picks) {
 
   return {
     ppi, rs, width, sw, sf, warp, weft, totalEnds, warpGpm, weftGpm, totalGpm,
-    kgPer100: totalGpm === null ? null : totalGpm / 10, gsm, rmCost,
+    kgPer100: totalGpm === null ? null : totalGpm / 10, gsm, gsmReed, rmCost,
     tfoClass, tpmLines, tpmMin: tpmValues.length ? Math.min(...tpmValues) : null, tpmMax: tpmValues.length ? Math.max(...tpmValues) : null,
     finish, price, priceTemp: tempPrice !== null, masterPrice, g, finishingCost: finish === 'RFD' ? finishingCost : null, transport, rfdCost, rmPerSaleM,
     realisationPerM, realisationPerPick, vatavPct, vatavAmount, netPrice, realisationNetPerM, realisationNetPerPick,

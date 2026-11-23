@@ -1,6 +1,5 @@
-import { fmt, loomPerDay, num, spindlesForUnit, truthy, unitHasTfo, unitProfit } from '../calc.js';
+import { fmt, num, truthy, unitProfit } from '../calc.js';
 import { constructionLine, unitsOf } from '../describe.js';
-import { beamRowsOf, slotLabel } from '../machines.js';
 import { getPhoto, saveExportToDrive, setPendingShare, toast } from '../store.js';
 import { today } from '../schema.js';
 
@@ -22,6 +21,142 @@ export const MONEY_GROUPS = ['realisation', 'sale', 'yarn', 'costs'];
 export const ALL_MONEY = Object.freeze({ realisation: true, sale: true, yarn: true, costs: true });
 export const NO_MONEY = Object.freeze({ realisation: false, sale: false, yarn: false, costs: false });
 const moneyOf = (m) => ({ ...ALL_MONEY, ...(m || {}) });
+
+// GSM in shared files (1.31.0): on greige width when it is set, else on reed space, labelled so.
+export function shareGsm(calc) {
+  if (calc.gsm !== null && calc.gsm !== undefined) return { value: calc.gsm, onReed: false, label: 'GSM (estimate)' };
+  if (calc.gsmReed !== null && calc.gsmReed !== undefined) return { value: calc.gsmReed, onReed: true, label: 'GSM (on reed space)' };
+  return { value: null, onReed: false, label: 'GSM (estimate)' };
+}
+
+// App logo for the PDF headers (Basic and Detailed)
+let logoData;
+export async function loadLogo() {
+  if (logoData !== undefined) return logoData;
+  try {
+    const res = await fetch('./icon-192.png');
+    if (!res.ok) throw new Error('no logo');
+    const blob = await res.blob();
+    logoData = await new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(new Error('no logo'));
+      r.readAsDataURL(blob);
+    });
+  } catch {
+    logoData = null;
+  }
+  return logoData;
+}
+export const setLogoForTests = (data) => { logoData = data; };
+
+// Shared look of both fabric PDFs (1.31.0): deep green header band with the logo, lime rule, rounded tiles,
+// section headings with a lime bar, deep green table heads, striped rows, a footer on every page.
+export const PDF_LOOK = {
+  ink: [28, 28, 30], grey: [108, 108, 112], green: [43, 106, 31], deep: [0, 42, 0], lime: [166, 206, 56],
+  line: [214, 220, 208], tile: [240, 245, 236], tileAccent: [226, 240, 214], stripe: [247, 249, 245], amber: [158, 90, 0],
+};
+export function pdfHeader(doc, { logo, kicker, title, subtitle, right, chip }) {
+  const L = PDF_LOOK, PW = 210, M = 14, H = 36;
+  doc.setFillColor(...L.deep);
+  doc.rect(0, 0, PW, H, 'F');
+  doc.setFillColor(...L.lime);
+  doc.rect(0, H, PW, 1.2, 'F');
+  let x0 = M;
+  if (logo) {
+    try {
+      doc.addImage(logo, 'PNG', M, 9, 18, 18);
+      x0 = M + 23;
+    } catch {
+      /* logo optional */
+    }
+  }
+  doc.setFont('DejaVu', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(...L.lime);
+  doc.text(kicker, x0, 12.5);
+  doc.setFontSize(19);
+  doc.setTextColor(255, 255, 255);
+  doc.text(title, x0, 21.5, { maxWidth: PW - M - x0 - 34 });
+  doc.setFont('DejaVu', 'normal');
+  doc.setFontSize(8.5);
+  doc.setTextColor(214, 228, 206);
+  if (subtitle) doc.text(subtitle, x0, 28, { maxWidth: PW - M - x0 });
+  doc.setFontSize(8.5);
+  doc.setTextColor(214, 228, 206);
+  if (right) doc.text(right, PW - M, 12.5, { align: 'right' });
+  if (chip) {
+    doc.setFont('DejaVu', 'bold');
+    doc.setFontSize(7.5);
+    const w = doc.getTextWidth(chip) + 6;
+    doc.setFillColor(255, 214, 140);
+    doc.roundedRect(PW - M - w, 15.5, w, 5.5, 2.75, 2.75, 'F');
+    doc.setTextColor(...L.amber);
+    doc.text(chip, PW - M - w / 2, 19.3, { align: 'center' });
+    doc.setFont('DejaVu', 'normal');
+  }
+  return H + 8;
+}
+export function pdfTile(doc, x, y, w, h, f) {
+  const L = PDF_LOOK;
+  doc.setFillColor(...(f.accent ? L.tileAccent : L.tile));
+  doc.roundedRect(x, y, w, h, 2.5, 2.5, 'F');
+  doc.setFillColor(...(f.accent ? L.green : L.lime));
+  doc.roundedRect(x, y, 1.6, h, 0.8, 0.8, 'F');
+  doc.setFont('DejaVu', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...L.grey);
+  doc.text(String(f.label).toUpperCase(), x + 4.5, y + 5.2, { maxWidth: w - 7 });
+  doc.setFont('DejaVu', 'bold');
+  doc.setFontSize(h >= 21 ? 14 : 11.5);
+  doc.setTextColor(...(f.accent ? L.green : L.ink));
+  doc.text(String(f.value), x + 4.5, y + (h >= 21 ? 13 : 11.8), { maxWidth: w - 7 });
+  doc.setFont('DejaVu', 'normal');
+  doc.setFontSize(6.8);
+  doc.setTextColor(...L.grey);
+  doc.text(doc.splitTextToSize(f.sub || '', w - 7)[0] || '', x + 4.5, y + h - 3.2);
+}
+export function pdfHeading(doc, x, y, title) {
+  const L = PDF_LOOK;
+  doc.setFillColor(...L.lime);
+  doc.roundedRect(x, y - 3.8, 1.4, 4.8, 0.7, 0.7, 'F');
+  doc.setFont('DejaVu', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...L.deep);
+  doc.text(title, x + 3.4, y);
+}
+export const pdfTableLook = () => {
+  const L = PDF_LOOK;
+  return {
+    styles: { font: 'DejaVu', fontSize: 8.8, cellPadding: { top: 1.9, bottom: 1.9, left: 2.4, right: 2.4 }, textColor: L.ink, lineColor: L.line, lineWidth: { bottom: 0.15 }, overflow: 'linebreak' },
+    headStyles: { font: 'DejaVu', fontStyle: 'bold', fillColor: L.deep, textColor: [255, 255, 255], fontSize: 8, lineWidth: 0 },
+    alternateRowStyles: { fillColor: L.stripe },
+    theme: 'plain',
+  };
+};
+export function pdfFooter(doc, left) {
+  const L = PDF_LOOK, PW = 210, PH = 297, M = 14;
+  const pages = doc.getNumberOfPages();
+  for (let p = 1; p <= pages; p++) {
+    doc.setPage(p);
+    doc.setFont('DejaVu', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(...L.grey);
+    doc.setFillColor(...L.lime);
+    doc.rect(M, PH - 11.2, 12, 0.6, 'F');
+    doc.setDrawColor(...L.line);
+    doc.setLineWidth(0.2);
+    doc.line(M + 12, PH - 10.9, PW - M, PH - 10.9);
+    // a long footer shrinks to fit beside the page number
+    const pageText = `Page ${p} of ${pages}`;
+    const room = PW - 2 * M - doc.getTextWidth(pageText) - 6;
+    let size = 7.5;
+    while (size > 5.5 && doc.getTextWidth(left) > room) doc.setFontSize((size -= 0.25));
+    doc.text(left, M, PH - 7);
+    doc.setFontSize(7.5);
+    doc.text(pageText, PW - M, PH - 7, { align: 'right' });
+  }
+}
 
 let libs = null;
 export function preloadExports() {
@@ -64,7 +199,8 @@ export function whatsappText(fabric, calc, idx, money) {
   lines.push(`Reed × Pick: ${reed ? `${reed} × ${calc.ppi ?? '—'}` : `— × ${calc.ppi ?? '—'}`}`);
   for (const w of calc.warp) lines.push(`Warp: ${w.yarn ? w.yarn.name : '—'}${w.ends ? `, ${fmt.int(w.ends)} ends` : ''}`);
   for (const w of calc.weft) lines.push(`Weft: ${w.yarn ? w.yarn.name : '—'}${w.line.pattern ? ` (${w.line.pattern})` : ''}`);
-  const extra = [calc.width ? `Width ${calc.width}″` : null, calc.gsm !== null ? `GSM ${fmt.n(calc.gsm, 1)}` : null].filter(Boolean).join(' · ');
+  const g = shareGsm(calc);
+  const extra = [calc.width ? `Width ${calc.width}″` : null, g.value !== null ? `GSM ${fmt.n(g.value, 1)}${g.onReed ? ' (on reed space)' : ''}` : null].filter(Boolean).join(' · ');
   if (extra) lines.push(extra);
   if (fabric.weave) lines.push(`Weave: ${fabric.weave}${fabric.design_note ? `, ${fabric.design_note}` : ''}`);
   if (m.sale && calc.price !== null) lines.push(`Price ${fmt.rs(calc.price)} / m`);
@@ -129,6 +265,8 @@ export async function deliver(blob, name, title, { toDrive } = {}) {
 }
 
 // ---------- PDF ----------
+// Basic spec sheet (1.31.0): header band, key figure tiles, Construction, Warp and weft (and the ₹ groups when a
+// caller turns them on; the app sends none). Units and Beam length are no longer in it.
 export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
   const m = moneyOf(opts.money);
   const { jsPDF, autoTable, font } = await preloadExports();
@@ -138,101 +276,88 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
   doc.addFileToVFS('DejaVuSans-Bold.ttf', font.DEJAVU_BOLD);
   doc.addFont('DejaVuSans-Bold.ttf', 'DejaVu', 'bold');
   doc.setFont('DejaVu', 'normal');
+  const L = PDF_LOOK;
   const M = 14;
   const W = 210 - 2 * M;
-  const ink = [28, 28, 30];
-  const grey = [108, 108, 112];
-  const accent = [43, 106, 31]; // Hanuman green
+  const { grey } = L;
   const rfd = calc.finish === 'RFD';
 
-  doc.setTextColor(...grey);
-  doc.setFontSize(9);
-  doc.text(`Fabric spec sheet · ${today()}`, M, 12);
-  doc.setTextColor(...ink);
-  doc.setFont('DejaVu', 'bold');
-  doc.setFontSize(20);
-  doc.text(fabric.name || 'Fabric', M, 22);
-  doc.setFont('DejaVu', 'normal');
-  doc.setFontSize(10);
-  doc.setTextColor(...grey);
-  doc.text([fabric.weave, fabric.design_note, fabric.end_use, calc.finish, calc.tfoClass].filter(Boolean).join(' · '), M, 28);
+  let y = pdfHeader(doc, {
+    logo: await loadLogo(),
+    kicker: 'HANUMAN GROUP · FABRIC SPEC SHEET',
+    title: fabric.name || 'Fabric',
+    subtitle: [fabric.weave, fabric.design_note, fabric.end_use, calc.finish, calc.tfoClass].filter(Boolean).join(' · '),
+    right: fmt.date(today()) || today(),
+  });
 
   // cover photo + key figures
-  let y = 34;
   const photos = idx.photosByFabric[fabric.id] || [];
   const cover = photos.find((p) => truthy(p.is_cover)) || photos[0];
   let figX = M;
+  let photoH = 0;
   if (cover) {
     try {
       const data = await getPhoto(cover, 'full');
       if (data) {
         const props = doc.getImageProperties(data);
-        const h = 52;
-        const w = Math.min(78, (props.width / props.height) * h);
-        doc.addImage(data, 'JPEG', M, y, w, h);
-        figX = M + w + 8;
+        photoH = 50;
+        const w = Math.min(74, (props.width / props.height) * photoH);
+        doc.addImage(data, 'JPEG', M, y, w, photoH);
+        figX = M + w + 5;
       }
     } catch {
       /* photo optional */
     }
   }
+  const g = shareGsm(calc);
+  const reed = num(fabric.reed);
   const figs = [
-    ...(m.realisation ? [['Realisation with VATAV', `${fmt.pick(calc.realisationNetPerPick)} / pick`, `${fmt.rs(calc.realisationNetPerM)} / ${rfd ? 'RFD m' : 'm'} · without VATAV ${fmt.pick(calc.realisationPerPick)} / pick`, true]] : []),
-    ...(m.costs ? [[rfd ? 'RFD cost' : 'RM cost', `${fmt.rs(rfd ? calc.rfdCost : calc.rmCost)} / m`, rfd ? `RM ${fmt.rs(calc.rmPerSaleM)} + finishing ${fmt.rs(calc.finishingCost)}` : 'shortage included']] : []),
-    ['GSM (estimate)', fmt.n(calc.gsm, 1), `${fmt.n(calc.totalGpm, 1)} g/m · ${fmt.n(calc.kgPer100, 2)} kg/100 m`],
-    // with the sale rate hidden, the construction line keeps a tile of its own
-    m.sale
-      ? ['Selling price', `${fmt.rs(calc.price)} / ${rfd ? 'RFD m' : 'm'}${calc.priceTemp ? ' (temporary)' : ''}`, `${calc.vatavPct ? `VATAV ${calc.vatavPct}%` : 'No VATAV'} · ${constructionLine(fabric, calc, idx)}`]
-      : ['Finish', calc.finish, constructionLine(fabric, calc, idx)],
+    ...(m.realisation ? [{ label: 'Realisation with VATAV', value: `${fmt.pick(calc.realisationNetPerPick)} / pick`, sub: `${fmt.rs(calc.realisationNetPerM)} / ${rfd ? 'RFD m' : 'm'}`, accent: true }, { label: 'Without VATAV', value: `${fmt.pick(calc.realisationPerPick)} / pick`, sub: `${fmt.rs(calc.realisationPerM)} / ${rfd ? 'RFD m' : 'm'}` }] : []),
+    ...(m.costs ? [{ label: rfd ? 'RFD cost' : 'RM cost', value: `${fmt.rs(rfd ? calc.rfdCost : calc.rmCost)} / m`, sub: rfd ? `RM ${fmt.rs(calc.rmPerSaleM)} + finishing ${fmt.rs(calc.finishingCost)}` : 'shortage included' }] : []),
+    ...(m.sale ? [{ label: 'Selling price', value: `${fmt.rs(calc.price)} / ${rfd ? 'RFD m' : 'm'}${calc.priceTemp ? ' (temporary)' : ''}`, sub: calc.vatavPct ? `VATAV ${calc.vatavPct}%` : 'No VATAV' }] : []),
+    { label: g.label, value: g.value === null ? '—' : fmt.n(g.value, 1), sub: g.value === null ? 'needs greige width' : g.onReed ? 'estimate: no greige width set' : 'on greige width', accent: !m.realisation },
+    { label: 'Weight per metre', value: `${fmt.n(calc.totalGpm, 1)} g/m`, sub: `${fmt.n(calc.kgPer100, 2)} kg per 100 m` },
+    { label: 'Finish', value: calc.finish, sub: calc.tfoClass },
+    { label: 'Reed × Pick', value: `${reed || '—'} × ${calc.ppi ?? '—'}`, sub: constructionLine(fabric, calc, idx) },
   ];
-  const colW = (210 - M - figX) / 2;
-  figs.forEach((f, i) => {
-    const fx = figX + (i % 2) * colW;
-    const fy = y + Math.floor(i / 2) * 27;
-    doc.setFontSize(8.5);
-    doc.setTextColor(...grey);
-    doc.text(f[0].toUpperCase(), fx, fy + 4);
-    doc.setFont('DejaVu', 'bold');
-    doc.setFontSize(13);
-    doc.setTextColor(...(f[3] ? accent : ink));
-    doc.text(f[1], fx, fy + 11);
-    doc.setFont('DejaVu', 'normal');
-    doc.setFontSize(8);
-    doc.setTextColor(...grey);
-    doc.text(doc.splitTextToSize(f[2], colW - 4), fx, fy + 16);
-  });
-  // two rows of tiles (or the photo, if taller) and a gap; 60 mm with all four tiles, as before
-  y += Math.max(Math.ceil(figs.length / 2) * 27, cover ? 52 : 0) + 6;
+  // four tiles to a row across the page; beside a photo, two to a row
+  const cols = cover && figX > M ? 2 : 4;
+  const gap = 3;
+  const tw = (210 - M - figX - gap * (cols - 1)) / cols;
+  const th = 22;
+  figs.forEach((f, i) => pdfTile(doc, figX + (i % cols) * (tw + gap), y + Math.floor(i / cols) * (th + gap), tw, th, f));
+  y += Math.max(Math.ceil(figs.length / cols) * (th + gap) - gap, photoH) + 9;
 
+  const look = pdfTableLook();
   const table = (title, head, body, colStyles) => {
-    doc.setFont('DejaVu', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(...ink);
-    doc.text(title, M, y);
+    pdfHeading(doc, M, y, title);
     autoTable(doc, {
-      startY: y + 2,
-      head: head ? [head] : undefined,
+      ...look,
+      startY: y + 2.5,
+      // a heading over a right-aligned column is right-aligned too
+      head: head ? [head.map((h, i) => (colStyles && colStyles[i] && colStyles[i].halign === 'right' ? { content: h, styles: { halign: 'right' } } : h))] : undefined,
       body,
-      margin: { left: M, right: M },
+      margin: { left: M, right: M, bottom: 16 },
       tableWidth: W,
-      styles: { font: 'DejaVu', fontSize: 9, cellPadding: 1.8, textColor: ink, lineColor: [209, 209, 214], lineWidth: 0.1 },
-      headStyles: { font: 'DejaVu', fontStyle: 'bold', fillColor: [242, 242, 247], textColor: ink },
       columnStyles: colStyles || {},
-      theme: 'grid',
     });
-    y = doc.lastAutoTable.finalY + 8;
+    y = doc.lastAutoTable.finalY + 9;
   };
 
   const pctv = (v) => (v === '' || v === undefined || v === null ? '—' : `${v}%`);
+  const lab = { textColor: grey, cellWidth: 38 };
+  // with no ₹ group on, an RFD fabric's RFD shortage joins Construction instead of a one-row table of its own
+  const moneyOn = MONEY_GROUPS.some((k) => m[k]);
   table('Construction', null, [
     ['Reed', fabric.reed || '—', 'Pick (PPI)', calc.ppi ?? '—'],
     ['Total ends', calc.totalEnds === null ? '—' : fmt.int(calc.totalEnds), 'Reed space', calc.rs ? `${calc.rs}″` : '—'],
-    ['Greige width', calc.width ? `${calc.width}″` : '—', 'Weave', fabric.weave || '—'],
+    ['Greige width', calc.width ? `${calc.width}″` : '—', 'Weave', [fabric.weave, fabric.design_note].filter(Boolean).join(' · ') || '—'],
     ['Warp shortage', pctv(fabric.warp_shortage_pct), 'Weft shortage', pctv(fabric.weft_shortage_pct)],
-  ], { 0: { textColor: grey }, 2: { textColor: grey } });
+    ...(rfd && !moneyOn ? [['RFD shortage', pctv(fabric.rfd_shortage_pct), '', '']] : []),
+  ], { 0: lab, 1: { fontStyle: 'bold' }, 2: lab, 3: { fontStyle: 'bold' } });
 
   // Yarn rates off: no Rate and ₹/m columns (the ₹/m total is the sum of those lines, so it goes with them)
-  const bold = (c) => ({ content: c, styles: { fontStyle: 'bold' } });
+  const total = (c) => ({ content: c, styles: { fontStyle: 'bold', fillColor: L.tileAccent, textColor: L.deep } });
   table('Warp and weft', ['Side', 'Yarn', 'Ends / share', ...(m.yarn ? ['Rate ₹/kg'] : []), 'g/m', 'kg/100 m', ...(m.yarn ? ['₹/m'] : [])], [
     ...[...calc.warp, ...calc.weft].map((x) => [
       x.line.side === 'warp' ? 'Warp' : 'Weft',
@@ -243,8 +368,8 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
       fmt.n(x.kgPer100, 3),
       ...(m.yarn ? [x.costPerM === null ? '—' : fmt.n(x.costPerM, 2)] : []),
     ]),
-    [{ content: 'Total', colSpan: m.yarn ? 4 : 3, styles: { fontStyle: 'bold' } }, bold(fmt.n(calc.totalGpm, 2)), bold(fmt.n(calc.kgPer100, 3)), ...(m.yarn ? [bold(calc.rmCost === null ? '—' : fmt.n(calc.rmCost, 2))] : [])],
-  ], m.yarn ? { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } } : { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } });
+    [{ content: 'Total', colSpan: m.yarn ? 4 : 3, styles: { fontStyle: 'bold', fillColor: L.tileAccent, textColor: L.deep } }, total(fmt.n(calc.totalGpm, 2)), total(fmt.n(calc.kgPer100, 3)), ...(m.yarn ? [total(calc.rmCost === null ? '—' : fmt.n(calc.rmCost, 2))] : [])],
+  ], m.yarn ? { 0: { cellWidth: 18 }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } } : { 0: { cellWidth: 18 }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } });
 
   // [group, label, value]; null group = always shown (no ₹ in it)
   const costRows = (rfd
@@ -269,52 +394,25 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
         ['realisation', 'Realisation without VATAV', `${fmt.rs(calc.realisationPerM)} / m · ${fmt.pick(calc.realisationPerPick)} / pick`],
         ['sale', 'VATAV', calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'],
         ['realisation', 'Realisation with VATAV', `${fmt.rs(calc.realisationNetPerM)} / m · ${fmt.pick(calc.realisationNetPerPick)} / pick`],
-      ]).filter(([g]) => !g || m[g]).map(([, l, v]) => [l, v]);
-  if (costRows.length)   table(rfd ? 'Finishing · RFD' : 'Greige', null, costRows, { 0: { textColor: grey, cellWidth: 70 }, 1: { fontStyle: 'bold' } });
+      ]).filter(([gr]) => !gr || m[gr]).map(([, l, v]) => [l, v]);
+  // the RFD shortage row has no ₹, so an RFD sheet keeps it with every ₹ group off
+  if (moneyOn && costRows.length) table(rfd ? 'Finishing · RFD' : 'Greige', null, costRows, { 0: { textColor: grey, cellWidth: 70 }, 1: { fontStyle: 'bold' } });
 
-  const units = unitsOf(fabric.id, idx);
-  if (units.length) {
-    // [group, heading, cell]: cost per pick and profit per m go with Costs, profit per pick with Realisation
-    const cols = [
-      [null, 'Unit', (u) => u.name],
-      ['costs', 'Cost / pick', (u, p) => fmt.pick(p.costPerPick)],
-      ['realisation', 'Profit / pick (with VATAV)', (u, p) => fmt.signedPick(p.profitPerPick)],
-      ['costs', 'Profit / m', (u, p) => fmt.rs(p.profitPerM)],
-      [null, 'Per loom · single / double panna', (u) => panText(calc, fabric, u, idx)],
-    ].filter(([g]) => !g || m[g]);
-    const right = Object.fromEntries(cols.map((c, i) => [i, c]).filter(([, c]) => c[0]).map(([i]) => [i, { halign: 'right' }]));
-    table('Units', cols.map((c) => c[1]), units.map((u) => {
-      const p = unitProfit(calc, u);
-      return cols.map((c) => c[2](u, p));
-    }), right);
+  const note = [m.realisation ? 'Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also taken off. Figures use the latest yarn rates.' : '', g.onReed ? 'GSM is an estimate on reed space, as no greige width is set.' : '', tempRatesText(idx, m)].filter(Boolean).join(' ');
+  if (note) {
+    const lines = doc.splitTextToSize(note, W);
+    if (y + lines.length * 3.4 > 282) {
+      doc.addPage();
+      y = 18;
+    }
+    doc.setFont('DejaVu', 'normal');
+    doc.setFontSize(7.8);
+    doc.setTextColor(...(tempRatesText(idx, m) ? L.amber : grey));
+    doc.text(lines, M, y);
   }
-
-  const beamRows = beamRowsOf(fabric.id, idx);
-  if (beamRows.length) {
-    table('Beam length', ['Unit', 'Loom group', 'Beam length'], beamRows.map((b) => [b.unit.name, slotLabel(b), b.length !== null ? `${fmt.n(b.length, 0)} m` : 'Not set']), { 2: { halign: 'right' } });
-  }
-
-  if (y - 8 > 282) doc.addPage();
-  doc.setFont('DejaVu', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...grey);
-  const note = [m.realisation ? 'Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also taken off. Figures use the latest yarn rates.' : '', tempRatesText(idx, m)].filter(Boolean).join(' ');
-  if (note) doc.text(doc.splitTextToSize(note, W), M, tempRatesText(idx, m) ? 285 : 289);
+  pdfFooter(doc, `${fabric.name || 'Fabric'} · fabric spec sheet · ${fmt.date(today()) || today()} · Hanuman Group`);
   const blob = doc.output('blob');
   await deliver(blob, fileName(fabric.name, 'spec', 'pdf'), `${fabric.name} spec sheet`, opts);
-}
-
-// Per loom per day, "single / double panna": spindles per TFO type, or warp and weft kg.
-function panText(calc, fabric, unit, idx) {
-  const one = loomPerDay(calc, fabric, unit, 1);
-  const two = loomPerDay(calc, fabric, unit, 2);
-  const kg = (v) => (v === null ? '—' : fmt.n(v, 1));
-  if (unitHasTfo(calc, unit, idx)) {
-    const s1 = spindlesForUnit(calc, fabric, unit, idx, 1);
-    const s2 = spindlesForUnit(calc, fabric, unit, idx, 2);
-    return s1.map((s, i) => `${s.type.name}: ${s.total === null ? '—' : fmt.int(s.total)} / ${s2[i].total === null ? '—' : fmt.int(s2[i].total)} spindles`).join('\n');
-  }
-  return `Warp ${kg(one.warpKg)} / ${kg(two.warpKg)} kg/day\nWeft ${kg(one.weftKg)} / ${kg(two.weftKg)} kg/day`;
 }
 
 // ---------- Excel ----------
@@ -327,7 +425,7 @@ const XL_GROUPS = {
   realisation: ['Realisation ₹/m without VATAV', 'Realisation ₹/pick without VATAV', 'Realisation ₹/m with VATAV', 'Realisation ₹/pick with VATAV'],
 };
 
-function fabricRow(fabric, calc, idx, unit, money) {
+function fabricRow(fabric, calc, idx, unit, money, basic = false) {
   const m = moneyOf(money);
   const row = {
     Quality: fabric.name,
@@ -375,6 +473,19 @@ function fabricRow(fabric, calc, idx, unit, money) {
     if (m.costs) row[`Profit ₹/m ${unit.name}`] = r2(p.profitPerM);
   }
   for (const [g, keys] of Object.entries(XL_GROUPS)) if (!m[g]) for (const k of keys) delete row[k];
+  if (basic) {
+    // Basic spec sheet (1.31.0): construction and consumption only; GSM on reed space when there is no greige width
+    for (const k of ['Loom RPM single panna', 'Loom RPM double panna', 'Units']) delete row[k];
+    const g = shareGsm(calc);
+    const out = {};
+    for (const [k, v] of Object.entries(row)) {
+      if (k === 'GSM') {
+        out.GSM = r2(g.value, 1);
+        if (g.onReed) out['GSM basis'] = 'Reed space (no greige width set)';
+      } else out[k] = v;
+    }
+    return out;
+  }
   return row;
 }
 
@@ -394,7 +505,7 @@ export async function exportFabricXlsx(fabric, calc, idx, opts = {}) {
   const m = moneyOf(opts.money);
   const { XLSX } = await preloadExports();
   const wb = XLSX.utils.book_new();
-  const summary = Object.entries(fabricRow(fabric, calc, idx, null, m)).map(([k, v]) => ({ Field: k, Value: v }));
+  const summary = Object.entries(fabricRow(fabric, calc, idx, null, m, true)).map(([k, v]) => ({ Field: k, Value: v }));
   if (tempRatesText(idx, m)) summary.push({ Field: 'Note', Value: tempRatesText(idx, m) });
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, summary), 'Summary');
   const yarnRows = [...calc.warp, ...calc.weft].map((x) => ({
@@ -411,46 +522,6 @@ export async function exportFabricXlsx(fabric, calc, idx, opts = {}) {
     ...(m.yarn ? { '₹/m': r2(x.costPerM) } : {}),
   }));
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, yarnRows), 'Warp and weft');
-  const units = unitsOf(fabric.id, idx);
-  if (units.length) {
-    const unitRows = [];
-    for (const u of units) {
-      const p = unitProfit(calc, u);
-      const single = unitHasTfo(calc, u, idx) ? spindlesForUnit(calc, fabric, u, idx, 1) : [];
-      const double = spindlesForUnit(calc, fabric, u, idx, 2);
-      const l1 = loomPerDay(calc, fabric, u, 1);
-      const l2 = loomPerDay(calc, fabric, u, 2);
-      const base = {
-        Unit: u.name,
-        ...(m.costs ? { 'Cost ₹/pick': p.costPerPick ?? '' } : {}),
-        ...(m.realisation ? { 'Profit ₹/pick (with VATAV)': r2(p.profitPerPick, 4) } : {}),
-        ...(m.costs ? { 'Profit ₹/m': r2(p.profitPerM) } : {}),
-        'Loom RPM single panna': l1.rpm ?? '',
-        'Loom RPM double panna': l2.rpm ?? '',
-      };
-      if (single.length) {
-        single.forEach((s, i) => unitRows.push({
-          ...base,
-          'TFO type': s.type.name,
-          'Spindles per loom (single panna)': s.total === null ? s.reason : r2(s.total, 0),
-          'Spindles per loom (double panna)': double[i].total === null ? double[i].reason : r2(double[i].total, 0),
-        }));
-      } else {
-        unitRows.push({
-          ...base,
-          'Warp kg/day per loom (single panna)': r2(l1.warpKg, 1),
-          'Weft kg/day per loom (single panna)': r2(l1.weftKg, 1),
-          'Warp kg/day per loom (double panna)': r2(l2.warpKg, 1),
-          'Weft kg/day per loom (double panna)': r2(l2.weftKg, 1),
-        });
-      }
-    }
-    XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, unitRows), 'Units');
-  }
-  const beamRows = beamRowsOf(fabric.id, idx);
-  if (beamRows.length) {
-    XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, beamRows.map((b) => ({ Unit: b.unit.name, 'Loom group': slotLabel(b), 'Beam length (m)': b.length ?? '' }))), 'Beam length');
-  }
   await deliver(writeBook(XLSX, wb), fileName(fabric.name, 'spec', 'xlsx'), `${fabric.name} spec sheet`, opts);
 }
 

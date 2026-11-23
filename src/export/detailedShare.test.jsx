@@ -42,7 +42,7 @@ const has = (all, g) => all.some((s) => MARK[g].some((re) => re.test(s)));
 const combos = [];
 for (let n = 0; n < 32; n++) combos.push(Object.fromEntries(DETAILED_GROUPS.map((g, i) => [g, !!(n & (1 << i))])));
 
-describe('Detailed with every switch on = the saved 1.29.0 copy, exactly', () => {
+describe('Detailed with every switch on = the saved 1.31.0 copy, exactly', () => {
   DETAILED_CASES.forEach(([id, t], i) => {
     it(`${id}${Object.keys(t).length ? ' with temporary rates' : ''}: PDF and Excel`, async () => {
       const o = await detailedOutputs(id, t, DETAILED_ALL);
@@ -131,7 +131,7 @@ describe('Export sheet', () => {
     resetListState();
     await resetDemo();
   });
-  it('Detailed shows Advanced with five switches, all on; Sale rate drives the price line; reopening resets', async () => {
+  it('Detailed shows Advanced with six switches, all on; Sale rate drives the price line; reopening resets', async () => {
     window.location.hash = '#/fabric/f_crepe';
     render(<App />);
     await screen.findByText('Finishing · RFD');
@@ -145,7 +145,7 @@ describe('Export sheet', () => {
     expect(document.body.textContent).toMatch(/Every figure, with costs, yarn rates and profit/);
     expect(screen.queryByRole('button', { name: 'Loom realisation' })).toBeNull();
     fireEvent.click(screen.getByText('Advanced'));
-    const names = ['Realisation', 'Sale rate', 'Yarn rates', 'Costs', 'Loom realisation'];
+    const names = ['Realisation', 'Sale rate', 'Yarn rates', 'Costs', 'Loom realisation', 'Unit-wise'];
     for (const l of names) expect(screen.getByRole('button', { name: l }).getAttribute('aria-pressed')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: 'Sale rate' }));
     await waitFor(() => expect(preview()).not.toMatch(/Price/));

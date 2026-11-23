@@ -11,7 +11,7 @@ import { App } from '../app.jsx';
 import { resetDemo } from '../store.js';
 import { resetListState } from '../listState.js';
 
-const GOLDEN = JSON.parse(fs.readFileSync('src/export/__golden__/basic-1.27.0.json', 'utf8'));
+const GOLDEN = JSON.parse(fs.readFileSync('src/export/__golden__/basic-1.31.0.json', 'utf8'));
 
 async function outputs(id, t, money) {
   const idx = caseIndex(t);
@@ -52,7 +52,7 @@ const has = (all, g) => all.some((s) => MARK[g].some((re) => re.test(s)));
 const combos = [];
 for (let n = 0; n < 16; n++) combos.push(Object.fromEntries(MONEY_GROUPS.map((g, i) => [g, !!(n & (1 << i))])));
 
-describe('Builders with every switch on = the share before 1.28.0, exactly', () => {
+describe('Builders with every switch on = the saved 1.31.0 copy, exactly', () => {
   GOLDEN_CASES.forEach(([id, t], i) => {
     it(`${id}${Object.keys(t).length ? ' with temporary rates' : ''}: PDF, Excel and WhatsApp/Copy text`, async () => {
       const o = await outputs(id, t, ALL_MONEY);

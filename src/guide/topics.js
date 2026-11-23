@@ -317,10 +317,12 @@ export const TOPICS = [
       'Send it from the share screen of your phone.',
     ],
     tips: [
-      '**Basic** has no ₹ figures at all. It is safe to send to anyone.',
+      '**Basic** has no ₹ figures at all. It is safe to send to anyone. It holds the key figures, construction and warp and weft only.',
+      'With no greige width, GSM is worked out on reed space. It says so and reads low. Add the greige width for the real GSM.',
       '**Detailed** has every figure: yarn rates, the full cost breakdown, realisation, loom realisation and spindle figures.',
       'Its PDF and Excel also show the RPM and efficiency each figure assumes.',
       'Under **Detailed**, tap **Advanced** to switch off realisation, sale rate, yarn rates, costs or loom realisation. Each works on its own.',
+      'Switch off **Unit-wise** to leave out every unit figure. That is unit cost and profit, loom RPM, looms, yarn-wise use, TFO, spindles and beam length.',
       'A part you switch off is left out of the file completely.',
       'With **Detailed**, WhatsApp and Copy text send the Basic text, plus the price when **Sale rate** is on.',
       'The share screen opens on **Basic** every time, so you always start with no ₹ figures.',
@@ -365,6 +367,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.31.0', 'New look for the Basic and Detailed PDFs. Basic now has only the key figures, construction and warp and weft. GSM shows on reed space when there is no greige width. Detailed drops Picks per sale metre and has a sixth Advanced switch, Unit-wise.'],
   ['1.30.0', 'The Detailed Excel file is easier to read: ₹ per pick shows 3 decimals, other ₹ shows 2 decimals with commas, the top two rows stay in view, and it prints one page wide.'],
   ['1.29.0', 'Fabric share has two kinds again: Basic (no ₹) and Detailed. Includes ₹ is gone. Under Detailed, Advanced switches off realisation, sale rate, yarn rates, costs or loom realisation. In Detailed, spindle profitability sits under the TFO and spindles table. The Basic Excel file now ends in _spec.xlsx.'],
   ['1.28.0', 'Fabric share: Basic now has no ₹ figures at all. Choose Includes ₹ to add them. Advanced switches off realisation, sale rate, yarn rates or costs.'],

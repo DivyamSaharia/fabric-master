@@ -1,5 +1,5 @@
-// Writes the saved copy of the 1.29.0 Detailed share with every ₹ switch on: GOLDEN=1 npx vitest run src/export/detailedGolden.test.jsx
-// It equals the 1.28.0 Detailed share except that spindle profitability moved under the TFO and spindles table.
+// Writes the saved copy of the 1.31.0 Detailed share with every switch on (new look; no Picks per sale metre): GOLDEN=1 npx vitest run src/export/detailedGolden.test.jsx
+// Its figures equal the 1.29.0 copy; only Picks per sale metre and the drawing styles changed (checked 23 Nov).
 // Detailed with every switch on must still equal it (detailedShare.test.jsx).
 import { it } from 'vitest';
 import fs from 'node:fs';
@@ -11,7 +11,7 @@ import { recordPdf, recordXlsx } from './recordShare.js';
 // the Basic cases, plus a greige fabric with temporary rates
 export const DETAILED_CASES = [...GOLDEN_CASES, ['f_pv', { tempRates: { y_fdy75: 125 }, tempPrices: { f_pv: 61.5 } }]];
 
-export const DETAILED_GOLDEN = 'src/export/__golden__/detailed-1.29.0.json';
+export const DETAILED_GOLDEN = 'src/export/__golden__/detailed-1.31.0.json';
 
 export async function detailedOutputs(id, t, money) {
   setLogoForTests(null);

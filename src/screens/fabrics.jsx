@@ -1202,7 +1202,10 @@ export const MONEY_SWITCHES = [
   ['yarn', 'Yarn rates', 'Yarn rates and raw material cost tables'],
   ['costs', 'Costs', 'RM cost, RFD cost breakdown, unit cost per pick, profit per m'],
   ['loom', 'Loom realisation', '₹ per loom per day'],
+  // not a ₹ switch (1.31.0): off, nothing tied to a unit goes in the file
+  ['units', 'Unit-wise', 'Unit cost and profit, loom RPM and efficiency, looms, yarn-wise consumption, TFO and spindles, beam length'],
 ];
+const MONEY_ONLY = MONEY_SWITCHES.filter(([k]) => k !== 'units');
 
 function ExportSheet({ open, onClose, fabric, calc, idx }) {
   const [toDrive, setToDrive] = useState(backendMode() === 'sheet');
@@ -1234,12 +1237,17 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
     setBusy('');
   };
   const sheetMode = backendMode() === 'sheet';
-  const on = MONEY_SWITCHES.filter(([k]) => sw[k]).map(([, l]) => l.toLowerCase());
-  const detailedFooter = on.length === MONEY_SWITCHES.length
+  const onCount = MONEY_SWITCHES.filter(([k]) => sw[k]).length;
+  // loom realisation is per unit, so it is not in the file with Unit-wise off
+  const on = MONEY_ONLY.filter(([k]) => sw[k] && (k !== 'loom' || sw.units)).map(([, l]) => l.toLowerCase());
+  const noUnits = sw.units ? '' : ' No unit-wise figures.';
+  const detailedFooter = onCount === MONEY_SWITCHES.length
     ? 'Every figure, with costs, yarn rates and profit. Internal use only.'
     : on.length
-      ? `Contains ₹: ${on.join(', ')}. Internal use only.`
-      : 'Every ₹ switch is off: construction, consumption, looms and TFO only, no ₹ figures.';
+      ? `Contains ₹: ${on.join(', ')}.${noUnits} Internal use only.`
+      : sw.units
+        ? 'Every ₹ switch is off: construction, consumption, looms and TFO only, no ₹ figures.'
+        : 'No ₹ figures and no unit-wise figures: construction and consumption only.';
   return (
     <Sheet open={open} onClose={onClose} title="Export">
       <Section header="Report" footer={detailed ? detailedFooter : 'No ₹ figures at all. Safe to send to anyone.'}>
@@ -1248,7 +1256,7 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
           <>
             <button type="button" class="row link-row" aria-expanded={advanced ? 'true' : 'false'} onClick={() => setAdvanced(!advanced)}>
               <span class="row-label">Advanced</span>
-              <span class="fold-mark">{advanced ? 'Hide' : on.length === MONEY_SWITCHES.length ? 'Choose ₹ figures' : `${on.length} of ${MONEY_SWITCHES.length} on`}<Icon.chevron size={11} /></span>
+              <span class="fold-mark">{advanced ? 'Hide' : onCount === MONEY_SWITCHES.length ? 'Choose what goes in' : `${onCount} of ${MONEY_SWITCHES.length} on`}<Icon.chevron size={11} /></span>
             </button>
             {advanced ? MONEY_SWITCHES.map(([k, label, sub]) => (
               <div class="row money-switch">
@@ -1267,8 +1275,8 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
           </>
         ) : (
           <>
-            <Row label="PDF spec sheet" sub="Photo, construction, consumption, no ₹ figures" onClick={() => run('pdf', () => exportFabricPdf(fabric, calc, idx, { toDrive: sheetMode && toDrive, money: NO_MONEY }))} value={busy === 'pdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'pdf'} />
-            <Row label="Excel sheet" sub="Construction and consumption, no ₹ figures" onClick={() => run('xlsx', () => exportFabricXlsx(fabric, calc, idx, { toDrive: sheetMode && toDrive, money: NO_MONEY }))} value={busy === 'xlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'xlsx'} />
+            <Row label="PDF spec sheet" sub="Photo, key figures, construction, warp and weft, no ₹ figures" onClick={() => run('pdf', () => exportFabricPdf(fabric, calc, idx, { toDrive: sheetMode && toDrive, money: NO_MONEY }))} value={busy === 'pdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'pdf'} />
+            <Row label="Excel sheet" sub="Construction, warp and weft, no ₹ figures" onClick={() => run('xlsx', () => exportFabricXlsx(fabric, calc, idx, { toDrive: sheetMode && toDrive, money: NO_MONEY }))} value={busy === 'xlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'xlsx'} />
           </>
         )}
         <Row label="WhatsApp message" sub={priced ? 'Contains price · Basic text with the price' : detailed ? 'Basic text, no ₹ figures' : 'Opens WhatsApp with the text below'} onClick={() => openWhatsAppText(text)} chevron />

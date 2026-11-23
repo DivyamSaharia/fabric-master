@@ -4,7 +4,7 @@
   "pdf": [
    [
     "text",
-    "Fabric spec sheet · <today>"
+    "HANUMAN GROUP · FABRIC SPEC SHEET"
    ],
    [
     "text",
@@ -16,6 +16,10 @@
    ],
    [
     "text",
+    "<today>"
+   ],
+   [
+    "text",
     "REALISATION WITH VATAV"
    ],
    [
@@ -24,9 +28,19 @@
    ],
    [
     "text",
-    [
-     "₹21.06 / RFD m · without VATAV ₹0.258 / pick"
-    ]
+    "₹21.06 / RFD m"
+   ],
+   [
+    "text",
+    "WITHOUT VATAV"
+   ],
+   [
+    "text",
+    "₹0.258 / pick"
+   ],
+   [
+    "text",
+    "₹22.41 / RFD m"
    ],
    [
     "text",
@@ -38,23 +52,7 @@
    ],
    [
     "text",
-    [
-     "RM ₹13.99 + finishing ₹8.60"
-    ]
-   ],
-   [
-    "text",
-    "GSM (ESTIMATE)"
-   ],
-   [
-    "text",
-    "63.4"
-   ],
-   [
-    "text",
-    [
-     "91.8 g/m · 9.18 kg/100 m"
-    ]
+    "RM ₹13.99 + finishing ₹8.60"
    ],
    [
     "text",
@@ -66,9 +64,55 @@
    ],
    [
     "text",
-    [
-     "VATAV 3% · 100 × 80 · 75D × 75D TPM"
-    ]
+    "VATAV 3%"
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "63.4"
+   ],
+   [
+    "text",
+    "on greige width"
+   ],
+   [
+    "text",
+    "WEIGHT PER METRE"
+   ],
+   [
+    "text",
+    "91.8 g/m"
+   ],
+   [
+    "text",
+    "9.18 kg per 100 m"
+   ],
+   [
+    "text",
+    "FINISH"
+   ],
+   [
+    "text",
+    "RFD"
+   ],
+   [
+    "text",
+    "Weft TPM"
+   ],
+   [
+    "text",
+    "REED × PICK"
+   ],
+   [
+    "text",
+    "100 × 80"
+   ],
+   [
+    "text",
+    "100 × 80 · 75D × 75D TPM"
    ],
    [
     "text",
@@ -114,11 +158,36 @@
      [
       "Side",
       "Yarn",
-      "Ends / share",
-      "Rate ₹/kg",
-      "g/m",
-      "kg/100 m",
-      "₹/m"
+      {
+       "content": "Ends / share",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -145,25 +214,65 @@
        "content": "Total",
        "colSpan": 4,
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "91.80",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "9.180",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "12.87",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       }
      ]
@@ -229,75 +338,19 @@
    ],
    [
     "text",
-    "Units"
-   ],
-   [
-    "table",
     [
-     [
-      "Unit",
-      "Cost / pick",
-      "Profit / pick (with VATAV)",
-      "Profit / m",
-      "Per loom · single / double panna"
-     ]
-    ],
-    [
-     [
-      "Unit 2",
-      "₹0.200",
-      "+₹0.042",
-      "₹3.66",
-      "M/C 1–12: 130 / — spindles\nM/C 13–16: 112 / — spindles"
-     ],
-     [
-      "Chinese AJ",
-      "₹0.185",
-      "+₹0.057",
-      "₹4.97",
-      "Warp 15.9 / — kg/day\nWeft 12.7 / — kg/day"
-     ],
-     [
-      "Waterjet",
-      "₹0.165",
-      "+₹0.077",
-      "₹6.71",
-      "Warp 15.9 / — kg/day\nWeft 12.7 / — kg/day"
-     ]
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) /",
+     "picks; with VATAV, the VATAV discount is also taken off. Figures use the latest",
+     "yarn rates."
     ]
    ],
    [
     "text",
-    "Beam length"
-   ],
-   [
-    "table",
-    [
-     [
-      "Unit",
-      "Loom group",
-      "Beam length"
-     ]
-    ],
-    [
-     [
-      "Unit 2",
-      "Toyota · 190 cm",
-      "Not set"
-     ],
-     [
-      "Unit 2",
-      "Toyota · 280 cm",
-      "Not set"
-     ]
-    ]
+    "Poly Crepe 60 (RFD) · fabric spec sheet · <today> · Hanuman Group"
    ],
    [
     "text",
-    [
-     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
-     "taken off. Figures use the latest yarn rates."
-    ]
+    "Page 1 of 1"
    ]
   ],
   "xlsx": {
@@ -333,14 +386,6 @@
     [
      "Pick (PPI)",
      80
-    ],
-    [
-     "Loom RPM single panna",
-     800
-    ],
-    [
-     "Loom RPM double panna",
-     ""
     ],
     [
      "Total ends",
@@ -445,10 +490,6 @@
     [
      "Realisation ₹/pick with VATAV",
      0.2421
-    ],
-    [
-     "Units",
-     "Unit 2, Chinese AJ, Waterjet"
     ]
    ],
    "Warp and weft": [
@@ -488,100 +529,6 @@
      4.08,
      6.85
     ]
-   ],
-   "Units": [
-    [
-     "Unit",
-     "Cost ₹/pick",
-     "Profit ₹/pick (with VATAV)",
-     "Profit ₹/m",
-     "Loom RPM single panna",
-     "Loom RPM double panna",
-     "TFO type",
-     "Spindles per loom (single panna)",
-     "Spindles per loom (double panna)",
-     "Warp kg/day per loom (single panna)",
-     "Weft kg/day per loom (single panna)",
-     "Warp kg/day per loom (double panna)",
-     "Weft kg/day per loom (double panna)"
-    ],
-    [
-     "Unit 2",
-     0.2,
-     0.0421,
-     3.66,
-     800,
-     "",
-     "M/C 1–12",
-     130,
-     "Set double panna RPM on the fabric",
-     "",
-     "",
-     "",
-     ""
-    ],
-    [
-     "Unit 2",
-     0.2,
-     0.0421,
-     3.66,
-     800,
-     "",
-     "M/C 13–16",
-     112,
-     "Set double panna RPM on the fabric",
-     "",
-     "",
-     "",
-     ""
-    ],
-    [
-     "Chinese AJ",
-     0.185,
-     0.0571,
-     4.97,
-     800,
-     "",
-     "",
-     "",
-     "",
-     15.9,
-     12.7,
-     "",
-     ""
-    ],
-    [
-     "Waterjet",
-     0.165,
-     0.0771,
-     6.71,
-     800,
-     "",
-     "",
-     "",
-     "",
-     15.9,
-     12.7,
-     "",
-     ""
-    ]
-   ],
-   "Beam length": [
-    [
-     "Unit",
-     "Loom group",
-     "Beam length (m)"
-    ],
-    [
-     "Unit 2",
-     "Toyota · 190 cm",
-     ""
-    ],
-    [
-     "Unit 2",
-     "Toyota · 280 cm",
-     ""
-    ]
    ]
   },
   "text": "*Poly Crepe 60 (RFD)*\nReed × Pick: 100 × 80\nWarp: 75D Polyester FDY, 6,000 ends\nWeft: 75D TPM 2000 S/Z (2S:2Z)\nWidth 57″ · GSM 63.4\nWeave: Plain\nPrice ₹45.00 / m"
@@ -591,7 +538,7 @@
   "pdf": [
    [
     "text",
-    "Fabric spec sheet · <today>"
+    "HANUMAN GROUP · FABRIC SPEC SHEET"
    ],
    [
     "text",
@@ -603,6 +550,10 @@
    ],
    [
     "text",
+    "<today>"
+   ],
+   [
+    "text",
     "REALISATION WITH VATAV"
    ],
    [
@@ -611,9 +562,19 @@
    ],
    [
     "text",
-    [
-     "₹17.89 / m · without VATAV ₹0.263 / pick"
-    ]
+    "₹17.89 / m"
+   ],
+   [
+    "text",
+    "WITHOUT VATAV"
+   ],
+   [
+    "text",
+    "₹0.263 / pick"
+   ],
+   [
+    "text",
+    "₹17.89 / m"
    ],
    [
     "text",
@@ -625,23 +586,7 @@
    ],
    [
     "text",
-    [
-     "shortage included"
-    ]
-   ],
-   [
-    "text",
-    "GSM (ESTIMATE)"
-   ],
-   [
-    "text",
-    "86.0"
-   ],
-   [
-    "text",
-    [
-     "126.7 g/m · 12.67 kg/100 m"
-    ]
+    "shortage included"
    ],
    [
     "text",
@@ -653,9 +598,55 @@
    ],
    [
     "text",
-    [
-     "No VATAV · 76 × 68 · 30s × 75D"
-    ]
+    "No VATAV"
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "86.0"
+   ],
+   [
+    "text",
+    "on greige width"
+   ],
+   [
+    "text",
+    "WEIGHT PER METRE"
+   ],
+   [
+    "text",
+    "126.7 g/m"
+   ],
+   [
+    "text",
+    "12.67 kg per 100 m"
+   ],
+   [
+    "text",
+    "FINISH"
+   ],
+   [
+    "text",
+    "Greige"
+   ],
+   [
+    "text",
+    "Non-TPM"
+   ],
+   [
+    "text",
+    "REED × PICK"
+   ],
+   [
+    "text",
+    "76 × 68"
+   ],
+   [
+    "text",
+    "76 × 68 · 30s × 75D"
    ],
    [
     "text",
@@ -701,11 +692,36 @@
      [
       "Side",
       "Yarn",
-      "Ends / share",
-      "Rate ₹/kg",
-      "g/m",
-      "kg/100 m",
-      "₹/m"
+      {
+       "content": "Ends / share",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -732,25 +748,65 @@
        "content": "Total",
        "colSpan": 4,
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "126.69",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "12.669",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "21.11",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       }
      ]
@@ -792,35 +848,19 @@
    ],
    [
     "text",
-    "Units"
-   ],
-   [
-    "table",
     [
-     [
-      "Unit",
-      "Cost / pick",
-      "Profit / pick (with VATAV)",
-      "Profit / m",
-      "Per loom · single / double panna"
-     ]
-    ],
-    [
-     [
-      "Chinese AJ",
-      "₹0.185",
-      "+₹0.078",
-      "₹5.31",
-      "Warp — / — kg/day\nWeft — / — kg/day"
-     ]
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) /",
+     "picks; with VATAV, the VATAV discount is also taken off. Figures use the latest",
+     "yarn rates."
     ]
    ],
    [
     "text",
-    [
-     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
-     "taken off. Figures use the latest yarn rates."
-    ]
+    "PV Plain 60 · fabric spec sheet · <today> · Hanuman Group"
+   ],
+   [
+    "text",
+    "Page 1 of 1"
    ]
   ],
   "xlsx": {
@@ -856,14 +896,6 @@
     [
      "Pick (PPI)",
      68
-    ],
-    [
-     "Loom RPM single panna",
-     ""
-    ],
-    [
-     "Loom RPM double panna",
-     ""
     ],
     [
      "Total ends",
@@ -968,10 +1000,6 @@
     [
      "Realisation ₹/pick with VATAV",
      0.263
-    ],
-    [
-     "Units",
-     "Chinese AJ"
     ]
    ],
    "Warp and weft": [
@@ -1011,32 +1039,6 @@
      3.468,
      4.09
     ]
-   ],
-   "Units": [
-    [
-     "Unit",
-     "Cost ₹/pick",
-     "Profit ₹/pick (with VATAV)",
-     "Profit ₹/m",
-     "Loom RPM single panna",
-     "Loom RPM double panna",
-     "Warp kg/day per loom (single panna)",
-     "Weft kg/day per loom (single panna)",
-     "Warp kg/day per loom (double panna)",
-     "Weft kg/day per loom (double panna)"
-    ],
-    [
-     "Chinese AJ",
-     0.185,
-     0.078,
-     5.31,
-     "",
-     "",
-     "",
-     "",
-     "",
-     ""
-    ]
    ]
   },
   "text": "*PV Plain 60* (Greige)\nReed × Pick: 76 × 68\nWarp: 30s PV, 4,560 ends\nWeft: 75D Polyester FDY\nWidth 58″ · GSM 86.0\nWeave: Plain\nPrice ₹39.00 / m"
@@ -1046,7 +1048,7 @@
   "pdf": [
    [
     "text",
-    "Fabric spec sheet · <today>"
+    "HANUMAN GROUP · FABRIC SPEC SHEET"
    ],
    [
     "text",
@@ -1058,6 +1060,10 @@
    ],
    [
     "text",
+    "<today>"
+   ],
+   [
+    "text",
     "REALISATION WITH VATAV"
    ],
    [
@@ -1066,9 +1072,19 @@
    ],
    [
     "text",
-    [
-     "₹29.49 / RFD m · without VATAV ₹0.293 / pick"
-    ]
+    "₹29.49 / RFD m"
+   ],
+   [
+    "text",
+    "WITHOUT VATAV"
+   ],
+   [
+    "text",
+    "₹0.293 / pick"
+   ],
+   [
+    "text",
+    "₹31.23 / RFD m"
    ],
    [
     "text",
@@ -1080,23 +1096,7 @@
    ],
    [
     "text",
-    [
-     "RM ₹17.30 + finishing ₹9.47"
-    ]
-   ],
-   [
-    "text",
-    "GSM (ESTIMATE)"
-   ],
-   [
-    "text",
-    "62.6"
-   ],
-   [
-    "text",
-    [
-     "89.0 g/m · 8.90 kg/100 m"
-    ]
+    "RM ₹17.30 + finishing ₹9.47"
    ],
    [
     "text",
@@ -1108,9 +1108,55 @@
    ],
    [
     "text",
-    [
-     "VATAV 3% · 120 × 96 · 60D TPM × 60D TPM"
-    ]
+    "VATAV 3%"
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "62.6"
+   ],
+   [
+    "text",
+    "on greige width"
+   ],
+   [
+    "text",
+    "WEIGHT PER METRE"
+   ],
+   [
+    "text",
+    "89.0 g/m"
+   ],
+   [
+    "text",
+    "8.90 kg per 100 m"
+   ],
+   [
+    "text",
+    "FINISH"
+   ],
+   [
+    "text",
+    "RFD"
+   ],
+   [
+    "text",
+    "TPM × TPM"
+   ],
+   [
+    "text",
+    "REED × PICK"
+   ],
+   [
+    "text",
+    "120 × 96"
+   ],
+   [
+    "text",
+    "120 × 96 · 60D TPM × 60D"
    ],
    [
     "text",
@@ -1156,11 +1202,36 @@
      [
       "Side",
       "Yarn",
-      "Ends / share",
-      "Rate ₹/kg",
-      "g/m",
-      "kg/100 m",
-      "₹/m"
+      {
+       "content": "Ends / share",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -1187,25 +1258,65 @@
        "content": "Total",
        "colSpan": 4,
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "88.99",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "8.899",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "15.57",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       }
      ]
@@ -1271,61 +1382,19 @@
    ],
    [
     "text",
-    "Units"
-   ],
-   [
-    "table",
     [
-     [
-      "Unit",
-      "Cost / pick",
-      "Profit / pick (with VATAV)",
-      "Profit / m",
-      "Per loom · single / double panna"
-     ]
-    ],
-    [
-     [
-      "Unit 2",
-      "₹0.200",
-      "+₹0.076",
-      "₹8.15",
-      "M/C 1–12: 330 / — spindles\nM/C 13–16: 280 / — spindles"
-     ]
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) /",
+     "picks; with VATAV, the VATAV discount is also taken off. Figures use the latest",
+     "yarn rates."
     ]
    ],
    [
     "text",
-    "Beam length"
-   ],
-   [
-    "table",
-    [
-     [
-      "Unit",
-      "Loom group",
-      "Beam length"
-     ]
-    ],
-    [
-     [
-      "Unit 2",
-      "Toyota · 190 cm",
-      "4,000 m"
-     ],
-     [
-      "Unit 2",
-      "Toyota · 280 cm",
-      "Not set"
-     ]
-    ]
+    "Georgette 60 (RFD) · fabric spec sheet · <today> · Hanuman Group"
    ],
    [
     "text",
-    [
-     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
-     "taken off. Figures use the latest yarn rates."
-    ]
+    "Page 1 of 1"
    ]
   ],
   "xlsx": {
@@ -1361,14 +1430,6 @@
     [
      "Pick (PPI)",
      96
-    ],
-    [
-     "Loom RPM single panna",
-     700
-    ],
-    [
-     "Loom RPM double panna",
-     ""
     ],
     [
      "Total ends",
@@ -1473,10 +1534,6 @@
     [
      "Realisation ₹/pick with VATAV",
      0.2764
-    ],
-    [
-     "Units",
-     "Unit 2"
     ]
    ],
    "Warp and weft": [
@@ -1516,58 +1573,6 @@
      3.955,
      6.92
     ]
-   ],
-   "Units": [
-    [
-     "Unit",
-     "Cost ₹/pick",
-     "Profit ₹/pick (with VATAV)",
-     "Profit ₹/m",
-     "Loom RPM single panna",
-     "Loom RPM double panna",
-     "TFO type",
-     "Spindles per loom (single panna)",
-     "Spindles per loom (double panna)"
-    ],
-    [
-     "Unit 2",
-     0.2,
-     0.0764,
-     8.15,
-     700,
-     "",
-     "M/C 1–12",
-     330,
-     "Set double panna RPM on the fabric"
-    ],
-    [
-     "Unit 2",
-     0.2,
-     0.0764,
-     8.15,
-     700,
-     "",
-     "M/C 13–16",
-     280,
-     "Set double panna RPM on the fabric"
-    ]
-   ],
-   "Beam length": [
-    [
-     "Unit",
-     "Loom group",
-     "Beam length (m)"
-    ],
-    [
-     "Unit 2",
-     "Toyota · 190 cm",
-     4000
-    ],
-    [
-     "Unit 2",
-     "Toyota · 280 cm",
-     ""
-    ]
    ]
   },
   "text": "*Georgette 60 (RFD)*\nReed × Pick: 120 × 96\nWarp: 60D TPM 2400 S/Z, 7,200 ends\nWeft: 60D TPM 2400 S/Z (2S:2Z)\nWidth 56″ · GSM 62.6\nWeave: Plain\nPrice ₹58.00 / m"
@@ -1577,7 +1582,7 @@
   "pdf": [
    [
     "text",
-    "Fabric spec sheet · <today>"
+    "HANUMAN GROUP · FABRIC SPEC SHEET"
    ],
    [
     "text",
@@ -1589,6 +1594,10 @@
    ],
    [
     "text",
+    "<today>"
+   ],
+   [
+    "text",
     "REALISATION WITH VATAV"
    ],
    [
@@ -1597,9 +1606,19 @@
    ],
    [
     "text",
-    [
-     "₹18.72 / m · without VATAV ₹0.273 / pick"
-    ]
+    "₹18.72 / m"
+   ],
+   [
+    "text",
+    "WITHOUT VATAV"
+   ],
+   [
+    "text",
+    "₹0.273 / pick"
+   ],
+   [
+    "text",
+    "₹19.64 / m"
    ],
    [
     "text",
@@ -1611,23 +1630,7 @@
    ],
    [
     "text",
-    [
-     "shortage included"
-    ]
-   ],
-   [
-    "text",
-    "GSM (ESTIMATE)"
-   ],
-   [
-    "text",
-    "76.6"
-   ],
-   [
-    "text",
-    [
-     "110.9 g/m · 11.09 kg/100 m"
-    ]
+    "shortage included"
    ],
    [
     "text",
@@ -1639,9 +1642,55 @@
    ],
    [
     "text",
-    [
-     "VATAV 2% · 88 × 72 · 40D × 30s"
-    ]
+    "VATAV 2%"
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "76.6"
+   ],
+   [
+    "text",
+    "on greige width"
+   ],
+   [
+    "text",
+    "WEIGHT PER METRE"
+   ],
+   [
+    "text",
+    "110.9 g/m"
+   ],
+   [
+    "text",
+    "11.09 kg per 100 m"
+   ],
+   [
+    "text",
+    "FINISH"
+   ],
+   [
+    "text",
+    "Greige"
+   ],
+   [
+    "text",
+    "Non-TPM"
+   ],
+   [
+    "text",
+    "REED × PICK"
+   ],
+   [
+    "text",
+    "88 × 72"
+   ],
+   [
+    "text",
+    "88 × 72 · 40D × 30s"
    ],
    [
     "text",
@@ -1667,7 +1716,7 @@
       "Greige width",
       "57″",
       "Weave",
-      "Dobby"
+      "Dobby · Small diamond, 16-shaft repeat"
      ],
      [
       "Warp shortage",
@@ -1687,11 +1736,36 @@
      [
       "Side",
       "Yarn",
-      "Ends / share",
-      "Rate ₹/kg",
-      "g/m",
-      "kg/100 m",
-      "₹/m"
+      {
+       "content": "Ends / share",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -1718,25 +1792,65 @@
        "content": "Total",
        "colSpan": 4,
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "110.91",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "11.091",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "26.36",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       }
      ]
@@ -1778,56 +1892,19 @@
    ],
    [
     "text",
-    "Units"
-   ],
-   [
-    "table",
     [
-     [
-      "Unit",
-      "Cost / pick",
-      "Profit / pick (with VATAV)",
-      "Profit / m",
-      "Per loom · single / double panna"
-     ]
-    ],
-    [
-     [
-      "Unit 2",
-      "₹0.200",
-      "+₹0.060",
-      "₹4.32",
-      "Warp — / — kg/day\nWeft — / — kg/day"
-     ]
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) /",
+     "picks; with VATAV, the VATAV discount is also taken off. Figures use the latest",
+     "yarn rates."
     ]
    ],
    [
     "text",
-    "Beam length"
-   ],
-   [
-    "table",
-    [
-     [
-      "Unit",
-      "Loom group",
-      "Beam length"
-     ]
-    ],
-    [
-     [
-      "Unit 2",
-      "Toyota · 190 cm",
-      "Not set"
-     ]
-    ]
+    "Viscose Nylon Dobby 60 · fabric spec sheet · <today> · Hanuman Group"
    ],
    [
     "text",
-    [
-     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
-     "taken off. Figures use the latest yarn rates."
-    ]
+    "Page 1 of 1"
    ]
   ],
   "xlsx": {
@@ -1863,14 +1940,6 @@
     [
      "Pick (PPI)",
      72
-    ],
-    [
-     "Loom RPM single panna",
-     ""
-    ],
-    [
-     "Loom RPM double panna",
-     ""
     ],
     [
      "Total ends",
@@ -1975,10 +2044,6 @@
     [
      "Realisation ₹/pick with VATAV",
      0.2601
-    ],
-    [
-     "Units",
-     "Unit 2"
     ]
    ],
    "Warp and weft": [
@@ -2018,44 +2083,6 @@
      8.674,
      19.95
     ]
-   ],
-   "Units": [
-    [
-     "Unit",
-     "Cost ₹/pick",
-     "Profit ₹/pick (with VATAV)",
-     "Profit ₹/m",
-     "Loom RPM single panna",
-     "Loom RPM double panna",
-     "Warp kg/day per loom (single panna)",
-     "Weft kg/day per loom (single panna)",
-     "Warp kg/day per loom (double panna)",
-     "Weft kg/day per loom (double panna)"
-    ],
-    [
-     "Unit 2",
-     0.2,
-     0.0601,
-     4.32,
-     "",
-     "",
-     "",
-     "",
-     "",
-     ""
-    ]
-   ],
-   "Beam length": [
-    [
-     "Unit",
-     "Loom group",
-     "Beam length (m)"
-    ],
-    [
-     "Unit 2",
-     "Toyota · 190 cm",
-     ""
-    ]
    ]
   },
   "text": "*Viscose Nylon Dobby 60* (Greige)\nReed × Pick: 88 × 72\nWarp: 40D Nylon, 5,280 ends\nWeft: 30s Viscose\nWidth 57″ · GSM 76.6\nWeave: Dobby, Small diamond, 16-shaft repeat\nPrice ₹46.00 / m"
@@ -2065,7 +2092,7 @@
   "pdf": [
    [
     "text",
-    "Fabric spec sheet · <today>"
+    "HANUMAN GROUP · FABRIC SPEC SHEET"
    ],
    [
     "text",
@@ -2077,6 +2104,10 @@
    ],
    [
     "text",
+    "<today>"
+   ],
+   [
+    "text",
     "REALISATION WITH VATAV"
    ],
    [
@@ -2085,9 +2116,19 @@
    ],
    [
     "text",
-    [
-     "₹21.83 / RFD m · without VATAV ₹0.267 / pick"
-    ]
+    "₹21.83 / RFD m"
+   ],
+   [
+    "text",
+    "WITHOUT VATAV"
+   ],
+   [
+    "text",
+    "₹0.267 / pick"
+   ],
+   [
+    "text",
+    "₹23.24 / RFD m"
    ],
    [
     "text",
@@ -2099,23 +2140,7 @@
    ],
    [
     "text",
-    [
-     "RM ₹15.13 + finishing ₹8.62"
-    ]
-   ],
-   [
-    "text",
-    "GSM (ESTIMATE)"
-   ],
-   [
-    "text",
-    "63.4"
-   ],
-   [
-    "text",
-    [
-     "91.8 g/m · 9.18 kg/100 m"
-    ]
+    "RM ₹15.13 + finishing ₹8.62"
    ],
    [
     "text",
@@ -2127,9 +2152,55 @@
    ],
    [
     "text",
-    [
-     "VATAV 3% · 100 × 80 · 75D × 75D TPM"
-    ]
+    "VATAV 3%"
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "63.4"
+   ],
+   [
+    "text",
+    "on greige width"
+   ],
+   [
+    "text",
+    "WEIGHT PER METRE"
+   ],
+   [
+    "text",
+    "91.8 g/m"
+   ],
+   [
+    "text",
+    "9.18 kg per 100 m"
+   ],
+   [
+    "text",
+    "FINISH"
+   ],
+   [
+    "text",
+    "RFD"
+   ],
+   [
+    "text",
+    "Weft TPM"
+   ],
+   [
+    "text",
+    "REED × PICK"
+   ],
+   [
+    "text",
+    "100 × 80"
+   ],
+   [
+    "text",
+    "100 × 80 · 75D × 75D TPM"
    ],
    [
     "text",
@@ -2175,11 +2246,36 @@
      [
       "Side",
       "Yarn",
-      "Ends / share",
-      "Rate ₹/kg",
-      "g/m",
-      "kg/100 m",
-      "₹/m"
+      {
+       "content": "Ends / share",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "Rate ₹/kg",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "g/m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "kg/100 m",
+       "styles": {
+        "halign": "right"
+       }
+      },
+      {
+       "content": "₹/m",
+       "styles": {
+        "halign": "right"
+       }
+      }
      ]
     ],
     [
@@ -2206,25 +2302,65 @@
        "content": "Total",
        "colSpan": 4,
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "91.80",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "9.180",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       },
       {
        "content": "13.92",
        "styles": {
-        "fontStyle": "bold"
+        "fontStyle": "bold",
+        "fillColor": [
+         226,
+         240,
+         214
+        ],
+        "textColor": [
+         0,
+         42,
+         0
+        ]
        }
       }
      ]
@@ -2290,77 +2426,22 @@
    ],
    [
     "text",
-    "Units"
-   ],
-   [
-    "table",
     [
-     [
-      "Unit",
-      "Cost / pick",
-      "Profit / pick (with VATAV)",
-      "Profit / m",
-      "Per loom · single / double panna"
-     ]
-    ],
-    [
-     [
-      "Unit 2",
-      "₹0.200",
-      "+₹0.051",
-      "₹4.44",
-      "M/C 1–12: 147 / — spindles\nM/C 13–16: 126 / — spindles"
-     ],
-     [
-      "Chinese AJ",
-      "₹0.185",
-      "+₹0.066",
-      "₹5.75",
-      "Warp 17.8 / — kg/day\nWeft 14.3 / — kg/day"
-     ],
-     [
-      "Waterjet",
-      "₹0.165",
-      "+₹0.086",
-      "₹7.49",
-      "Warp 17.8 / — kg/day\nWeft 14.3 / — kg/day"
-     ]
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) /",
+     "picks; with VATAV, the VATAV discount is also taken off. Figures use the latest",
+     "yarn rates. Includes temporary yarn rates, not the yarn master: 75D Polyester",
+     "FDY 125.00/kg, 75D TPM 2000 S/Z delta 60.00/kg. Temporary loom RPM used, not",
+     "the fabric master: Poly Crepe 60 (RFD) single panna 900. Temporary sale rate",
+     "used, not the fabric master: Poly Crepe 60 (RFD) ₹47.00/m."
     ]
    ],
    [
     "text",
-    "Beam length"
-   ],
-   [
-    "table",
-    [
-     [
-      "Unit",
-      "Loom group",
-      "Beam length"
-     ]
-    ],
-    [
-     [
-      "Unit 2",
-      "Toyota · 190 cm",
-      "Not set"
-     ],
-     [
-      "Unit 2",
-      "Toyota · 280 cm",
-      "Not set"
-     ]
-    ]
+    "Poly Crepe 60 (RFD) · fabric spec sheet · <today> · Hanuman Group"
    ],
    [
     "text",
-    [
-     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
-     "taken off. Figures use the latest yarn rates. Includes temporary yarn rates, not the yarn master: 75D Polyester FDY 125.00/kg,",
-     "75D TPM 2000 S/Z delta 60.00/kg. Temporary loom RPM used, not the fabric master: Poly Crepe 60 (RFD) single panna 900.",
-     "Temporary sale rate used, not the fabric master: Poly Crepe 60 (RFD) ₹47.00/m."
-    ]
+    "Page 1 of 1"
    ]
   ],
   "xlsx": {
@@ -2396,14 +2477,6 @@
     [
      "Pick (PPI)",
      80
-    ],
-    [
-     "Loom RPM single panna",
-     900
-    ],
-    [
-     "Loom RPM double panna",
-     ""
     ],
     [
      "Total ends",
@@ -2514,10 +2587,6 @@
      0.2511
     ],
     [
-     "Units",
-     "Unit 2, Chinese AJ, Waterjet"
-    ],
-    [
      "Note",
      "Includes temporary yarn rates, not the yarn master: 75D Polyester FDY 125.00/kg, 75D TPM 2000 S/Z delta 60.00/kg. Temporary loom RPM used, not the fabric master: Poly Crepe 60 (RFD) single panna 900. Temporary sale rate used, not the fabric master: Poly Crepe 60 (RFD) ₹47.00/m."
     ]
@@ -2561,100 +2630,6 @@
      40.8,
      4.08,
      7.55
-    ]
-   ],
-   "Units": [
-    [
-     "Unit",
-     "Cost ₹/pick",
-     "Profit ₹/pick (with VATAV)",
-     "Profit ₹/m",
-     "Loom RPM single panna",
-     "Loom RPM double panna",
-     "TFO type",
-     "Spindles per loom (single panna)",
-     "Spindles per loom (double panna)",
-     "Warp kg/day per loom (single panna)",
-     "Weft kg/day per loom (single panna)",
-     "Warp kg/day per loom (double panna)",
-     "Weft kg/day per loom (double panna)"
-    ],
-    [
-     "Unit 2",
-     0.2,
-     0.0511,
-     4.44,
-     900,
-     "",
-     "M/C 1–12",
-     147,
-     "Set double panna RPM on the fabric",
-     "",
-     "",
-     "",
-     ""
-    ],
-    [
-     "Unit 2",
-     0.2,
-     0.0511,
-     4.44,
-     900,
-     "",
-     "M/C 13–16",
-     126,
-     "Set double panna RPM on the fabric",
-     "",
-     "",
-     "",
-     ""
-    ],
-    [
-     "Chinese AJ",
-     0.185,
-     0.0661,
-     5.75,
-     900,
-     "",
-     "",
-     "",
-     "",
-     17.8,
-     14.3,
-     "",
-     ""
-    ],
-    [
-     "Waterjet",
-     0.165,
-     0.0861,
-     7.49,
-     900,
-     "",
-     "",
-     "",
-     "",
-     17.8,
-     14.3,
-     "",
-     ""
-    ]
-   ],
-   "Beam length": [
-    [
-     "Unit",
-     "Loom group",
-     "Beam length (m)"
-    ],
-    [
-     "Unit 2",
-     "Toyota · 190 cm",
-     ""
-    ],
-    [
-     "Unit 2",
-     "Toyota · 280 cm",
-     ""
     ]
    ]
   },

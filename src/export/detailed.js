@@ -8,7 +8,12 @@ import {
 import { unitsOf } from '../describe.js';
 import { beamRowsOf, slotLabel } from '../machines.js';
 import { today } from '../schema.js';
-import { deliver, fileName, preloadExports, tempRatesText, writeBook } from './exports.js';
+import {
+  PDF_LOOK, deliver, fileName, loadLogo, pdfFooter, pdfHeader, pdfHeading, pdfTableLook, pdfTile, preloadExports, shareGsm,
+  tempRatesText, writeBook,
+} from './exports.js';
+
+export { setLogoForTests } from './exports.js';
 
 const round = (v, dp) => (v === null || v === undefined ? '' : Math.round(v * 10 ** dp) / 10 ** dp);
 // u: the unit Excel shows beside a number in label/value rows (tables carry it in the column heading)
@@ -48,14 +53,20 @@ function rateRow(yarn, idx) {
 //   costs: RM cost, RFD cost and its breakdown, unit cost per pick, profit per sale metre
 //   loom: loom realisation (key figure tile, Looms table column, its note)
 export const DETAILED_GROUPS = ['realisation', 'sale', 'yarn', 'costs', 'loom'];
-export const DETAILED_ALL = Object.freeze({ realisation: true, sale: true, yarn: true, costs: true, loom: true });
-export const DETAILED_NONE = Object.freeze({ realisation: false, sale: false, yarn: false, costs: false, loom: false });
+// Unit-wise (1.31.0) is the sixth switch and holds no ₹ of its own: off, everything tied to a unit is left out
+// (the unit block with cost and profit per pick and loom efficiency, Looms, Yarn-wise consumption, TFO and spindles,
+// spindle profitability, the Profit and Loom realisation tiles, Beam length, the Loom RPM rows of Construction, and
+// their method notes; the temporary RPM note still stays).
+export const DETAILED_SWITCHES = [...DETAILED_GROUPS, 'units'];
+export const DETAILED_ALL = Object.freeze({ realisation: true, sale: true, yarn: true, costs: true, loom: true, units: true });
+export const DETAILED_NONE = Object.freeze({ realisation: false, sale: false, yarn: false, costs: false, loom: false, units: false });
 export const detailedMoney = (m) => ({ ...DETAILED_ALL, ...(m || {}) });
 const GROUP_WORDS = { realisation: 'realisation', sale: 'sale rate', yarn: 'yarn rates', costs: 'costs', loom: 'loom realisation' };
 // "costs, yarn rates and profit" before 1.29.0; now what the file really holds
 export function detailedContains(money) {
   const m = detailedMoney(money);
-  const on = DETAILED_GROUPS.filter((g) => m[g]);
+  // loom realisation is per unit, so it is not in the file with Unit-wise off
+  const on = DETAILED_GROUPS.filter((g) => m[g] && (g !== 'loom' || m.units));
   if (on.length === DETAILED_GROUPS.length) return 'contains costs, yarn rates and profit';
   if (!on.length) return 'no ₹ figures';
   const w = on.map((g) => GROUP_WORDS[g]);
@@ -66,7 +77,8 @@ export function detailedModel(fabric, calc, idx, money) {
   const m = detailedMoney(money);
   const rfd = calc.finish === 'RFD';
   const per = rfd ? 'RFD m' : 'm';
-  const units = unitsOf(fabric.id, idx);
+  const allUnits = unitsOf(fabric.id, idx);
+  const units = m.units ? allUnits : [];
   const sections = [];
   const pctTxt = (v) => (num(v) === null ? '—' : `${num(v)}%`);
 
@@ -83,7 +95,10 @@ export function detailedModel(fabric, calc, idx, money) {
     // profit per pick goes with Realisation; the unit's cost per pick under it with Costs
     ...(profit && m.realisation ? [{ label: `Profit · ${costUnit.name}`, value: `${fmt.signedPick(profit.profitPerPick)} / pick`, v: round(profit.profitPerPick, 4), u: '₹ / pick', sub: m.costs ? `cost ${fmt.pick(profit.costPerPick)} / pick` : 'realisation with VATAV − unit cost' }] : []),
     ...(firstLoom && m.loom ? [{ label: `Loom realisation · ${fmt.int(firstLoom.width)} cm`, value: `${fmt.rs(firstLoom.value, 0)} / day`, v: round(firstLoom.value, 0), u: '₹ / loom / day', sub: `${loomUnit.name} · ${firstLoom.panna === 2 ? 'double' : 'single'} panna` }] : []),
-    { label: 'GSM (estimate)', value: fmt.n(calc.gsm, 1), v: round(calc.gsm, 1), u: 'g/m²', sub: `${fmt.n(calc.totalGpm, 1)} g/m · ${fmt.n(calc.kgPer100, 2)} kg/100 m` },
+    (() => {
+      const g = shareGsm(calc);
+      return { label: g.label, value: g.value === null ? '—' : fmt.n(g.value, 1), v: round(g.value, 1), u: 'g/m²', sub: `${fmt.n(calc.totalGpm, 1)} g/m · ${fmt.n(calc.kgPer100, 2)} kg/100 m` };
+    })(),
   ];
 
   sections.push({
@@ -98,8 +113,9 @@ export function detailedModel(fabric, calc, idx, money) {
       ['Weave', [fabric.weave, fabric.design_note].filter(Boolean).join(' · ') || '—'],
       ['Warp shortage', PCT(fabric.warp_shortage_pct)],
       ['Weft shortage', PCT(fabric.weft_shortage_pct)],
-      ['Loom RPM · single panna', calc.rpmSp ? (calc.rpmTempSp ? { ...I(calc.rpmSp), t: `${fmt.int(calc.rpmSp)} (temporary, master ${calc.masterRpmSp ? fmt.int(calc.masterRpmSp) : 'not set'})`, temp: true } : I(calc.rpmSp)) : '—'],
-      ['Loom RPM · double panna', calc.rpmDp ? (calc.rpmTempDp ? { ...I(calc.rpmDp), t: `${fmt.int(calc.rpmDp)} (temporary, master ${calc.masterRpmDp ? fmt.int(calc.masterRpmDp) : 'not set'})`, temp: true } : I(calc.rpmDp)) : '—'],
+      // loom RPM is unit-wise (1.31.0): out with Unit-wise off
+      ...(m.units ? [['Loom RPM · single panna', calc.rpmSp ? (calc.rpmTempSp ? { ...I(calc.rpmSp), t: `${fmt.int(calc.rpmSp)} (temporary, master ${calc.masterRpmSp ? fmt.int(calc.masterRpmSp) : 'not set'})`, temp: true } : I(calc.rpmSp)) : '—'],
+      ['Loom RPM · double panna', calc.rpmDp ? (calc.rpmTempDp ? { ...I(calc.rpmDp), t: `${fmt.int(calc.rpmDp)} (temporary, master ${calc.masterRpmDp ? fmt.int(calc.masterRpmDp) : 'not set'})`, temp: true } : I(calc.rpmDp)) : '—']] : []),
       ['Finish', calc.finish],
       ['TFO class', calc.tfoClass],
       ...(fabric.end_use ? [['End use', fabric.end_use]] : []),
@@ -201,15 +217,15 @@ export function detailedModel(fabric, calc, idx, money) {
       ['sale', ['Sale date', fmt.date(fabric.sale_date) || '—']],
       ['costs', [rfd ? 'RFD cost' : 'RM cost', R(rfd ? calc.rfdCost : calc.rmCost, 2, ` / ${per}`)]],
       ['realisation', ['Realisation without VATAV', R(calc.realisationPerM, 2, ` / ${per}`), 'sale rate − cost']],
-      [null, ['Picks per sale metre', N(calc.picksPerSaleM, 2), rfd ? 'PPI × greige m per RFD m' : 'PPI']],
       ['realisation', ['Realisation per pick without VATAV', PK(calc.realisationPerPick)]],
       ['sale', ['VATAV', calc.vatavPct ? cell(`${fmt.n(calc.vatavPct, calc.vatavPct % 1 ? 1 : 0)}% · −${fmt.rs(calc.vatavAmount)} / ${per}`, round(calc.vatavAmount, 2), `₹ / ${per} (VATAV ${fmt.n(calc.vatavPct, calc.vatavPct % 1 ? 1 : 0)}%)`) : cell('None', 0), calc.vatavPct ? '₹ off the sale rate' : '']],
       ['realisation', ['Realisation with VATAV', R(calc.realisationNetPerM, 2, ` / ${per}`)]],
       ['realisation', { total: true, cells: ['Realisation per pick with VATAV', PK(calc.realisationNetPerPick)] }],
   ].filter(([gr]) => !gr || m[gr]).map(([, r]) => r);
   const saleTitle = [m.sale ? 'Sale rate' : null, m.realisation ? 'realisation' : null].filter(Boolean).join(' and ');
-  sections.push({
-    title: saleTitle ? saleTitle.charAt(0).toUpperCase() + saleTitle.slice(1) : 'Picks per sale metre',
+  // Picks per sale metre was dropped in 1.31.0, so with Sale rate and Realisation off there is no section
+  if (saleRows.length) sections.push({
+    title: saleTitle.charAt(0).toUpperCase() + saleTitle.slice(1),
     kind: 'kv',
     single: true,
     rows: saleRows,
@@ -323,9 +339,10 @@ export function detailedModel(fabric, calc, idx, money) {
       if (spRow) sections.push({ title: `TFO · spindle profitability · ${u.name}`, kind: 'kv', single: true, rows: [spRow] });
     }
   }
-  if (!units.length) sections.push({ title: 'Units', kind: 'kv', single: true, rows: [['Units', 'Not assigned to any unit yet: no profit, loom or spindle figures']] });
+  if (m.units && !units.length) sections.push({ title: 'Units', kind: 'kv', single: true, rows: [['Units', 'Not assigned to any unit yet: no profit, loom or spindle figures']] });
 
-  const beams = beamRowsOf(fabric.id, idx);
+  // beam length is per unit and loom group, so it goes with Unit-wise (1.31.0)
+  const beams = m.units ? beamRowsOf(fabric.id, idx) : [];
   if (beams.length) {
     sections.push({
       title: 'Beam length',
@@ -336,17 +353,18 @@ export function detailedModel(fabric, calc, idx, money) {
     });
   }
 
-  const profitNote = [
+  const profitNote = !m.units ? '' : [
     m.loom ? 'Loom realisation = realisation per pick with VATAV × metres per loom per day × PPI.' : '',
     m.realisation ? 'Profit per pick = realisation per pick with VATAV − the unit\'s cost per pick.' : '',
   ].filter(Boolean).join(' ');
   const notes = [
     `Consumption: warp g/m = ends × denier ÷ 9000 × (1 + warp shortage); weft g/m = PPI × reed space × pick share × denier ÷ 9000 × (1 + weft shortage). Shortage here: warp ${pctTxt(fabric.warp_shortage_pct)}, weft ${pctTxt(fabric.weft_shortage_pct)}.`,
+    ...(shareGsm(calc).onReed ? ['GSM is worked out on reed space because no greige width is set, so it reads low; the real GSM (on greige width) is higher.'] : []),
     ...(m.yarn ? ['A TPM yarn costs its base yarn rate plus its delta; a temporary base rate or delta, where typed, is used in their place.'] : []),
-    ...(m.realisation ? [`Realisation per pick = (sale rate − ${rfd ? 'RFD cost' : 'RM cost'}) ÷ picks per sale metre; with VATAV, the VATAV amount is also taken off.${rfd && m.costs ? ' RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate.' : ''}`] : []),
-    'Loom metres per day = RPM × 1440 × loom efficiency ÷ (PPI × 39.37) × panna. Looms narrower than 250 cm use the fabric\'s single panna RPM; 280 cm looms use its double panna RPM (the 280 cm RPM), single or double panna, and single panna is not doubled. Loom efficiency is the unit\'s. Double panna where two reed spaces fit the loom\'s reed width (÷ 2.54, + 0.5″).',
+    ...(m.realisation ? [`Realisation per pick = (sale rate − ${rfd ? 'RFD cost' : 'RM cost'}) ÷ picks per sale metre (${rfd ? 'PPI × greige m per RFD m' : 'the PPI'}); with VATAV, the VATAV amount is also taken off.${rfd && m.costs ? ' RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate.' : ''}`] : []),
+    ...(m.units ? ['Loom metres per day = RPM × 1440 × loom efficiency ÷ (PPI × 39.37) × panna. Looms narrower than 250 cm use the fabric\'s single panna RPM; 280 cm looms use its double panna RPM (the 280 cm RPM), single or double panna, and single panna is not doubled. Loom efficiency is the unit\'s. Double panna where two reed spaces fit the loom\'s reed width (÷ 2.54, + 0.5″).'] : []),
     ...(profitNote ? [profitNote] : []),
-    ...(calc.tpmLines.length ? [`TFO kg per spindle per day = TFO RPM ÷ TPM × 1440 × TFO efficiency × denier ÷ 9,000,000; the RPM is stored already × 2. kg per side = per spindle × spindles per side (252). Spindles per loom = TPM kg a loom uses per day ÷ kg per spindle per day.${m.realisation ? ' Spindle profitability = profit per pick ÷ spindles a single panna loom needs on the old TFO machines.' : ''}`] : []),
+    ...(m.units && calc.tpmLines.length ? [`TFO kg per spindle per day = TFO RPM ÷ TPM × 1440 × TFO efficiency × denier ÷ 9,000,000; the RPM is stored already × 2. kg per side = per spindle × spindles per side (252). Spindles per loom = TPM kg a loom uses per day ÷ kg per spindle per day.${m.realisation ? ' Spindle profitability = profit per pick ÷ spindles a single panna loom needs on the old TFO machines.' : ''}`] : []),
     ...(m.yarn ? ['Figures use the latest yarn rates.'] : []),
     ...(tempRatesText(idx, m) ? [tempRatesText(idx, m)] : []),
   ];
@@ -359,31 +377,11 @@ export function detailedModel(fabric, calc, idx, money) {
     sections,
     notes,
     tempText: tempRatesText(idx, m),
-    contains: detailedContains(m),
+    contains: `${detailedContains(m)}${m.units ? '' : '; no unit-wise figures'}`,
   };
 }
 
 // ---------- PDF ----------
-let logoData;
-async function loadLogo() {
-  if (logoData !== undefined) return logoData;
-  try {
-    const res = await fetch('./icon-192.png');
-    if (!res.ok) throw new Error('no logo');
-    const blob = await res.blob();
-    logoData = await new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = () => resolve(String(r.result));
-      r.onerror = () => reject(new Error('no logo'));
-      r.readAsDataURL(blob);
-    });
-  } catch {
-    logoData = null;
-  }
-  return logoData;
-}
-export const setLogoForTests = (data) => { logoData = data; };
-
 export async function buildDetailedPdf(fabric, calc, idx, money) {
   const { jsPDF, autoTable, font } = await preloadExports();
   const m = detailedModel(fabric, calc, idx, money);
@@ -394,72 +392,36 @@ export async function buildDetailedPdf(fabric, calc, idx, money) {
   doc.addFont('DejaVuSans-Bold.ttf', 'DejaVu', 'bold');
   doc.setFont('DejaVu', 'normal');
   const PW = 210, PH = 297, M = 14, W = PW - 2 * M;
-  const ink = [28, 28, 30], grey = [108, 108, 112], green = [43, 106, 31], deep = [0, 42, 0], line = [209, 209, 214], fill = [244, 246, 241];
+  const { ink, grey, line } = PDF_LOOK;
+  const fill = PDF_LOOK.tileAccent;
 
-  // header: logo, report name, fabric, date
-  const logo = await loadLogo();
-  let x0 = M;
-  if (logo) {
-    try {
-      doc.addImage(logo, 'PNG', M, 10, 16, 16);
-      x0 = M + 20;
-    } catch {
-      /* logo optional */
-    }
-  }
-  doc.setFontSize(9);
-  doc.setTextColor(...green);
-  doc.setFont('DejaVu', 'bold');
-  doc.text('HANUMAN GROUP · DETAILED FABRIC REPORT', x0, 14);
-  doc.setFont('DejaVu', 'bold');
-  doc.setFontSize(18);
-  doc.setTextColor(...ink);
-  doc.text(m.title, x0, 21.5);
-  doc.setFont('DejaVu', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(...grey);
-  doc.text(m.subtitle, x0, 26.5);
-  doc.text(fmt.date(m.date), PW - M, 14, { align: 'right' });
-  doc.setFont('DejaVu', 'bold');
-  doc.setTextColor(158, 90, 0);
-  doc.text('INTERNAL', PW - M, 19, { align: 'right' });
-  doc.setFont('DejaVu', 'normal');
-  doc.setTextColor(...grey);
-  doc.setDrawColor(...green);
-  doc.setLineWidth(0.6);
-  doc.line(M, 30, PW - M, 30);
-  let y = 35;
+  // header band (1.31.0): logo, report name, fabric, date, INTERNAL chip
+  let y = pdfHeader(doc, {
+    logo: await loadLogo(),
+    kicker: 'HANUMAN GROUP · DETAILED FABRIC REPORT',
+    title: m.title,
+    subtitle: m.subtitle,
+    right: fmt.date(m.date),
+    chip: 'INTERNAL',
+  });
 
   // key figures: tiles, four to a row
-  const cols = 4, gap = 3, tw = (W - gap * (cols - 1)) / cols, th = 19;
+  const cols = 4, gap = 3, tw = (W - gap * (cols - 1)) / cols, th = 20;
+  // a part-filled last row stretches its tiles across the page, so no lone tile and no gap (1.31.0)
   m.figures.forEach((f, i) => {
-    const cx = M + (i % cols) * (tw + gap);
-    const cy = y + Math.floor(i / cols) * (th + gap);
-    doc.setFillColor(...(f.accent ? [232, 241, 226] : fill));
-    doc.roundedRect(cx, cy, tw, th, 1.8, 1.8, 'F');
-    doc.setFontSize(7);
-    doc.setTextColor(...grey);
-    doc.text(f.label.toUpperCase(), cx + 3, cy + 5, { maxWidth: tw - 6 });
-    doc.setFont('DejaVu', 'bold');
-    doc.setFontSize(11.5);
-    doc.setTextColor(...(f.accent ? green : ink));
-    doc.text(f.value, cx + 3, cy + 11.5, { maxWidth: tw - 6 });
-    doc.setFont('DejaVu', 'normal');
-    doc.setFontSize(7);
-    doc.setTextColor(...grey);
-    doc.text(doc.splitTextToSize(f.sub || '', tw - 6)[0] || '', cx + 3, cy + 16);
+    const row = Math.floor(i / cols);
+    const inRow = Math.min(cols, m.figures.length - row * cols);
+    const w = inRow === cols ? tw : (W - gap * (inRow - 1)) / inRow;
+    pdfTile(doc, M + (i % cols) * (w + gap), y + row * (th + gap), w, th, f);
   });
-  y += Math.ceil(m.figures.length / cols) * (th + gap) + 4;
+  y += Math.ceil(m.figures.length / cols) * (th + gap) + 5;
 
   const heading = (s) => {
     if (y > PH - 40) {
       doc.addPage();
       y = 18;
     }
-    doc.setFont('DejaVu', 'bold');
-    doc.setFontSize(11);
-    doc.setTextColor(...deep);
-    doc.text(s.title, M, y);
+    pdfHeading(doc, M, y, s.title);
     if (s.note) {
       doc.setFont('DejaVu', 'normal');
       doc.setFontSize(8);
@@ -471,16 +433,17 @@ export async function buildDetailedPdf(fabric, calc, idx, money) {
         doc.text(s.note, M, y);
       }
     }
-    y += 2;
+    y += 2.5;
   };
+  const look = pdfTableLook();
   const base = {
+    ...look,
     margin: { left: M, right: M, top: 16, bottom: 16 },
     tableWidth: W,
-    styles: { font: 'DejaVu', fontSize: 8.5, cellPadding: 1.6, textColor: ink, lineColor: line, lineWidth: 0.1, overflow: 'linebreak' },
-    headStyles: { font: 'DejaVu', fontStyle: 'bold', fillColor: [236, 240, 232], textColor: deep, fontSize: 8 },
-    theme: 'grid',
+    styles: { ...look.styles, fontSize: 8.5, cellPadding: { top: 1.7, bottom: 1.7, left: 2.2, right: 2.2 } },
+    headStyles: { ...look.headStyles, fontSize: 7.8 },
   };
-  const totalStyle = { fontStyle: 'bold', fillColor: fill };
+  const totalStyle = { fontStyle: 'bold', fillColor: fill, textColor: PDF_LOOK.deep };
   const rowCells = (r) => (Array.isArray(r) ? r : r.cells);
 
   for (const s of m.sections) {
@@ -504,7 +467,7 @@ export async function buildDetailedPdf(fabric, calc, idx, money) {
       autoTable(doc, {
         ...base,
         startY: y,
-        head: [s.head],
+        head: [s.head.map((h, i) => (s.align && s.align[i] === 'right' ? { content: h, styles: { halign: 'right' } } : h))],
         body: s.rows.map((r) => rowCells(r).map((c) => (Array.isArray(r) ? pdfText(c) : { content: pdfText(c), styles: totalStyle }))),
         columnStyles,
       });
@@ -548,19 +511,7 @@ export async function buildDetailedPdf(fabric, calc, idx, money) {
     y += lines.length * 3.5 + 1.2;
   }
 
-  // footer on every page
-  const pages = doc.getNumberOfPages();
-  for (let p = 1; p <= pages; p++) {
-    doc.setPage(p);
-    doc.setFont('DejaVu', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(...grey);
-    doc.setDrawColor(...line);
-    doc.setLineWidth(0.2);
-    doc.line(M, PH - 11, PW - M, PH - 11);
-    doc.text(`${m.title} · detailed report · ${fmt.date(m.date)} · internal: ${m.contains}`, M, PH - 7);
-    doc.text(`Page ${p} of ${pages}`, PW - M, PH - 7, { align: 'right' });
-  }
+  pdfFooter(doc, `${m.title} · detailed report · ${fmt.date(m.date)} · internal: ${m.contains}`);
   return doc.output('blob');
 }
 
