@@ -312,18 +312,18 @@ export const TOPICS = [
     steps: [
       'Open the fabric or plan you want to send.',
       'Tap the share button at the top.',
-      'Choose **Basic**, **Includes ₹** or **Detailed** at the top.',
+      'Choose **Basic** or **Detailed** at the top.',
       'Choose **PDF**, **Excel** or WhatsApp.',
       'Send it from the share screen of your phone.',
     ],
     tips: [
       '**Basic** has no ₹ figures at all. It is safe to send to anyone.',
-      '**Includes ₹** adds realisation, sale rate, yarn rates and costs.',
-      'Under **Includes ₹**, tap **Advanced** to switch off any of these four. Each works on its own.',
-      'A part you switch off is left out of the PDF, Excel and WhatsApp text.',
-      '**Detailed** adds yarn rates, the full cost breakdown, loom realisation and spindle figures.',
-      'It also shows the RPM and efficiency each figure assumes. It comes as PDF or Excel only.',
-      'The share screen opens on **Basic** every time, so ₹ figures are never sent by mistake.',
+      '**Detailed** has every figure: yarn rates, the full cost breakdown, realisation, loom realisation and spindle figures.',
+      'Its PDF and Excel also show the RPM and efficiency each figure assumes.',
+      'Under **Detailed**, tap **Advanced** to switch off realisation, sale rate, yarn rates, costs or loom realisation. Each works on its own.',
+      'A part you switch off is left out of the file completely.',
+      'With **Detailed**, WhatsApp and Copy text send the Basic text, plus the price when **Sale rate** is on.',
+      'The share screen opens on **Basic** every time, so you always start with no ₹ figures.',
       'For plans, turn off **Include revenue (₹)** to send a copy with no money figures.',
       'Saved plans can be shared from **Saved plans** without opening them.',
       'File names start with the date, like 2026-10-29_plan_weavelon-2.',
@@ -365,6 +365,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.29.0', 'Fabric share has two kinds again: Basic (no ₹) and Detailed. Includes ₹ is gone. Under Detailed, Advanced switches off realisation, sale rate, yarn rates, costs or loom realisation. In Detailed, spindle profitability sits under the TFO and spindles table. The Basic Excel file now ends in _spec.xlsx.'],
   ['1.28.0', 'Fabric share: Basic now has no ₹ figures at all. Choose Includes ₹ to add them. Advanced switches off realisation, sale rate, yarn rates or costs.'],
   ['1.27.0', 'One search for the whole app, with Favourites, Recent and keys (/ or Ctrl K, 1–5 for tabs). Jump buttons light up on a laptop too. A TPM yarn shows its kg per spindle and per machine at each unit. The temporary TPM rate is now two boxes, delta and base rate. Try a loom RPM on a fabric, then save it or reset it.'],
   ['1.26.2', 'The Planner now counts a blank weft pick share as 1, the same as the fabric page, so both show the same yarn kg and cost.'],

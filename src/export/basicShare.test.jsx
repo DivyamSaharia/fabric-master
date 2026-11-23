@@ -1,4 +1,5 @@
-// 1.28.0: fabric share Basic (no money) and Includes ₹ (with Advanced switches per money group).
+// 1.28.0: fabric share Basic (no money) and the money switches of its builders. Since 1.29.0 the app sends Basic
+// with no money only; the Includes ₹ share is gone (its switches are on Detailed: detailedShare.test.jsx).
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import fs from 'node:fs';
 import { render, screen, waitFor, fireEvent, cleanup } from '@testing-library/preact';
@@ -51,7 +52,7 @@ const has = (all, g) => all.some((s) => MARK[g].some((re) => re.test(s)));
 const combos = [];
 for (let n = 0; n < 16; n++) combos.push(Object.fromEntries(MONEY_GROUPS.map((g, i) => [g, !!(n & (1 << i))])));
 
-describe('Includes ₹ with every switch on = the share before 1.28.0, exactly', () => {
+describe('Builders with every switch on = the share before 1.28.0, exactly', () => {
   GOLDEN_CASES.forEach(([id, t], i) => {
     it(`${id}${Object.keys(t).length ? ' with temporary rates' : ''}: PDF, Excel and WhatsApp/Copy text`, async () => {
       const o = await outputs(id, t, ALL_MONEY);
@@ -129,40 +130,16 @@ describe('Export sheet', () => {
     resetListState();
     await resetDemo();
   });
-  it('opens on Basic; Includes ₹ shows Advanced with four switches, each on its own; reopening resets', async () => {
+  it('has two kinds only: Basic with no ₹ and no Advanced, and Detailed', async () => {
     window.location.hash = '#/fabric/f_crepe';
     render(<App />);
     await screen.findByText('Finishing · RFD');
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
     await screen.findByText('PDF spec sheet');
     expect(screen.getByRole('button', { name: 'Basic' }).getAttribute('aria-pressed')).toBe('true');
-    const preview = () => document.querySelector('.wa-bubble').textContent;
-    expect(preview()).not.toMatch(/₹/);
+    expect(screen.queryByRole('button', { name: 'Includes ₹' })).toBeNull();
+    expect(screen.getAllByRole('button', { name: /^(Basic|Detailed)$/ }).length).toBe(2);
+    expect(document.querySelector('.wa-bubble').textContent).not.toMatch(/₹/);
     expect(screen.queryByText('Advanced')).toBeNull();
-    fireEvent.click(screen.getByRole('button', { name: 'Includes ₹' }));
-    await screen.findByText('Advanced');
-    expect(preview()).toMatch(/Price ₹45\.00/);
-    expect(screen.queryByRole('button', { name: 'Sale rate' })).toBeNull();
-    fireEvent.click(screen.getByText('Advanced'));
-    for (const l of ['Realisation', 'Sale rate', 'Yarn rates', 'Costs']) expect(screen.getByRole('button', { name: l }).getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'Sale rate' }));
-    await waitFor(() => expect(preview()).not.toMatch(/Price/));
-    expect(screen.getByRole('button', { name: 'Costs' }).getAttribute('aria-pressed')).toBe('true');
-    expect(document.body.textContent).toMatch(/Contains ₹: realisation, yarn rates, costs\./);
-    fireEvent.click(screen.getByRole('button', { name: 'Costs' }));
-    await waitFor(() => expect(document.body.textContent).toMatch(/Contains ₹: realisation, yarn rates\./));
-    for (const l of ['Realisation', 'Yarn rates']) fireEvent.click(screen.getByRole('button', { name: l }));
-    await waitFor(() => expect(document.body.textContent).toMatch(/same as Basic/));
-    for (const l of ['Realisation', 'Yarn rates']) fireEvent.click(screen.getByRole('button', { name: l }));
-    // close and open again: Basic, Advanced shut, all on
-    fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]);
-    await waitFor(() => expect(screen.queryByText('PDF spec sheet')).toBeNull());
-    fireEvent.click(screen.getByRole('button', { name: 'Export' }));
-    await screen.findByText('PDF spec sheet');
-    expect(screen.getByRole('button', { name: 'Basic' }).getAttribute('aria-pressed')).toBe('true');
-    fireEvent.click(screen.getByRole('button', { name: 'Includes ₹' }));
-    fireEvent.click(await screen.findByText('Advanced'));
-    for (const l of ['Realisation', 'Sale rate', 'Yarn rates', 'Costs']) expect(screen.getByRole('button', { name: l }).getAttribute('aria-pressed')).toBe('true');
-    expect(preview()).toMatch(/Price ₹45\.00/);
   });
 });

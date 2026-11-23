@@ -76,7 +76,7 @@ describe('Detailed share', () => {
       expect(xl.size).toBeGreaterThan(3000);
     }
   }, 60000);
-  it('Export sheet opens on Basic; Detailed shows only PDF and Excel, WhatsApp and Copy stay Basic', async () => {
+  it('Export sheet opens on Basic; Detailed shows only PDF and Excel, WhatsApp and Copy are Basic text plus the price', async () => {
     await open('#/fabric/f_crepe');
     await screen.findByText('Finishing · RFD');
     fireEvent.click(screen.getByRole('button', { name: 'Export' }));
@@ -86,7 +86,7 @@ describe('Detailed share', () => {
     await screen.findByText('Detailed PDF');
     expect(screen.getByText('Detailed Excel')).toBeTruthy();
     expect(screen.queryByText('PDF spec sheet')).toBeNull();
-    expect(screen.getAllByText('Basic text, no ₹ figures').length).toBe(2);
+    expect(screen.getAllByText('Contains price · Basic text with the price').length).toBe(2);
     // close and open again: back on Basic
     fireEvent.click(screen.getAllByRole('button', { name: 'Close' })[0]);
     await waitFor(() => expect(screen.queryByText('Detailed PDF')).toBeNull());

@@ -34,4 +34,10 @@ it.skipIf(!OUT)('writes sample Detailed exports', async () => {
     fs.writeFileSync(`${OUT}/sample_${id}_detailed.pdf`, Buffer.from(await (await buildDetailedPdf(f, c, idx)).arrayBuffer()));
     fs.writeFileSync(`${OUT}/sample_${id}_detailed.xlsx`, Buffer.from(await (await buildDetailedXlsx(f, c, idx)).arrayBuffer()));
   }
+  // 1.29.0: Detailed with ₹ switches off (all off, and Costs + Loom realisation off)
+  const f = idx.fabricsById.f_crepe;
+  const c = fabricCalc(f, idx);
+  const none = { realisation: false, sale: false, yarn: false, costs: false, loom: false };
+  fs.writeFileSync(`${OUT}/sample_f_crepe_detailed_no-money.pdf`, Buffer.from(await (await buildDetailedPdf(f, c, idx, none)).arrayBuffer()));
+  fs.writeFileSync(`${OUT}/sample_f_crepe_detailed_no-costs-no-loom.pdf`, Buffer.from(await (await buildDetailedPdf(f, c, idx, { costs: false, loom: false })).arrayBuffer()));
 }, 60000);

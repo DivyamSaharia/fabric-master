@@ -9,13 +9,15 @@ const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.s
 export const slug = (s) => String(s || 'fabric').toLowerCase().normalize('NFKD').replace(/×/g, 'x').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'fabric';
 export const fileName = (name, suffix, ext) => `${today()}_${slug(name)}${suffix ? `_${suffix}` : ''}.${ext}`;
 
-// ₹ switches for the fabric share (1.28.0). Basic = NO_MONEY; Includes ₹ = ALL_MONEY, or any mix of the four groups
-// from its Advanced switches. A group switched off is left out completely (no row, no blank, no label):
+// ₹ groups of the Basic spec sheet builders (1.28.0). Since 1.29.0 the app always sends Basic with NO_MONEY: the
+// Includes ₹ share is gone and its switches moved to the Detailed share (detailed.js, which adds loom realisation).
+// The builders still take any mix, so the 1.27.0 saved copy keeps guarding them. A group switched off is left out
+// completely (no row, no blank, no label):
 //   realisation: realisation per pick and per m, with and without VATAV; profit per pick
-//   sale: selling price, sale date, VATAV % and ₹, price basis
+//   sale: selling price, sale date, VATAV % and ₹, price basis (also the price line of the WhatsApp/Copy text)
 //   yarn: per-yarn rates, rate basis, per-yarn ₹/m (and their total)
 //   costs: RM cost, processing, transport, brokering, finishing/RFD cost, unit cost per pick, profit per m
-// The method note under the PDF goes with realisation. The Detailed share and the fabric list export ignore this.
+// The method note under the PDF goes with realisation. The fabric list export ignores this.
 export const MONEY_GROUPS = ['realisation', 'sale', 'yarn', 'costs'];
 export const ALL_MONEY = Object.freeze({ realisation: true, sale: true, yarn: true, costs: true });
 export const NO_MONEY = Object.freeze({ realisation: false, sale: false, yarn: false, costs: false });
@@ -449,7 +451,7 @@ export async function exportFabricXlsx(fabric, calc, idx, opts = {}) {
   if (beamRows.length) {
     XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, beamRows.map((b) => ({ Unit: b.unit.name, 'Loom group': slotLabel(b), 'Beam length (m)': b.length ?? '' }))), 'Beam length');
   }
-  await deliver(writeBook(XLSX, wb), fileName(fabric.name, 'costing', 'xlsx'), `${fabric.name} costing`, opts);
+  await deliver(writeBook(XLSX, wb), fileName(fabric.name, 'spec', 'xlsx'), `${fabric.name} spec sheet`, opts);
 }
 
 export async function exportListXlsx(rows, idx, unit) {

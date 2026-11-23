@@ -12,8 +12,8 @@ import { Badge, Button, Chip, Empty, Field, FoldSection, Icon, IconButton, NavBa
 import { GuideHint, HelpButton } from './guide.jsx';
 import { FABRIC_SECTIONS } from '../search.js';
 import { TempPriceSection, TempRateRow, TempRpmSection, TempTpmRow } from './tempRates.jsx';
-import { ALL_MONEY, NO_MONEY, exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
-import { exportFabricPdfDetailed, exportFabricXlsxDetailed } from '../export/detailed.js';
+import { NO_MONEY, exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
+import { DETAILED_ALL, exportFabricPdfDetailed, exportFabricXlsxDetailed } from '../export/detailed.js';
 
 const WEAVES = ['Plain', 'Cam', 'Dobby'];
 const SPINDLE_SORT = { value: 'spindle', label: 'Spindle profit ↓' };
@@ -1195,35 +1195,35 @@ function PhotoSheet({ photo, onClose }) {
   );
 }
 
-// ₹ switches under Includes ₹ → Advanced (1.28.0): one per money group, each on its own.
+// ₹ switches under Detailed → Advanced (1.29.0): one per money group, each on its own. Basic has no ₹ at all.
 export const MONEY_SWITCHES = [
-  ['realisation', 'Realisation', 'Per pick and per m, with and without VATAV; profit per pick'],
-  ['sale', 'Sale rate', 'Selling price, sale date, VATAV'],
-  ['yarn', 'Yarn rates', 'Rate of each yarn and its ₹ per m'],
-  ['costs', 'Costs', 'RM cost, finishing, RFD cost, unit cost per pick, profit per m'],
+  ['realisation', 'Realisation', 'Per pick and per m, with and without VATAV; profit per pick; spindle profitability'],
+  ['sale', 'Sale rate', 'Sale rate, sale date, VATAV; the price line in WhatsApp and Copy text'],
+  ['yarn', 'Yarn rates', 'Yarn rates and raw material cost tables'],
+  ['costs', 'Costs', 'RM cost, RFD cost breakdown, unit cost per pick, profit per m'],
+  ['loom', 'Loom realisation', '₹ per loom per day'],
 ];
 
 function ExportSheet({ open, onClose, fabric, calc, idx }) {
   const [toDrive, setToDrive] = useState(backendMode() === 'sheet');
   const [busy, setBusy] = useState('');
-  // Basic (no money at all), Includes ₹ (every money figure, or the ones switched on under Advanced), or Detailed
-  // (internal, PDF and Excel only). Back to Basic, Advanced closed and every switch on, each time the sheet opens.
+  // Basic (no money at all) or Detailed (internal; every figure, or only the ₹ groups switched on under Advanced).
+  // Back to Basic, Advanced closed and every switch on, each time the sheet opens.
   const [level, setLevel] = useState('basic');
   const [advanced, setAdvanced] = useState(false);
-  const [sw, setSw] = useState({ ...ALL_MONEY });
+  const [sw, setSw] = useState({ ...DETAILED_ALL });
   useEffect(() => {
     if (open) {
       setLevel('basic');
       setAdvanced(false);
-      setSw({ ...ALL_MONEY });
+      setSw({ ...DETAILED_ALL });
       preloadExports().catch(() => {});
     }
   }, [open]);
   const detailed = level === 'detailed';
-  // what the PDF, Excel, WhatsApp and Copy text carry
-  const money = level === 'money' ? sw : NO_MONEY;
-  const anyMoney = Object.values(money).some(Boolean);
-  const text = whatsappText(fabric, calc, idx, money);
+  // Basic carries no money anywhere; Detailed's WhatsApp and Copy text carry the price only with Sale rate on
+  const text = whatsappText(fabric, calc, idx, detailed ? sw : NO_MONEY);
+  const priced = detailed && sw.sale && calc.price !== null;
   const run = async (kind, fn) => {
     setBusy(kind);
     try {
@@ -1234,23 +1234,21 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
     setBusy('');
   };
   const sheetMode = backendMode() === 'sheet';
-  const off = MONEY_SWITCHES.filter(([k]) => !sw[k]).map(([, l]) => l);
+  const on = MONEY_SWITCHES.filter(([k]) => sw[k]).map(([, l]) => l.toLowerCase());
+  const detailedFooter = on.length === MONEY_SWITCHES.length
+    ? 'Every figure, with costs, yarn rates and profit. Internal use only.'
+    : on.length
+      ? `Contains ₹: ${on.join(', ')}. Internal use only.`
+      : 'Every ₹ switch is off: construction, consumption, looms and TFO only, no ₹ figures.';
   return (
     <Sheet open={open} onClose={onClose} title="Export">
-      <Section
-        header="Report"
-        footer={detailed
-          ? 'Every figure, with costs, yarn rates and profit. Internal use only.'
-          : level === 'money'
-            ? (!anyMoney ? 'Every ₹ switch is off, so this is the same as Basic.' : off.length ? `Contains ₹: ${MONEY_SWITCHES.filter(([k]) => sw[k]).map(([, l]) => l.toLowerCase()).join(', ')}. Not for buyers unless you mean it.` : 'Contains every ₹ figure: realisation, sale rate, yarn rates and costs. Not for buyers unless you mean it.')
-            : 'No ₹ figures at all. Safe to send to anyone.'}
-      >
-        <div class="row"><div class="seg-fill"><Segmented label="Report" options={[{ value: 'basic', label: 'Basic' }, { value: 'money', label: 'Includes ₹' }, { value: 'detailed', label: 'Detailed' }]} value={level} onChange={setLevel} /></div></div>
-        {level === 'money' ? (
+      <Section header="Report" footer={detailed ? detailedFooter : 'No ₹ figures at all. Safe to send to anyone.'}>
+        <div class="row"><div class="seg-fill"><Segmented label="Report" options={[{ value: 'basic', label: 'Basic' }, { value: 'detailed', label: 'Detailed' }]} value={level} onChange={setLevel} /></div></div>
+        {detailed ? (
           <>
             <button type="button" class="row link-row" aria-expanded={advanced ? 'true' : 'false'} onClick={() => setAdvanced(!advanced)}>
               <span class="row-label">Advanced</span>
-              <span class="fold-mark">{advanced ? 'Hide' : 'Choose ₹ figures'}<Icon.chevron size={11} /></span>
+              <span class="fold-mark">{advanced ? 'Hide' : on.length === MONEY_SWITCHES.length ? 'Choose ₹ figures' : `${on.length} of ${MONEY_SWITCHES.length} on`}<Icon.chevron size={11} /></span>
             </button>
             {advanced ? MONEY_SWITCHES.map(([k, label, sub]) => (
               <div class="row money-switch">
@@ -1261,20 +1259,20 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
           </>
         ) : null}
       </Section>
-      <Section header={`${fabric.name} · ${calc.finish}`} footer={detailed ? 'WhatsApp and Copy text send the Basic text, with no ₹ figures.' : null}>
+      <Section header={`${fabric.name} · ${calc.finish}`} footer={detailed ? (priced ? 'WhatsApp and Copy text add the price to the Basic text. Turn off Sale rate to leave it out.' : 'WhatsApp and Copy text send the Basic text, with no ₹ figures.') : null}>
         {detailed ? (
           <>
-            <Row label="Detailed PDF" sub="Internal · key figures, every table, how each figure is worked out" onClick={() => run('dpdf', () => exportFabricPdfDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'dpdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'dpdf'} />
-            <Row label="Detailed Excel" sub="The same sections on one sheet, numbers as numbers" onClick={() => run('dxlsx', () => exportFabricXlsxDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'dxlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'dxlsx'} />
+            <Row label="Detailed PDF" sub="Internal · key figures, every table, how each figure is worked out" onClick={() => run('dpdf', () => exportFabricPdfDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive, money: sw }))} value={busy === 'dpdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'dpdf'} />
+            <Row label="Detailed Excel" sub="The same sections on one sheet, numbers as numbers" onClick={() => run('dxlsx', () => exportFabricXlsxDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive, money: sw }))} value={busy === 'dxlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'dxlsx'} />
           </>
         ) : (
           <>
-            <Row label="PDF spec sheet" sub={anyMoney ? 'Contains ₹ · photo, construction, consumption and the ₹ figures above' : 'Photo, construction, consumption, no ₹ figures'} onClick={() => run('pdf', () => exportFabricPdf(fabric, calc, idx, { toDrive: sheetMode && toDrive, money }))} value={busy === 'pdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'pdf'} />
-            <Row label="Excel sheet" sub={anyMoney ? 'Contains ₹ · construction, consumption and the ₹ figures above' : 'Construction and consumption, no ₹ figures'} onClick={() => run('xlsx', () => exportFabricXlsx(fabric, calc, idx, { toDrive: sheetMode && toDrive, money }))} value={busy === 'xlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'xlsx'} />
+            <Row label="PDF spec sheet" sub="Photo, construction, consumption, no ₹ figures" onClick={() => run('pdf', () => exportFabricPdf(fabric, calc, idx, { toDrive: sheetMode && toDrive, money: NO_MONEY }))} value={busy === 'pdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'pdf'} />
+            <Row label="Excel sheet" sub="Construction and consumption, no ₹ figures" onClick={() => run('xlsx', () => exportFabricXlsx(fabric, calc, idx, { toDrive: sheetMode && toDrive, money: NO_MONEY }))} value={busy === 'xlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'xlsx'} />
           </>
         )}
-        <Row label="WhatsApp message" sub={detailed ? 'Basic text, no ₹ figures' : 'Opens WhatsApp with the text below'} onClick={() => openWhatsAppText(text)} chevron />
-        <Row label="Copy text" sub={detailed ? 'Basic text, no ₹ figures' : 'Paste it anywhere'} onClick={async () => {
+        <Row label="WhatsApp message" sub={priced ? 'Contains price · Basic text with the price' : detailed ? 'Basic text, no ₹ figures' : 'Opens WhatsApp with the text below'} onClick={() => openWhatsAppText(text)} chevron />
+        <Row label="Copy text" sub={priced ? 'Contains price · Basic text with the price' : detailed ? 'Basic text, no ₹ figures' : 'Paste it anywhere'} onClick={async () => {
           try {
             await navigator.clipboard.writeText(text);
             toast('Copied');
