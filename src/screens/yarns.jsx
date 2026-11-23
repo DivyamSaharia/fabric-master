@@ -1,7 +1,8 @@
 import { useMemo, useRef, useState } from 'preact/hooks';
-import { DEFAULT_TPM_DELTA, fmt, isTpm, num, tempRateOf, tpmDelta, yarnDenier, yarnRate } from '../calc.js';
+import { DEFAULT_TPM_DELTA, fmt, isTpm, num, tempDeltaOf, tempRateOf, tfoEff, tfoOutput, tpmDelta, truthy, yarnDenier, yarnRate } from '../calc.js';
+import { SIDES_PER_MACHINE, spindlesPerSide } from '../machines.js';
 import { rateLabel, yarnSub } from '../describe.js';
-import { clearTempRate, deleteRates, deleteYarn, getIndex, saveYarn, toast, useStore, yarnUsage } from '../store.js';
+import { clearTempDelta, clearTempRate, deleteRates, deleteYarn, getIndex, saveYarn, toast, useStore, yarnUsage } from '../store.js';
 import { today } from '../schema.js';
 import { back, go, replace, useLeaveGuard } from '../router.js';
 import { askConfirm } from '../confirm.js';
@@ -118,7 +119,8 @@ function YarnEditForm({ id, query }) {
     return start;
   });
   const current = existing && !isTpm(existing) ? yarnRate(existing, { ...idx, tempRates: {} }) : null;
-  const tempNow = existing ? tempRateOf(idx, existing.id) : null;
+  const tempNow = existing && !isTpm(existing) ? tempRateOf(idx, existing.id) : null;
+  const tempDeltaNow = existing && isTpm(existing) ? tempDeltaOf(idx, existing.id) : null;
   const [rate, setRate] = useState(current ? String(current.rate) : '');
   const [rateDate, setRateDate] = useState(today());
   const [busy, setBusy] = useState(false);
@@ -253,9 +255,9 @@ function YarnEditForm({ id, query }) {
           <>
             <NumField label="Delta" hint="added to base rate, per kg" prefix="₹" value={y.tpm_delta} onInput={up('tpm_delta')} placeholder={String(DEFAULT_TPM_DELTA)} />
             <Row label="Rate" value={<span class="strong">{baseRate ? `${fmt.rate(baseRate.rate + delta)} / kg` : '—'}</span>} valueSub={baseRate ? `base ${fmt.rate(baseRate.rate)}${baseRate.temp ? ' (temp)' : ''} + delta ${fmt.rate(delta)}` : base ? 'base yarn has no rate yet' : 'choose the base yarn'} />
-            {tempNow !== null ? (
-              <Row label="Temporary rate" sub="This device only, typed on this TPM yarn. Screens and files use it instead of base rate + delta." value={<span class="strong">{fmt.rate(tempNow)}/kg <span class="badge amber tag-temp">Temp</span></span>}>
-                <div class="temp-actions"><TextButton onClick={() => clearTempRate(existing.id)}>Reset</TextButton></div>
+            {tempDeltaNow !== null ? (
+              <Row label="Temporary delta" sub="This device only, typed on a fabric page. Screens and files use it instead of the delta above." value={<span class="strong">{fmt.rate(tempDeltaNow)}/kg <span class="badge amber tag-temp">Temp</span></span>}>
+                <div class="temp-actions"><TextButton onClick={() => clearTempDelta(existing.id)}>Reset</TextButton></div>
               </Row>
             ) : null}
           </>
@@ -271,6 +273,8 @@ function YarnEditForm({ id, query }) {
           </>
         )}
       </Section>
+
+      {tpm && existing ? <TpmProduction yarn={{ ...existing, ...y }} idx={idx} /> : null}
 
       {history.length ? (
         <Section header={tpm ? 'Old TPM rates (not used)' : 'Rate history'} footer={tpm ? 'Entered before rates moved to base rate plus delta. They are no longer used and can be deleted.' : 'The latest rate is the one in use. Delete it and the next older rate applies.'}>
@@ -315,5 +319,60 @@ function YarnEditForm({ id, query }) {
         </>
       ) : null}
     </div>
+  );
+}
+
+// TPM yarn page: what one spindle and one machine make per day of this yarn, at every unit and TFO type where the
+// yarn has a TFO speed. Same formula as the spindle requirement (calc.tfoOutput): RPM as stored (already ×2),
+// efficiency from the speed, else its TFO type, else the unit default. A machine = 2 sides × spindles per side.
+export function tpmProductionRows(yarn, idx) {
+  const denier = yarnDenier(yarn, idx);
+  const out = [];
+  const units = Object.values(idx.unitsById).sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  for (const unit of units) {
+    const speeds = (idx.speedsByUnit[unit.id] || []).filter((s) => s.yarn_id === yarn.id);
+    const types = idx.tfoTypesByUnit[unit.id] || [];
+    if (!speeds.length) {
+      // a unit with a TFO division but no speed for this yarn: listed, blank
+      if (truthy(unit.has_tfo) && types.length) out.push({ unit, rows: [], none: true, noTfo: false });
+      continue;
+    }
+    const rows = [];
+    for (const type of types) {
+      const sp = speeds.find((s) => s.tfo_type_id === type.id) || null;
+      if (!sp) {
+        rows.push({ type, speed: null, reason: 'No speed set' });
+        continue;
+      }
+      const eff = tfoEff(sp, type, unit);
+      const q = tfoOutput(sp.rpm, yarn.tpm, eff, denier);
+      const perSide = spindlesPerSide(type);
+      const machine = q !== null ? q * perSide * SIDES_PER_MACHINE : null;
+      rows.push({ type, speed: sp, rpm: num(sp.rpm), eff, perSpindle: q, perMachine: machine, spindles: perSide * SIDES_PER_MACHINE, machines: num(type.machines),
+        reason: q !== null ? null : !num(yarn.tpm) ? 'Set the TPM' : !denier ? 'Set the count' : eff === null ? 'Set the TFO efficiency' : 'Set the RPM' });
+    }
+    out.push({ unit, rows, noTfo: !truthy(unit.has_tfo) });
+  }
+  return out;
+}
+
+function TpmProduction({ yarn, idx }) {
+  const list = tpmProductionRows(yarn, idx);
+  return (
+    <Section id="sec-tpm-production" header="Production per spindle and machine · kg per day" footer={list.length ? 'kg per day, at each TFO speed and efficiency. A machine = 2 sides of spindles.' : null} guide="yarns">
+      {list.length ? list.map(({ unit, rows, noTfo, none }) => (
+        <>
+          <div class="row sub-head"><div class="row-main"><div class="row-label strong">{unit.name}</div>{noTfo ? <div class="row-sub">TFO division switched off on this unit</div> : none ? <div class="row-sub">No TFO speed set for this yarn</div> : null}</div></div>
+          {rows.map((r) => (
+            <Row
+              label={r.type.name}
+              sub={r.speed ? `${r.rpm !== null ? `${fmt.int(r.rpm)} RPM` : 'no RPM'} · ${r.eff !== null ? `${fmt.n(r.eff, 0)}% eff` : 'no efficiency'} · ${fmt.int(r.spindles)} spindles${r.machines ? ` · ${fmt.int(r.machines)} machines` : ''}` : undefined}
+              value={r.perSpindle !== null && r.perSpindle !== undefined ? <span class="strong">{fmt.n(r.perSpindle, 3)} kg</span> : '—'}
+              valueSub={r.perSpindle !== null && r.perSpindle !== undefined ? `per spindle · ${fmt.n(r.perMachine, 1)} kg per machine` : r.reason}
+            />
+          ))}
+        </>
+      )) : <Row label="No TFO speed set" sub="No unit has a TFO division with a speed for this yarn." />}
+    </Section>
   );
 }

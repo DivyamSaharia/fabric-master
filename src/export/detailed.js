@@ -30,11 +30,11 @@ function rateRow(yarn, idx) {
   const tpm = isTpm(yarn);
   const base = tpm ? idx.yarnsById[yarn.base_yarn_id] : null;
   if (!r) return [yarn.name, tpm ? 'TPM' : 'Base', base ? base.name : '—', '—', tpm ? R(tpmDelta(yarn)) : '—', '—', 'No rate'];
-  if (r.tpmTemp) {
-    return [yarn.name, 'TPM', base ? base.name : '—', '—', '—', R(r.rate), `Temporary, typed on the TPM yarn (master ${r.masterRate === null ? 'not set' : fmt.rate(r.masterRate)})`];
-  }
   if (tpm) {
-    return [yarn.name, 'TPM', base ? base.name : '—', R(r.baseRate), R(r.delta), R(r.rate), r.temp ? `Temporary base rate (master ${r.masterBaseRate === null || r.masterBaseRate === undefined ? 'not set' : fmt.rate(r.masterBaseRate)}) + delta` : `Base rate from ${fmt.date(r.date) || '—'} + delta`];
+    const ms = (v) => (v === null || v === undefined ? 'not set' : fmt.rate(v));
+    const b = r.tempBase ? `Temporary base rate (master ${ms(r.masterBaseRate)})` : `Base rate from ${fmt.date(r.date) || '—'}`;
+    const d = r.tempDelta ? `temporary delta (master ${ms(r.masterDelta)})` : 'delta';
+    return [yarn.name, 'TPM', base ? base.name : '—', R(r.baseRate), R(r.delta), R(r.rate), `${b} + ${d}`];
   }
   return [yarn.name, 'Base', '—', R(r.rate), '—', R(r.rate), r.temp ? `Temporary (master ${r.masterRate === null ? 'not set' : fmt.rate(r.masterRate)})` : `Master, from ${fmt.date(r.date) || '—'}`];
 }
@@ -73,8 +73,8 @@ export function detailedModel(fabric, calc, idx) {
       ['Weave', [fabric.weave, fabric.design_note].filter(Boolean).join(' · ') || '—'],
       ['Warp shortage', PCT(fabric.warp_shortage_pct)],
       ['Weft shortage', PCT(fabric.weft_shortage_pct)],
-      ['Loom RPM · single panna', num(fabric.loom_rpm) ? I(num(fabric.loom_rpm)) : '—'],
-      ['Loom RPM · double panna', num(fabric.loom_rpm_dp) ? I(num(fabric.loom_rpm_dp)) : '—'],
+      ['Loom RPM · single panna', calc.rpmSp ? (calc.rpmTempSp ? { ...I(calc.rpmSp), t: `${fmt.int(calc.rpmSp)} (temporary, master ${calc.masterRpmSp ? fmt.int(calc.masterRpmSp) : 'not set'})`, temp: true } : I(calc.rpmSp)) : '—'],
+      ['Loom RPM · double panna', calc.rpmDp ? (calc.rpmTempDp ? { ...I(calc.rpmDp), t: `${fmt.int(calc.rpmDp)} (temporary, master ${calc.masterRpmDp ? fmt.int(calc.masterRpmDp) : 'not set'})`, temp: true } : I(calc.rpmDp)) : '—'],
       ['Finish', calc.finish],
       ['TFO class', calc.tfoClass],
       ...(fabric.end_use ? [['End use', fabric.end_use]] : []),
@@ -293,7 +293,7 @@ export function detailedModel(fabric, calc, idx) {
 
   const notes = [
     `Consumption: warp g/m = ends × denier ÷ 9000 × (1 + warp shortage); weft g/m = PPI × reed space × pick share × denier ÷ 9000 × (1 + weft shortage). Shortage here: warp ${pctTxt(fabric.warp_shortage_pct)}, weft ${pctTxt(fabric.weft_shortage_pct)}.`,
-    'A TPM yarn costs its base yarn rate plus its delta, unless a temporary rate is typed on the TPM yarn itself.',
+    'A TPM yarn costs its base yarn rate plus its delta; a temporary base rate or delta, where typed, is used in their place.',
     `Realisation per pick = (sale rate − ${rfd ? 'RFD cost' : 'RM cost'}) ÷ picks per sale metre; with VATAV, the VATAV amount is also taken off.${rfd ? ' RFD cost = RM cost × greige m per RFD m + processing × greige m per RFD m + transportation + brokering % × sale rate.' : ''}`,
     'Loom metres per day = RPM × 1440 × loom efficiency ÷ (PPI × 39.37) × panna. Looms narrower than 250 cm use the fabric\'s single panna RPM; 280 cm looms use its double panna RPM (the 280 cm RPM), single or double panna, and single panna is not doubled. Loom efficiency is the unit\'s. Double panna where two reed spaces fit the loom\'s reed width (÷ 2.54, + 0.5″).',
     'Loom realisation = realisation per pick with VATAV × metres per loom per day × PPI. Profit per pick = realisation per pick with VATAV − the unit\'s cost per pick.',

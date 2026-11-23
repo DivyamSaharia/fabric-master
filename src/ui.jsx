@@ -8,6 +8,11 @@ import { local } from './storage.js';
 export const WIDE_QUERY = '(min-width: 1024px)';
 const wideMq = () => (typeof window !== 'undefined' && window.matchMedia ? window.matchMedia(WIDE_QUERY) : null);
 
+const wideNow = () => {
+  const mq = wideMq();
+  return mq ? mq.matches : false;
+};
+
 export function useWide() {
   const [wide, setWide] = useState(() => {
     const mq = wideMq();
@@ -93,7 +98,12 @@ export function NavBar({ title, backLabel, backTo, onBack, left, right, large, h
         <div class="nav-row">
           <div class="nav-side">{left || backBtn}</div>
           <div class={`nav-title ${large && !scrolled ? 'hidden' : ''}`}>{title}</div>
-          <div class="nav-side right">{right}</div>
+          <div class="nav-side right">
+            {large && !backLabel && !wideNow() ? (
+              <IconButton label="Search" onClick={() => window.dispatchEvent(new CustomEvent('fm-open-search', { detail: '' }))}><Icon.search size={22} /></IconButton>
+            ) : null}
+            {right}
+          </div>
         </div>
         <div class="nav-strips">{NavStrip ? <NavStrip /> : null}{strip || null}</div>
       </header>
@@ -421,7 +431,8 @@ function syncText(st) {
 }
 
 // Laptop navigation: replaces the bottom tab bar on wide screens.
-export function Sidebar({ active, settingsOpen }) {
+// search: the side-menu search (screens/search.jsx), passed in by app.jsx.
+export function Sidebar({ active, settingsOpen, search }) {
   const st = useStore();
   const idx = getIndex();
   const counts = {
@@ -439,6 +450,7 @@ export function Sidebar({ active, settingsOpen }) {
           <div class="sb-name-main">Fabric Database</div>
         </div>
       </div>
+      {search || null}
       <nav class="sb-nav">
         {TABS.map((t) => (
           <button type="button" class={`sb-item ${active === t.id && !settingsOpen ? 'on' : ''}`} aria-current={active === t.id && !settingsOpen ? 'page' : undefined} onClick={() => tab(`/${t.id}`)}>
@@ -520,7 +532,7 @@ export function SearchBox({ value, onInput, placeholder }) {
   return (
     <label class="search">
       <Icon.search size={16} />
-      <input type="search" data-search value={value} placeholder={placeholder} aria-label={placeholder} title="Press / to search" onInput={(e) => onInput(e.currentTarget.value)} />
+      <input type="search" data-search value={value} placeholder={placeholder} aria-label={placeholder} title="Press / or Ctrl K to search the whole app" onInput={(e) => onInput(e.currentTarget.value)} />
     </label>
   );
 }

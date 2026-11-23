@@ -401,11 +401,12 @@ describe('laptop layout', () => {
     expect(labels).toEqual(['Fabrics', 'Yarns', 'Units', 'Ranking', 'Planner']);
   });
 
-  it('"/" jumps to the search box', async () => {
+  it('"/" opens the app search in the side menu (1.27.0)', async () => {
     await open('#/fabrics');
     await screen.findByText('Fabric Database');
     fireEvent.keyDown(document.body, { key: '/' });
-    expect(document.activeElement).toBe(document.querySelector('input[data-search]'));
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByLabelText('Search the app')));
+    expect(document.querySelector('.sidebar .sb-search')).toBeTruthy();
   });
 });
 

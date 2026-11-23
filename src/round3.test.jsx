@@ -205,6 +205,6 @@ describe('laptop', () => {
     await screen.findByText('Fabric Database');
     expect(document.querySelector('.navbar button[aria-label="Settings"]')).toBeNull();
     const hint = document.querySelector('.list-meta .plain');
-    expect(hint.textContent).toBe('Click a heading to sort. Press / to search, Ctrl+S to save a form.');
+    expect(hint.textContent).toBe('Click a heading to sort. Press / or Ctrl K to search, 1–5 for tabs, Ctrl+S to save a form.');
   });
 });

@@ -9,6 +9,18 @@ const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.s
 export const slug = (s) => String(s || 'fabric').toLowerCase().normalize('NFKD').replace(/×/g, 'x').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'fabric';
 export const fileName = (name, suffix, ext) => `${today()}_${slug(name)}${suffix ? `_${suffix}` : ''}.${ext}`;
 
+// ₹ switches for the fabric share (1.28.0). Basic = NO_MONEY; Includes ₹ = ALL_MONEY, or any mix of the four groups
+// from its Advanced switches. A group switched off is left out completely (no row, no blank, no label):
+//   realisation: realisation per pick and per m, with and without VATAV; profit per pick
+//   sale: selling price, sale date, VATAV % and ₹, price basis
+//   yarn: per-yarn rates, rate basis, per-yarn ₹/m (and their total)
+//   costs: RM cost, processing, transport, brokering, finishing/RFD cost, unit cost per pick, profit per m
+// The method note under the PDF goes with realisation. The Detailed share and the fabric list export ignore this.
+export const MONEY_GROUPS = ['realisation', 'sale', 'yarn', 'costs'];
+export const ALL_MONEY = Object.freeze({ realisation: true, sale: true, yarn: true, costs: true });
+export const NO_MONEY = Object.freeze({ realisation: false, sale: false, yarn: false, costs: false });
+const moneyOf = (m) => ({ ...ALL_MONEY, ...(m || {}) });
+
 let libs = null;
 export function preloadExports() {
   if (!libs) {
@@ -23,21 +35,28 @@ export function preloadExports() {
 }
 
 // Temporary yarn rates and sale rates (device only) change the figures, so files say so.
-export function tempRatesText(idx) {
-  const items = Object.entries((idx && idx.tempRates) || {})
-    .map(([id, rate]) => ({ yarn: idx.yarnsById[id], rate }))
-    .filter((x) => x.yarn);
-  const prices = Object.entries((idx && idx.tempPrices) || {})
+export function tempRatesText(idx, money) {
+  const m = moneyOf(money);
+  const items = !m.yarn ? [] : [
+    ...Object.entries((idx && idx.tempRates) || {}).map(([id, rate]) => ({ yarn: idx.yarnsById[id], text: `${fmt.n(rate, 2)}/kg` })),
+    ...Object.entries((idx && idx.tempDeltas) || {}).map(([id, d]) => ({ yarn: idx.yarnsById[id], text: `delta ${fmt.n(d, 2)}/kg` })),
+  ].filter((x) => x.yarn);
+  const rpms = Object.entries((idx && idx.tempRpms) || {})
+    .map(([id, v]) => ({ fabric: idx.fabricsById[id], v: v || {} }))
+    .filter((x) => x.fabric && (num(x.v.sp) || num(x.v.dp)));
+  const prices = !m.sale ? [] : Object.entries((idx && idx.tempPrices) || {})
     .map(([id, price]) => ({ fabric: idx.fabricsById[id], price }))
     .filter((x) => x.fabric);
   return [
-    items.length ? `Includes temporary yarn rates, not the yarn master: ${items.map((x) => `${x.yarn.name} ${fmt.n(x.rate, 2)}/kg`).join(', ')}.` : '',
+    items.length ? `Includes temporary yarn rates, not the yarn master: ${items.map((x) => `${x.yarn.name} ${x.text}`).join(', ')}.` : '',
+    rpms.length ? `Temporary loom RPM used, not the fabric master: ${rpms.map((x) => `${x.fabric.name} ${[num(x.v.sp) ? `single panna ${fmt.int(num(x.v.sp))}` : null, num(x.v.dp) ? `double panna ${fmt.int(num(x.v.dp))}` : null].filter(Boolean).join(', ')}`).join('; ')}.` : '',
     prices.length ? `Temporary sale rate used, not the fabric master: ${prices.map((x) => `${x.fabric.name} ₹${fmt.n(x.price, 2)}/m`).join(', ')}.` : '',
   ].filter(Boolean).join(' ');
 }
 
 // ---------- WhatsApp ----------
-export function whatsappText(fabric, calc, idx) {
+export function whatsappText(fabric, calc, idx, money) {
+  const m = moneyOf(money);
   const lines = [`*${fabric.name}*${calc.finish === 'RFD' ? (/\(RFD\)/.test(fabric.name) ? '' : ' (RFD)') : ' (Greige)'}`];
   const reed = num(fabric.reed);
   lines.push(`Reed × Pick: ${reed ? `${reed} × ${calc.ppi ?? '—'}` : `— × ${calc.ppi ?? '—'}`}`);
@@ -46,7 +65,7 @@ export function whatsappText(fabric, calc, idx) {
   const extra = [calc.width ? `Width ${calc.width}″` : null, calc.gsm !== null ? `GSM ${fmt.n(calc.gsm, 1)}` : null].filter(Boolean).join(' · ');
   if (extra) lines.push(extra);
   if (fabric.weave) lines.push(`Weave: ${fabric.weave}${fabric.design_note ? `, ${fabric.design_note}` : ''}`);
-  if (calc.price !== null) lines.push(`Price ${fmt.rs(calc.price)} / m`);
+  if (m.sale && calc.price !== null) lines.push(`Price ${fmt.rs(calc.price)} / m`);
   return lines.join('\n');
 }
 
@@ -109,6 +128,7 @@ export async function deliver(blob, name, title, { toDrive } = {}) {
 
 // ---------- PDF ----------
 export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
+  const m = moneyOf(opts.money);
   const { jsPDF, autoTable, font } = await preloadExports();
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
   doc.addFileToVFS('DejaVuSans.ttf', font.DEJAVU_REGULAR);
@@ -155,10 +175,13 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
     }
   }
   const figs = [
-    ['Realisation with VATAV', `${fmt.pick(calc.realisationNetPerPick)} / pick`, `${fmt.rs(calc.realisationNetPerM)} / ${rfd ? 'RFD m' : 'm'} · without VATAV ${fmt.pick(calc.realisationPerPick)} / pick`],
-    [rfd ? 'RFD cost' : 'RM cost', `${fmt.rs(rfd ? calc.rfdCost : calc.rmCost)} / m`, rfd ? `RM ${fmt.rs(calc.rmPerSaleM)} + finishing ${fmt.rs(calc.finishingCost)}` : 'shortage included'],
+    ...(m.realisation ? [['Realisation with VATAV', `${fmt.pick(calc.realisationNetPerPick)} / pick`, `${fmt.rs(calc.realisationNetPerM)} / ${rfd ? 'RFD m' : 'm'} · without VATAV ${fmt.pick(calc.realisationPerPick)} / pick`, true]] : []),
+    ...(m.costs ? [[rfd ? 'RFD cost' : 'RM cost', `${fmt.rs(rfd ? calc.rfdCost : calc.rmCost)} / m`, rfd ? `RM ${fmt.rs(calc.rmPerSaleM)} + finishing ${fmt.rs(calc.finishingCost)}` : 'shortage included']] : []),
     ['GSM (estimate)', fmt.n(calc.gsm, 1), `${fmt.n(calc.totalGpm, 1)} g/m · ${fmt.n(calc.kgPer100, 2)} kg/100 m`],
-    ['Selling price', `${fmt.rs(calc.price)} / ${rfd ? 'RFD m' : 'm'}${calc.priceTemp ? ' (temporary)' : ''}`, `${calc.vatavPct ? `VATAV ${calc.vatavPct}%` : 'No VATAV'} · ${constructionLine(fabric, calc, idx)}`],
+    // with the sale rate hidden, the construction line keeps a tile of its own
+    m.sale
+      ? ['Selling price', `${fmt.rs(calc.price)} / ${rfd ? 'RFD m' : 'm'}${calc.priceTemp ? ' (temporary)' : ''}`, `${calc.vatavPct ? `VATAV ${calc.vatavPct}%` : 'No VATAV'} · ${constructionLine(fabric, calc, idx)}`]
+      : ['Finish', calc.finish, constructionLine(fabric, calc, idx)],
   ];
   const colW = (210 - M - figX) / 2;
   figs.forEach((f, i) => {
@@ -169,14 +192,15 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
     doc.text(f[0].toUpperCase(), fx, fy + 4);
     doc.setFont('DejaVu', 'bold');
     doc.setFontSize(13);
-    doc.setTextColor(...(i === 0 ? accent : ink));
+    doc.setTextColor(...(f[3] ? accent : ink));
     doc.text(f[1], fx, fy + 11);
     doc.setFont('DejaVu', 'normal');
     doc.setFontSize(8);
     doc.setTextColor(...grey);
     doc.text(doc.splitTextToSize(f[2], colW - 4), fx, fy + 16);
   });
-  y += 60;
+  // two rows of tiles (or the photo, if taller) and a gap; 60 mm with all four tiles, as before
+  y += Math.max(Math.ceil(figs.length / 2) * 27, cover ? 52 : 0) + 6;
 
   const table = (title, head, body, colStyles) => {
     doc.setFont('DejaVu', 'bold');
@@ -205,50 +229,62 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
     ['Warp shortage', pctv(fabric.warp_shortage_pct), 'Weft shortage', pctv(fabric.weft_shortage_pct)],
   ], { 0: { textColor: grey }, 2: { textColor: grey } });
 
-  table('Warp and weft', ['Side', 'Yarn', 'Ends / share', 'Rate ₹/kg', 'g/m', 'kg/100 m', '₹/m'], [
+  // Yarn rates off: no Rate and ₹/m columns (the ₹/m total is the sum of those lines, so it goes with them)
+  const bold = (c) => ({ content: c, styles: { fontStyle: 'bold' } });
+  table('Warp and weft', ['Side', 'Yarn', 'Ends / share', ...(m.yarn ? ['Rate ₹/kg'] : []), 'g/m', 'kg/100 m', ...(m.yarn ? ['₹/m'] : [])], [
     ...[...calc.warp, ...calc.weft].map((x) => [
       x.line.side === 'warp' ? 'Warp' : 'Weft',
       `${x.yarn ? x.yarn.name : '—'}${x.line.pattern ? ` (${x.line.pattern})` : ''}`,
       x.line.side === 'warp' ? (x.ends ? fmt.int(x.ends) : '—') : `${Math.round((x.share || 0) * 100)}%`,
-      x.rate === null ? '—' : `${fmt.n(x.rate, 2)}${x.temp ? ' (temp)' : ''}`,
+      ...(m.yarn ? [x.rate === null ? '—' : `${fmt.n(x.rate, 2)}${x.temp ? ' (temp)' : ''}`] : []),
       fmt.n(x.gpm, 2),
       fmt.n(x.kgPer100, 3),
-      x.costPerM === null ? '—' : fmt.n(x.costPerM, 2),
+      ...(m.yarn ? [x.costPerM === null ? '—' : fmt.n(x.costPerM, 2)] : []),
     ]),
-    [{ content: 'Total', colSpan: 4, styles: { fontStyle: 'bold' } }, { content: fmt.n(calc.totalGpm, 2), styles: { fontStyle: 'bold' } }, { content: fmt.n(calc.kgPer100, 3), styles: { fontStyle: 'bold' } }, { content: calc.rmCost === null ? '—' : fmt.n(calc.rmCost, 2), styles: { fontStyle: 'bold' } }],
-  ], { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } });
+    [{ content: 'Total', colSpan: m.yarn ? 4 : 3, styles: { fontStyle: 'bold' } }, bold(fmt.n(calc.totalGpm, 2)), bold(fmt.n(calc.kgPer100, 3)), ...(m.yarn ? [bold(calc.rmCost === null ? '—' : fmt.n(calc.rmCost, 2))] : [])],
+  ], m.yarn ? { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' } } : { 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } });
 
-  const costRows = rfd
+  // [group, label, value]; null group = always shown (no ₹ in it)
+  const costRows = (rfd
     ? [
-        ['Selling price', `${fmt.rs(calc.price)} / RFD m${calc.priceTemp ? ' (temporary)' : ''}`],
-        ['Sale date', fmt.date(fabric.sale_date) || '—'],
-        ['RFD shortage', pctv(fabric.rfd_shortage_pct)],
-        ['Processing charge', `${fmt.rs(num(fabric.processing_charge))} / m`],
-        ['Transportation', num(fabric.transport_charge) === null ? '—' : `${fmt.rs(num(fabric.transport_charge))} / RFD m`],
-        ['Brokering', pctv(fabric.brokering_pct)],
-        ['RM cost per RFD m', fmt.rs(calc.rmPerSaleM)],
-        ['Finishing cost', fmt.rs(calc.finishingCost)],
-        ['RFD cost', `${fmt.rs(calc.rfdCost)} / m`],
-        ['Realisation without VATAV', `${fmt.rs(calc.realisationPerM)} / m · ${fmt.pick(calc.realisationPerPick)} / pick`],
-        ['VATAV', calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'],
-        ['Realisation with VATAV', `${fmt.rs(calc.realisationNetPerM)} / m · ${fmt.pick(calc.realisationNetPerPick)} / pick`],
+        ['sale', 'Selling price', `${fmt.rs(calc.price)} / RFD m${calc.priceTemp ? ' (temporary)' : ''}`],
+        ['sale', 'Sale date', fmt.date(fabric.sale_date) || '—'],
+        [null, 'RFD shortage', pctv(fabric.rfd_shortage_pct)],
+        ['costs', 'Processing charge', `${fmt.rs(num(fabric.processing_charge))} / m`],
+        ['costs', 'Transportation', num(fabric.transport_charge) === null ? '—' : `${fmt.rs(num(fabric.transport_charge))} / RFD m`],
+        ['costs', 'Brokering', pctv(fabric.brokering_pct)],
+        ['costs', 'RM cost per RFD m', fmt.rs(calc.rmPerSaleM)],
+        ['costs', 'Finishing cost', fmt.rs(calc.finishingCost)],
+        ['costs', 'RFD cost', `${fmt.rs(calc.rfdCost)} / m`],
+        ['realisation', 'Realisation without VATAV', `${fmt.rs(calc.realisationPerM)} / m · ${fmt.pick(calc.realisationPerPick)} / pick`],
+        ['sale', 'VATAV', calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'],
+        ['realisation', 'Realisation with VATAV', `${fmt.rs(calc.realisationNetPerM)} / m · ${fmt.pick(calc.realisationNetPerPick)} / pick`],
       ]
     : [
-        ['Selling price', `${fmt.rs(calc.price)} / m${calc.priceTemp ? ' (temporary)' : ''}`],
-        ['Sale date', fmt.date(fabric.sale_date) || '—'],
-        ['RM cost (shortage included)', `${fmt.rs(calc.rmCost)} / m`],
-        ['Realisation without VATAV', `${fmt.rs(calc.realisationPerM)} / m · ${fmt.pick(calc.realisationPerPick)} / pick`],
-        ['VATAV', calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'],
-        ['Realisation with VATAV', `${fmt.rs(calc.realisationNetPerM)} / m · ${fmt.pick(calc.realisationNetPerPick)} / pick`],
-      ];
-  table(rfd ? 'Finishing · RFD' : 'Greige', null, costRows, { 0: { textColor: grey, cellWidth: 70 }, 1: { fontStyle: 'bold' } });
+        ['sale', 'Selling price', `${fmt.rs(calc.price)} / m${calc.priceTemp ? ' (temporary)' : ''}`],
+        ['sale', 'Sale date', fmt.date(fabric.sale_date) || '—'],
+        ['costs', 'RM cost (shortage included)', `${fmt.rs(calc.rmCost)} / m`],
+        ['realisation', 'Realisation without VATAV', `${fmt.rs(calc.realisationPerM)} / m · ${fmt.pick(calc.realisationPerPick)} / pick`],
+        ['sale', 'VATAV', calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'],
+        ['realisation', 'Realisation with VATAV', `${fmt.rs(calc.realisationNetPerM)} / m · ${fmt.pick(calc.realisationNetPerPick)} / pick`],
+      ]).filter(([g]) => !g || m[g]).map(([, l, v]) => [l, v]);
+  if (costRows.length)   table(rfd ? 'Finishing · RFD' : 'Greige', null, costRows, { 0: { textColor: grey, cellWidth: 70 }, 1: { fontStyle: 'bold' } });
 
   const units = unitsOf(fabric.id, idx);
   if (units.length) {
-    table('Units', ['Unit', 'Cost / pick', 'Profit / pick (with VATAV)', 'Profit / m', 'Per loom · single / double panna'], units.map((u) => {
+    // [group, heading, cell]: cost per pick and profit per m go with Costs, profit per pick with Realisation
+    const cols = [
+      [null, 'Unit', (u) => u.name],
+      ['costs', 'Cost / pick', (u, p) => fmt.pick(p.costPerPick)],
+      ['realisation', 'Profit / pick (with VATAV)', (u, p) => fmt.signedPick(p.profitPerPick)],
+      ['costs', 'Profit / m', (u, p) => fmt.rs(p.profitPerM)],
+      [null, 'Per loom · single / double panna', (u) => panText(calc, fabric, u, idx)],
+    ].filter(([g]) => !g || m[g]);
+    const right = Object.fromEntries(cols.map((c, i) => [i, c]).filter(([, c]) => c[0]).map(([i]) => [i, { halign: 'right' }]));
+    table('Units', cols.map((c) => c[1]), units.map((u) => {
       const p = unitProfit(calc, u);
-      return [u.name, fmt.pick(p.costPerPick), fmt.signedPick(p.profitPerPick), fmt.rs(p.profitPerM), panText(calc, fabric, u, idx)];
-    }), { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' } });
+      return cols.map((c) => c[2](u, p));
+    }), right);
   }
 
   const beamRows = beamRowsOf(fabric.id, idx);
@@ -260,7 +296,8 @@ export async function exportFabricPdf(fabric, calc, idx, opts = {}) {
   doc.setFont('DejaVu', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...grey);
-  doc.text(doc.splitTextToSize('Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also taken off. Figures use the latest yarn rates.' + (tempRatesText(idx) ? ` ${tempRatesText(idx)}` : ''), W), M, tempRatesText(idx) ? 285 : 289);
+  const note = [m.realisation ? 'Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also taken off. Figures use the latest yarn rates.' : '', tempRatesText(idx, m)].filter(Boolean).join(' ');
+  if (note) doc.text(doc.splitTextToSize(note, W), M, tempRatesText(idx, m) ? 285 : 289);
   const blob = doc.output('blob');
   await deliver(blob, fileName(fabric.name, 'spec', 'pdf'), `${fabric.name} spec sheet`, opts);
 }
@@ -281,7 +318,15 @@ function panText(calc, fabric, unit, idx) {
 // ---------- Excel ----------
 const r2 = (v, dp = 2) => (v === null || v === undefined ? '' : Math.round(v * 10 ** dp) / 10 ** dp);
 
-function fabricRow(fabric, calc, idx, unit) {
+// Excel fields of each ₹ group, left out when the group is off.
+const XL_GROUPS = {
+  sale: ['Selling price ₹/m', 'Price basis', 'Sale date', 'VATAV %', 'VATAV ₹/m'],
+  costs: ['RM cost ₹/m', 'Processing ₹/m', 'Transportation ₹/m', 'Brokering %', 'RFD cost ₹/m'],
+  realisation: ['Realisation ₹/m without VATAV', 'Realisation ₹/pick without VATAV', 'Realisation ₹/m with VATAV', 'Realisation ₹/pick with VATAV'],
+};
+
+function fabricRow(fabric, calc, idx, unit, money) {
+  const m = moneyOf(money);
   const row = {
     Quality: fabric.name,
     Weave: fabric.weave || '',
@@ -290,8 +335,8 @@ function fabricRow(fabric, calc, idx, unit) {
     'TFO class': calc.tfoClass,
     Reed: num(fabric.reed) ?? '',
     'Pick (PPI)': calc.ppi ?? '',
-    'Loom RPM single panna': num(fabric.loom_rpm) ?? '',
-    'Loom RPM double panna': num(fabric.loom_rpm_dp) ?? '',
+    'Loom RPM single panna': calc.rpmSp ?? num(fabric.loom_rpm) ?? '',
+    'Loom RPM double panna': calc.rpmDp ?? num(fabric.loom_rpm_dp) ?? '',
     'Total ends': calc.totalEnds ?? '',
     'Reed space (in)': calc.rs ?? '',
     'Greige width (in)': calc.width ?? '',
@@ -323,10 +368,11 @@ function fabricRow(fabric, calc, idx, unit) {
   };
   if (unit) {
     const p = unitProfit(calc, unit);
-    row[`Cost/pick ${unit.name}`] = p.costPerPick ?? '';
-    row[`Profit ₹/pick ${unit.name} (with VATAV)`] = r2(p.profitPerPick, 4);
-    row[`Profit ₹/m ${unit.name}`] = r2(p.profitPerM);
+    if (m.costs) row[`Cost/pick ${unit.name}`] = p.costPerPick ?? '';
+    if (m.realisation) row[`Profit ₹/pick ${unit.name} (with VATAV)`] = r2(p.profitPerPick, 4);
+    if (m.costs) row[`Profit ₹/m ${unit.name}`] = r2(p.profitPerM);
   }
+  for (const [g, keys] of Object.entries(XL_GROUPS)) if (!m[g]) for (const k of keys) delete row[k];
   return row;
 }
 
@@ -343,10 +389,11 @@ export function writeBook(XLSX, wb) {
 }
 
 export async function exportFabricXlsx(fabric, calc, idx, opts = {}) {
+  const m = moneyOf(opts.money);
   const { XLSX } = await preloadExports();
   const wb = XLSX.utils.book_new();
-  const summary = Object.entries(fabricRow(fabric, calc, idx)).map(([k, v]) => ({ Field: k, Value: v }));
-  if (tempRatesText(idx)) summary.push({ Field: 'Note', Value: tempRatesText(idx) });
+  const summary = Object.entries(fabricRow(fabric, calc, idx, null, m)).map(([k, v]) => ({ Field: k, Value: v }));
+  if (tempRatesText(idx, m)) summary.push({ Field: 'Note', Value: tempRatesText(idx, m) });
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, summary), 'Summary');
   const yarnRows = [...calc.warp, ...calc.weft].map((x) => ({
     Side: x.line.side === 'warp' ? 'Warp' : 'Weft',
@@ -355,11 +402,11 @@ export async function exportFabricXlsx(fabric, calc, idx, opts = {}) {
     Ends: x.line.side === 'warp' ? x.ends ?? '' : '',
     'Pick share %': x.line.side === 'weft' ? r2((x.share || 0) * 100, 1) : '',
     Pattern: x.line.pattern || '',
-    'Rate ₹/kg': x.rate ?? '',
-    ...(x.temp ? { 'Rate basis': 'Temporary' } : {}),
+    ...(m.yarn ? { 'Rate ₹/kg': x.rate ?? '' } : {}),
+    ...(m.yarn && x.temp ? { 'Rate basis': 'Temporary' } : {}),
     'g/m': r2(x.gpm),
     'kg per 100 m': r2(x.kgPer100, 3),
-    '₹/m': r2(x.costPerM),
+    ...(m.yarn ? { '₹/m': r2(x.costPerM) } : {}),
   }));
   XLSX.utils.book_append_sheet(wb, sheetFromRows(XLSX, yarnRows), 'Warp and weft');
   const units = unitsOf(fabric.id, idx);
@@ -373,9 +420,9 @@ export async function exportFabricXlsx(fabric, calc, idx, opts = {}) {
       const l2 = loomPerDay(calc, fabric, u, 2);
       const base = {
         Unit: u.name,
-        'Cost ₹/pick': p.costPerPick ?? '',
-        'Profit ₹/pick (with VATAV)': r2(p.profitPerPick, 4),
-        'Profit ₹/m': r2(p.profitPerM),
+        ...(m.costs ? { 'Cost ₹/pick': p.costPerPick ?? '' } : {}),
+        ...(m.realisation ? { 'Profit ₹/pick (with VATAV)': r2(p.profitPerPick, 4) } : {}),
+        ...(m.costs ? { 'Profit ₹/m': r2(p.profitPerM) } : {}),
         'Loom RPM single panna': l1.rpm ?? '',
         'Loom RPM double panna': l2.rpm ?? '',
       };

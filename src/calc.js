@@ -29,7 +29,9 @@ const pct = (v) => (num(v) ?? 0) / 100;
 
 // tempRates: { yarnId: rate } set on this device only (never in the Sheet); see yarnRate.
 // tempPrices: { fabricId: price } temporary sale rates, also this device only; see fabricCalc.
-export function buildIndex(tables, tempRates, tempPrices) {
+// extra.tempDeltas: { tpmYarnId: delta } temporary TPM deltas; extra.tempRpms: { fabricId: { sp, dp } } temporary
+// loom RPMs (single and double panna). Both this device only.
+export function buildIndex(tables, tempRates, tempPrices, extra = {}) {
   const t = tables || {};
   const by = (rows) => Object.fromEntries((rows || []).map((r) => [r.id, r]));
   const group = (rows, key) => {
@@ -53,6 +55,8 @@ export function buildIndex(tables, tempRates, tempPrices) {
     tables: t,
     tempRates: tempRates || {},
     tempPrices: tempPrices || {},
+    tempDeltas: (extra && extra.tempDeltas) || {},
+    tempRpms: (extra && extra.tempRpms) || {},
     yarnsById: by(t.Yarns),
     unitsById: by(t.Units),
     // name shown everywhere = stored name + RS; base_name keeps the stored name
@@ -137,22 +141,21 @@ export function tpmDelta(yarn) {
 
 // Base yarn: latest rate on or before asOf (yyyy-mm-dd). TPM yarn: base yarn's rate + delta.
 // picks: { baseYarnId: 'yyyy-mm-dd' } overrides asOf for that base yarn (the fabric page's rate pickers).
-// A temporary rate typed on a TPM yarn itself (idx.tempRates[tpmId]) is its whole rate: it beats the base yarn's
-// rate, temporary or not, and the delta. masterRate is then the master base rate + delta.
+// TPM yarn (1.27.0): rate = base rate (its temporary rate, else master) + delta (its temporary delta, else master).
+// A temporary TPM rate is typed as its two parts; there is no whole-rate override any more.
 export function yarnRate(yarn, idx, asOf, picks) {
   if (!yarn) return null;
   if (isTpm(yarn)) {
     const base = baseOf(yarn, idx);
-    const own = tempRateOf(idx, yarn.id);
-    if (own !== null) {
-      const mb = base ? yarnMasterRate(base, idx, asOf, picks) : null;
-      const d = tpmDelta(yarn);
-      return { rate: own, date: '', temp: true, tpmTemp: true, masterRate: mb ? mb.rate + d : null, masterBaseRate: mb ? mb.rate : null, masterDelta: d };
-    }
     const r = base ? yarnRate(base, idx, asOf, picks) : null;
     if (!r) return null;
-    const delta = tpmDelta(yarn);
-    return { rate: r.rate + delta, date: r.date, baseRate: r.rate, delta, ...(r.temp ? { temp: true, masterBaseRate: r.masterRate } : {}) };
+    const md = tpmDelta(yarn);
+    const td = tempDeltaOf(idx, yarn.id);
+    const delta = td ?? md;
+    const out = { rate: r.rate + delta, date: r.date, baseRate: r.rate, delta };
+    if (!r.temp && td === null) return out;
+    const mb = r.temp ? r.masterRate : r.rate;
+    return { ...out, temp: true, tempBase: !!r.temp, tempDelta: td !== null, masterBaseRate: mb, masterDelta: md, masterRate: mb === null || mb === undefined ? null : mb + md };
   }
   // A temporary rate (device only, idx.tempRates) beats the dated rates until it is reset.
   const tmp = tempRateOf(idx, yarn.id);
@@ -167,6 +170,21 @@ export function yarnRate(yarn, idx, asOf, picks) {
 export function tempRateOf(idx, yarnId) {
   const v = idx && idx.tempRates ? num(idx.tempRates[yarnId]) : null;
   return v !== null && v > 0 ? v : null;
+}
+
+// The temporary delta set on this device for a TPM yarn, or null. Zero is allowed.
+export function tempDeltaOf(idx, yarnId) {
+  const v = idx && idx.tempDeltas ? num(idx.tempDeltas[yarnId]) : null;
+  return v !== null && v >= 0 ? v : null;
+}
+
+// Temporary loom RPMs set on this device for a fabric: { sp, dp } (either may be null), or null when none.
+export function tempRpmOf(idx, fabricId) {
+  const v = idx && idx.tempRpms && fabricId ? idx.tempRpms[fabricId] : null;
+  if (!v) return null;
+  const sp = num(v.sp), dp = num(v.dp);
+  const out = { sp: sp !== null && sp > 0 ? sp : null, dp: dp !== null && dp > 0 ? dp : null };
+  return out.sp === null && out.dp === null ? null : out;
 }
 
 // The temporary sale rate set on this device for a fabric, or null.
@@ -273,7 +291,13 @@ export function fabricCalc(fabric, idx, asOf, picks) {
   const realisationNetPerM = realisationPerM !== null ? realisationPerM - vatavAmount : null;
   const realisationNetPerPick = realisationNetPerM !== null && picksPerSaleM ? realisationNetPerM / picksPerSaleM : null;
 
-  const loomRpm = num(fabric.loom_rpm);
+  // Loom RPM: a temporary one (this device only) beats the master's. The Planner keeps its own RPM rule.
+  const tRpm = tempRpmOf(idx, fabric.id);
+  const masterRpmSp = num(fabric.loom_rpm), masterRpmDp = num(fabric.loom_rpm_dp);
+  const rpmTempSp = !!(tRpm && tRpm.sp !== null), rpmTempDp = !!(tRpm && tRpm.dp !== null);
+  const rpmSp = rpmTempSp ? tRpm.sp : masterRpmSp;
+  const rpmDp = rpmTempDp ? tRpm.dp : masterRpmDp;
+  const loomRpm = rpmSp;
   const loomEff = num(fabric.loom_eff_pct);
   const loomMPerDay = loomRpm && loomEff && ppi ? (loomRpm * MIN_PER_DAY * (loomEff / 100)) / (ppi * IN_PER_M) : null;
 
@@ -284,6 +308,7 @@ export function fabricCalc(fabric, idx, asOf, picks) {
     finish, price, priceTemp: tempPrice !== null, masterPrice, g, finishingCost: finish === 'RFD' ? finishingCost : null, transport, rfdCost, rmPerSaleM,
     realisationPerM, realisationPerPick, vatavPct, vatavAmount, netPrice, realisationNetPerM, realisationNetPerPick,
     picksPerSaleM, loomMPerDay, missing,
+    fabricId: fabric.id, rpmSp, rpmDp, rpmTempSp, rpmTempDp, rpmTemp: rpmTempSp || rpmTempDp, masterRpmSp, masterRpmDp,
   };
 }
 
@@ -341,11 +366,15 @@ const fmtCm = (w) => String(Math.round(w));
 export function loomPerDay(calc, fabric, unit, panna = 1, widthCm = null) {
   const w = num(widthCm);
   const wide = w !== null ? w >= WIDE_LOOM_CM : panna === 2;
-  const rpm = num(wide ? fabric && fabric.loom_rpm_dp : fabric && fabric.loom_rpm);
+  // A temporary RPM on this fabric (carried by its calc, this device only) beats the fabric's master RPM.
+  const own = !!calc && (!fabric || calc.fabricId === fabric.id);
+  const rpmTemp = own && !!(wide ? calc.rpmTempDp : calc.rpmTempSp);
+  const rpm = rpmTemp ? (wide ? calc.rpmDp : calc.rpmSp) : num(wide ? fabric && fabric.loom_rpm_dp : fabric && fabric.loom_rpm);
   const eff = num(unit && unit.loom_eff_pct);
   const mPerDay = rpm && eff && calc.ppi ? ((rpm * MIN_PER_DAY * (eff / 100)) / (calc.ppi * IN_PER_M)) * panna : null;
   return {
     rpm,
+    rpmTemp,
     eff,
     mPerDay,
     warpKg: mPerDay !== null && calc.warpGpm !== null ? (mPerDay * calc.warpGpm) / 1000 : null,
@@ -421,8 +450,8 @@ export function rateSources(calc, idx) {
       out.push((s = { yarn: src, dates, usedBy: [], tpm: [], temp: tempRateOf(idx, src.id) }));
     }
     if (x.yarn && !s.usedBy.some((y) => y.id === x.yarn.id)) s.usedBy.push(x.yarn);
-    // TPM yarns on this base: each can carry its own temporary rate
-    if (isTpm(x.yarn) && !s.tpm.some((t) => t.yarn.id === x.yarn.id)) s.tpm.push({ yarn: x.yarn, delta: tpmDelta(x.yarn), temp: tempRateOf(idx, x.yarn.id) });
+    // TPM yarns on this base: each can carry its own temporary delta
+    if (isTpm(x.yarn) && !s.tpm.some((t) => t.yarn.id === x.yarn.id)) s.tpm.push({ yarn: x.yarn, delta: tpmDelta(x.yarn), tempDelta: tempDeltaOf(idx, x.yarn.id) });
   }
   return out;
 }

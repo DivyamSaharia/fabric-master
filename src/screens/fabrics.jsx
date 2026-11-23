@@ -3,15 +3,16 @@ import { baseFabric, buildIndex, fabricCalc, fabricLabel, fmt, loomPerDay, loomR
 import { beamRowsOf, beamSlots, groupLabel, slotLabelIn } from '../machines.js';
 import { constructionLine, unitsOf, yarnOptions, yarnShort } from '../describe.js';
 import {
-  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, retry, saveFabric, savedFilters, setAssignments, setCover, clearTempPrice, clearTempRate, toast, useStore,
+  addPhoto, backendMode, deleteFabric, deletePhoto, duplicateFabric, duplicateForRs, getIndex, rsCopyPlan, getState, refresh, retry, saveFabric, savedFilters, setAssignments, setCover, clearTempDelta, clearTempPrice, clearTempRate, clearTempRpm, toast, useStore,
 } from '../store.js';
 import { back, go, replace, useLeaveGuard } from '../router.js';
 import { askConfirm } from '../confirm.js';
 import { loadListState, saveListState, savedScroll, saveScroll } from '../listState.js';
 import { Badge, Button, Chip, Empty, Field, FoldSection, Icon, IconButton, NavBar, NumField, PhotoImg, Row, SearchBox, SearchPicker, Section, Segmented, Sheet, Swatch, TextButton, Toggle, classBadge, openSection, useWide, BrandHero, History } from '../ui.jsx';
 import { GuideHint, HelpButton } from './guide.jsx';
-import { TempPriceSection, TempRateRow } from './tempRates.jsx';
-import { exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
+import { FABRIC_SECTIONS } from '../search.js';
+import { TempPriceSection, TempRateRow, TempRpmSection, TempTpmRow } from './tempRates.jsx';
+import { ALL_MONEY, NO_MONEY, exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
 import { exportFabricPdfDetailed, exportFabricXlsxDetailed } from '../export/detailed.js';
 
 const WEAVES = ['Plain', 'Cam', 'Dobby'];
@@ -321,7 +322,7 @@ export function FabricList({ query }) {
       </div>
       {st.status.error && !Object.keys(idx.fabricsById).length ? null : <div class="list-meta">
         <span>{rows.length} {rows.length === 1 ? 'fabric' : 'fabrics'} · {unit ? unit.name : 'all units'}</span>
-        <span class={wide ? 'plain' : ''}>{wide ? 'Click a heading to sort. Press / to search, Ctrl+S to save a form.' : filters.sort === 'spindle' ? 'Profit / pick per spindle · TPM fabrics' : loomSortWidth(filters.sort) !== null ? `₹ per loom per day · ${fmt.int(loomSortWidth(filters.sort))} cm looms` : '₹ / pick with VATAV'}</span>
+        <span class={wide ? 'plain' : ''}>{wide ? 'Click a heading to sort. Press / or Ctrl K to search, 1–5 for tabs, Ctrl+S to save a form.' : filters.sort === 'spindle' ? 'Profit / pick per spindle · TPM fabrics' : loomSortWidth(filters.sort) !== null ? `₹ per loom per day · ${fmt.int(loomSortWidth(filters.sort))} cm looms` : '₹ / pick with VATAV'}</span>
       </div>}
       {rows.length ? (
         wide ? (
@@ -474,8 +475,10 @@ function RangeRow({ label, min, max, onChange }) {
 }
 
 // ---------------- detail ----------------
-// Jump buttons that stay under the fabric page's title (B1 a). On a phone the button for the part on screen is lit.
-const JUMPS = [['sec-summary', 'Summary'], ['sec-rates', 'Rates'], ['sec-construction', 'Construction'], ['sec-costing', 'Costing'], ['sec-units', 'Units'], ['sec-production', 'Production']];
+// Jump buttons that stay under the fabric page's title (B1 a). The button for the part on screen is lit: on a phone
+// the last section whose top has passed the top bar; on a laptop (two columns, 1.27.0) the first section, in page
+// order, that shows in the top part of the window (as the CFM dashboard does).
+const JUMPS = FABRIC_SECTIONS.slice(0, 6);
 const headerHeight = () => {
   const h = typeof document !== 'undefined' ? document.querySelector('.navbar') : null;
   return h ? h.offsetHeight : 0;
@@ -484,8 +487,26 @@ function JumpBar({ hasUnits }) {
   const wide = useWide();
   const items = JUMPS.filter(([id]) => hasUnits || id !== 'sec-production');
   const [on, setOn] = useState(items[0][0]);
+  // after a tap, the tapped button stays lit while the page scrolls to it
+  const jumpedAt = useRef(0);
   useEffect(() => {
-    if (wide) return undefined;
+    if (wide) {
+      if (typeof IntersectionObserver === 'undefined') return undefined;
+      const vis = new Set();
+      const io = new IntersectionObserver((es) => {
+        for (const e of es) (e.isIntersecting ? vis.add(e.target.id) : vis.delete(e.target.id));
+        // at the very top the summary is the part on screen
+        if (Date.now() - jumpedAt.current < 1200) return undefined;
+        if (window.scrollY < 8) return setOn(items[0][0]);
+        const cur = items.find(([id]) => vis.has(id));
+        if (cur) setOn(cur[0]);
+      }, { rootMargin: `-${headerHeight() + 8}px 0px -55% 0px` });
+      for (const [id] of items) {
+        const el = document.getElementById(id);
+        if (el) io.observe(el);
+      }
+      return () => io.disconnect();
+    }
     const f = () => {
       const h = headerHeight();
       let cur = items[0][0];
@@ -501,6 +522,7 @@ function JumpBar({ hasUnits }) {
   }, [hasUnits, wide]);
   const jump = (id) => {
     openSection(id);
+    jumpedAt.current = Date.now();
     setOn(id);
     requestAnimationFrame(() => {
       const el = document.getElementById(id);
@@ -511,7 +533,7 @@ function JumpBar({ hasUnits }) {
   };
   return (
     <nav class="jumpbar" aria-label="Jump to">
-      {items.map(([id, label]) => <Chip on={!wide && on === id} onClick={() => jump(id)}>{label}</Chip>)}
+      {items.map(([id, label]) => <Chip on={on === id} onClick={() => jump(id)}>{label}</Chip>)}
     </nav>
   );
 }
@@ -540,20 +562,18 @@ export function FabricDetail({ id }) {
   // calcNow: today's rates (exports). calc: what the page shows, at any older rates picked below.
   const calcNow = fabricCalc(fabric, idx);
   const sources = rateSources(calcNow, idx);
-  // a base yarn used only through TPM yarns that each carry their own temporary rate sets no cost here
-  const covered = (s) => !s.usedBy.some((y) => y.id === s.yarn.id) && s.tpm.length > 0 && s.tpm.every((t) => t.temp !== null);
-  const livePicks = Object.fromEntries(Object.entries(picks).filter(([k, v]) => v && sources.some((s) => s.yarn.id === k && s.temp === null && !covered(s) && s.dates.length && s.dates[0].date !== v)));
-  // temporary rates that set this fabric's cost: base yarns, and TPM yarns with their own (which win over the base's)
+  const livePicks = Object.fromEntries(Object.entries(picks).filter(([k, v]) => v && sources.some((s) => s.yarn.id === k && s.temp === null && s.dates.length && s.dates[0].date !== v)));
+  // temporary rates that set this fabric's cost: base yarns' rates and TPM yarns' deltas
   const tempSources = [
-    ...sources.filter((x) => x.temp !== null && (x.usedBy.some((y) => y.id === x.yarn.id) || x.tpm.some((t) => t.temp === null))),
-    ...sources.flatMap((x) => x.tpm.filter((t) => t.temp !== null)),
-    // a TPM yarn whose base yarn is missing still uses its own temporary rate
-    ...[...new Map(calcNow.tpmLines.filter((x) => !idx.yarnsById[x.yarn.base_yarn_id] && x.temp).map((x) => [x.yarn.id, { yarn: x.yarn, temp: x.rate }])).values()],
+    ...sources.filter((x) => x.temp !== null).map((x) => ({ yarn: x.yarn, text: `${x.yarn.name} ${fmt.rate(x.temp)}/kg`, clear: () => clearTempRate(x.yarn.id) })),
+    ...sources.flatMap((x) => x.tpm.filter((t) => t.tempDelta !== null)).map((t) => ({ yarn: t.yarn, text: `${t.yarn.name} delta ${fmt.rate(t.tempDelta)}/kg`, clear: () => clearTempDelta(t.yarn.id) })),
   ];
   const older = Object.keys(livePicks).length > 0;
   const calc = older ? fabricCalc(fabric, idx, null, livePicks) : calcNow;
   // Same page without this fabric's temporary sale rate, to show what it changes.
   const calcMaster = calc.priceTemp ? fabricCalc(fabric, { ...idx, tempPrices: {} }, null, older ? livePicks : undefined) : calc;
+  // Same page without this fabric's temporary loom RPM.
+  const calcRpmMaster = calc.rpmTemp ? fabricCalc(fabric, { ...idx, tempRpms: {} }, null, older ? livePicks : undefined) : calc;
   const photos = idx.photosByFabric[id] || [];
   const units = unitsOf(id, idx);
   const spinUnit = units.find((u) => unitHasTfo(calc, u, idx)) || units[0] || null;
@@ -672,8 +692,15 @@ export function FabricDetail({ id }) {
 
       {tempSources.length ? (
         <div class="notice rates-note temp-note">
-          <span>Using temporary yarn rates on this device: {tempSources.map((x) => `${x.yarn.name} ${fmt.rate(x.temp)}/kg`).join(', ')}.</span>
-          <TextButton onClick={() => tempSources.forEach((x) => clearTempRate(x.yarn.id))}>Reset</TextButton>
+          <span>Using temporary yarn rates on this device: {tempSources.map((x) => x.text).join(', ')}.</span>
+          <TextButton onClick={() => tempSources.forEach((x) => x.clear())}>Reset</TextButton>
+        </div>
+      ) : null}
+
+      {calc.rpmTemp ? (
+        <div class="notice rates-note temp-note">
+          <span>Using a temporary loom RPM on this device: {[calc.rpmTempSp ? `single panna ${fmt.int(calc.rpmSp)} (master ${calc.masterRpmSp === null ? 'not set' : fmt.int(calc.masterRpmSp)})` : null, calc.rpmTempDp ? `double panna ${fmt.int(calc.rpmDp)} (master ${calc.masterRpmDp === null ? 'not set' : fmt.int(calc.masterRpmDp)})` : null].filter(Boolean).join(', ')}.</span>
+          <TextButton onClick={() => clearTempRpm(fabric.id)}>Reset</TextButton>
         </div>
       ) : null}
 
@@ -763,6 +790,8 @@ export function FabricDetail({ id }) {
         loom={dayUnit && dayTiles.length && dayTiles[0].loom ? { ...dayTiles[0].loom, width: dayTiles[0].width } : null}
       />
 
+      <TempRpmSection fabric={fabric} calc={calc} master={calcRpmMaster} unit={dayUnit} widths={dayTiles.map((d) => ({ width: d.width, panna: d.panna }))} />
+
       {sources.length ? (
         <Section header="Yarn rates" footer="Pick an older rate, or type a temporary rate (this device only)." guide="temp-rates">
           {sources.map((src) => (
@@ -774,7 +803,7 @@ export function FabricDetail({ id }) {
               </span>
               {src.dates.length ? (
                 <span class="field-input select">
-                  <select disabled={src.temp !== null || covered(src)} value={livePicks[src.yarn.id] || src.dates[0].date} onChange={(e) => setPicks((p) => ({ ...p, [src.yarn.id]: e.currentTarget.value }))} aria-label={`Rate for ${src.yarn.name}`}>
+                  <select disabled={src.temp !== null} value={livePicks[src.yarn.id] || src.dates[0].date} onChange={(e) => setPicks((p) => ({ ...p, [src.yarn.id]: e.currentTarget.value }))} aria-label={`Rate for ${src.yarn.name}`}>
                     {src.dates.map((d, i) => <option value={d.date}>{`${fmt.date(d.date)} · ${fmt.rate(d.rate)}/kg${i === 0 ? ' (current)' : ''}`}</option>)}
                   </select>
                   <Icon.chevron size={12} />
@@ -785,8 +814,9 @@ export function FabricDetail({ id }) {
             </label>
             <TempRateRow yarn={src.yarn} temp={src.temp} placeholder={src.dates.length ? src.dates[0].rate : null} />
             {src.tpm.map((t) => {
-              const b = src.temp ?? (src.dates.length ? src.dates[0].rate : null);
-              return <TempRateRow tpm yarn={t.yarn} temp={t.temp} placeholder={b === null ? null : b + t.delta} />;
+              const picked = livePicks[src.yarn.id] ? src.dates.find((d) => d.date === livePicks[src.yarn.id]) : null;
+              const bm = picked ? picked.rate : src.dates.length ? src.dates[0].rate : null;
+              return <TempTpmRow t={t} base={src.yarn} baseTemp={src.temp} baseMaster={bm} />;
             })}
             </>
           ))}
@@ -806,8 +836,8 @@ export function FabricDetail({ id }) {
         <Row label="Greige width" value={calc.width ? `${calc.width}″` : '—'} />
         <Row label="Warp shortage" value={fabric.warp_shortage_pct !== '' && fabric.warp_shortage_pct !== undefined ? `${fabric.warp_shortage_pct}%` : '—'} />
         <Row label="Weft shortage" value={fabric.weft_shortage_pct !== '' && fabric.weft_shortage_pct !== undefined ? `${fabric.weft_shortage_pct}%` : '—'} />
-        <Row label="Loom RPM (single panna)" value={num(fabric.loom_rpm) ? fmt.int(num(fabric.loom_rpm)) : '—'} />
-        <Row label="Loom RPM (double panna)" value={num(fabric.loom_rpm_dp) ? fmt.int(num(fabric.loom_rpm_dp)) : '—'} />
+        <Row label="Loom RPM (single panna)" value={calc.rpmSp ? `${fmt.int(calc.rpmSp)}${calc.rpmTempSp ? ' (temp)' : ''}` : '—'} valueSub={calc.rpmTempSp ? `master ${calc.masterRpmSp ? fmt.int(calc.masterRpmSp) : 'not set'}` : undefined} />
+        <Row label="Loom RPM (double panna)" value={calc.rpmDp ? `${fmt.int(calc.rpmDp)}${calc.rpmTempDp ? ' (temp)' : ''}` : '—'} valueSub={calc.rpmTempDp ? `master ${calc.masterRpmDp ? fmt.int(calc.masterRpmDp) : 'not set'}` : undefined} />
       </FoldSection>
       </div>
 
@@ -1165,19 +1195,35 @@ function PhotoSheet({ photo, onClose }) {
   );
 }
 
+// ₹ switches under Includes ₹ → Advanced (1.28.0): one per money group, each on its own.
+export const MONEY_SWITCHES = [
+  ['realisation', 'Realisation', 'Per pick and per m, with and without VATAV; profit per pick'],
+  ['sale', 'Sale rate', 'Selling price, sale date, VATAV'],
+  ['yarn', 'Yarn rates', 'Rate of each yarn and its ₹ per m'],
+  ['costs', 'Costs', 'RM cost, finishing, RFD cost, unit cost per pick, profit per m'],
+];
+
 function ExportSheet({ open, onClose, fabric, calc, idx }) {
   const [toDrive, setToDrive] = useState(backendMode() === 'sheet');
   const [busy, setBusy] = useState('');
-  // Basic (what was always shared) or Detailed (PDF and Excel only). Back to Basic each time the sheet opens.
+  // Basic (no money at all), Includes ₹ (every money figure, or the ones switched on under Advanced), or Detailed
+  // (internal, PDF and Excel only). Back to Basic, Advanced closed and every switch on, each time the sheet opens.
   const [level, setLevel] = useState('basic');
+  const [advanced, setAdvanced] = useState(false);
+  const [sw, setSw] = useState({ ...ALL_MONEY });
   useEffect(() => {
     if (open) {
       setLevel('basic');
+      setAdvanced(false);
+      setSw({ ...ALL_MONEY });
       preloadExports().catch(() => {});
     }
   }, [open]);
   const detailed = level === 'detailed';
-  const text = whatsappText(fabric, calc, idx);
+  // what the PDF, Excel, WhatsApp and Copy text carry
+  const money = level === 'money' ? sw : NO_MONEY;
+  const anyMoney = Object.values(money).some(Boolean);
+  const text = whatsappText(fabric, calc, idx, money);
   const run = async (kind, fn) => {
     setBusy(kind);
     try {
@@ -1188,17 +1234,34 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
     setBusy('');
   };
   const sheetMode = backendMode() === 'sheet';
+  const off = MONEY_SWITCHES.filter(([k]) => !sw[k]).map(([, l]) => l);
   return (
     <Sheet open={open} onClose={onClose} title="Export">
       <Section
         header="Report"
         footer={detailed
           ? 'Every figure, with costs, yarn rates and profit. Internal use only.'
-          : 'The spec sheet as always shared.'}
+          : level === 'money'
+            ? (!anyMoney ? 'Every ₹ switch is off, so this is the same as Basic.' : off.length ? `Contains ₹: ${MONEY_SWITCHES.filter(([k]) => sw[k]).map(([, l]) => l.toLowerCase()).join(', ')}. Not for buyers unless you mean it.` : 'Contains every ₹ figure: realisation, sale rate, yarn rates and costs. Not for buyers unless you mean it.')
+            : 'No ₹ figures at all. Safe to send to anyone.'}
       >
-        <div class="row"><div class="seg-fill"><Segmented label="Report" options={[{ value: 'basic', label: 'Basic' }, { value: 'detailed', label: 'Detailed' }]} value={level} onChange={setLevel} /></div></div>
+        <div class="row"><div class="seg-fill"><Segmented label="Report" options={[{ value: 'basic', label: 'Basic' }, { value: 'money', label: 'Includes ₹' }, { value: 'detailed', label: 'Detailed' }]} value={level} onChange={setLevel} /></div></div>
+        {level === 'money' ? (
+          <>
+            <button type="button" class="row link-row" aria-expanded={advanced ? 'true' : 'false'} onClick={() => setAdvanced(!advanced)}>
+              <span class="row-label">Advanced</span>
+              <span class="fold-mark">{advanced ? 'Hide' : 'Choose ₹ figures'}<Icon.chevron size={11} /></span>
+            </button>
+            {advanced ? MONEY_SWITCHES.map(([k, label, sub]) => (
+              <div class="row money-switch">
+                <div class="row-main"><div class="row-label">{label}</div><div class="row-sub">{sub}</div></div>
+                <button type="button" class={`switch ${sw[k] ? 'on' : ''}`} aria-pressed={sw[k] ? 'true' : 'false'} aria-label={label} onClick={() => setSw((x) => ({ ...x, [k]: !x[k] }))}><span /></button>
+              </div>
+            )) : null}
+          </>
+        ) : null}
       </Section>
-      <Section header={`${fabric.name} · ${calc.finish}`} footer={detailed ? 'WhatsApp and Copy text always send the Basic text.' : null}>
+      <Section header={`${fabric.name} · ${calc.finish}`} footer={detailed ? 'WhatsApp and Copy text send the Basic text, with no ₹ figures.' : null}>
         {detailed ? (
           <>
             <Row label="Detailed PDF" sub="Internal · key figures, every table, how each figure is worked out" onClick={() => run('dpdf', () => exportFabricPdfDetailed(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'dpdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'dpdf'} />
@@ -1206,12 +1269,12 @@ function ExportSheet({ open, onClose, fabric, calc, idx }) {
           </>
         ) : (
           <>
-            <Row label="PDF spec sheet" sub="Photo, construction, consumption, finishing, realisation" onClick={() => run('pdf', () => exportFabricPdf(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'pdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'pdf'} />
-            <Row label="Excel sheet" sub="Construction, consumption and cost breakdown" onClick={() => run('xlsx', () => exportFabricXlsx(fabric, calc, idx, { toDrive: sheetMode && toDrive }))} value={busy === 'xlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'xlsx'} />
+            <Row label="PDF spec sheet" sub={anyMoney ? 'Contains ₹ · photo, construction, consumption and the ₹ figures above' : 'Photo, construction, consumption, no ₹ figures'} onClick={() => run('pdf', () => exportFabricPdf(fabric, calc, idx, { toDrive: sheetMode && toDrive, money }))} value={busy === 'pdf' ? <span class="spinner" /> : undefined} chevron={busy !== 'pdf'} />
+            <Row label="Excel sheet" sub={anyMoney ? 'Contains ₹ · construction, consumption and the ₹ figures above' : 'Construction and consumption, no ₹ figures'} onClick={() => run('xlsx', () => exportFabricXlsx(fabric, calc, idx, { toDrive: sheetMode && toDrive, money }))} value={busy === 'xlsx' ? <span class="spinner" /> : undefined} chevron={busy !== 'xlsx'} />
           </>
         )}
-        <Row label="WhatsApp message" sub={detailed ? 'Basic text only' : 'Opens WhatsApp with the text below'} onClick={() => openWhatsAppText(text)} chevron />
-        <Row label="Copy text" sub={detailed ? 'Basic text only' : 'Paste it anywhere'} onClick={async () => {
+        <Row label="WhatsApp message" sub={detailed ? 'Basic text, no ₹ figures' : 'Opens WhatsApp with the text below'} onClick={() => openWhatsAppText(text)} chevron />
+        <Row label="Copy text" sub={detailed ? 'Basic text, no ₹ figures' : 'Paste it anywhere'} onClick={async () => {
           try {
             await navigator.clipboard.writeText(text);
             toast('Copied');

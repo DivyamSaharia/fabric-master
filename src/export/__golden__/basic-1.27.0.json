@@ -1,0 +1,2663 @@
+[
+ {
+  "id": "f_crepe",
+  "pdf": [
+   [
+    "text",
+    "Fabric spec sheet · <today>"
+   ],
+   [
+    "text",
+    "Poly Crepe 60 (RFD)"
+   ],
+   [
+    "text",
+    "Plain · Kurtis, sarees · RFD · Weft TPM"
+   ],
+   [
+    "text",
+    "REALISATION WITH VATAV"
+   ],
+   [
+    "text",
+    "₹0.242 / pick"
+   ],
+   [
+    "text",
+    [
+     "₹21.06 / RFD m · without VATAV ₹0.258 / pick"
+    ]
+   ],
+   [
+    "text",
+    "RFD COST"
+   ],
+   [
+    "text",
+    "₹22.59 / m"
+   ],
+   [
+    "text",
+    [
+     "RM ₹13.99 + finishing ₹8.60"
+    ]
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "63.4"
+   ],
+   [
+    "text",
+    [
+     "91.8 g/m · 9.18 kg/100 m"
+    ]
+   ],
+   [
+    "text",
+    "SELLING PRICE"
+   ],
+   [
+    "text",
+    "₹45.00 / RFD m"
+   ],
+   [
+    "text",
+    [
+     "VATAV 3% · 100 × 80 · 75D × 75D TPM"
+    ]
+   ],
+   [
+    "text",
+    "Construction"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Reed",
+      100,
+      "Pick (PPI)",
+      80
+     ],
+     [
+      "Total ends",
+      "6,000",
+      "Reed space",
+      "60″"
+     ],
+     [
+      "Greige width",
+      "57″",
+      "Weave",
+      "Plain"
+     ],
+     [
+      "Warp shortage",
+      "2%",
+      "Weft shortage",
+      "2%"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Warp and weft"
+   ],
+   [
+    "table",
+    [
+     [
+      "Side",
+      "Yarn",
+      "Ends / share",
+      "Rate ₹/kg",
+      "g/m",
+      "kg/100 m",
+      "₹/m"
+     ]
+    ],
+    [
+     [
+      "Warp",
+      "75D Polyester FDY",
+      "6,000",
+      "118.00",
+      "51.00",
+      "5.100",
+      "6.02"
+     ],
+     [
+      "Weft",
+      "75D TPM 2000 S/Z (2S:2Z)",
+      "100%",
+      "168.00",
+      "40.80",
+      "4.080",
+      "6.85"
+     ],
+     [
+      {
+       "content": "Total",
+       "colSpan": 4,
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "91.80",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "9.180",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "12.87",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      }
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Finishing · RFD"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Selling price",
+      "₹45.00 / RFD m"
+     ],
+     [
+      "Sale date",
+      "2 Oct 2026"
+     ],
+     [
+      "RFD shortage",
+      "8%"
+     ],
+     [
+      "Processing charge",
+      "₹7.50 / m"
+     ],
+     [
+      "Transportation",
+      "—"
+     ],
+     [
+      "Brokering",
+      "1%"
+     ],
+     [
+      "RM cost per RFD m",
+      "₹13.99"
+     ],
+     [
+      "Finishing cost",
+      "₹8.60"
+     ],
+     [
+      "RFD cost",
+      "₹22.59 / m"
+     ],
+     [
+      "Realisation without VATAV",
+      "₹22.41 / m · ₹0.258 / pick"
+     ],
+     [
+      "VATAV",
+      "3% · −₹1.35 / m"
+     ],
+     [
+      "Realisation with VATAV",
+      "₹21.06 / m · ₹0.242 / pick"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Units"
+   ],
+   [
+    "table",
+    [
+     [
+      "Unit",
+      "Cost / pick",
+      "Profit / pick (with VATAV)",
+      "Profit / m",
+      "Per loom · single / double panna"
+     ]
+    ],
+    [
+     [
+      "Unit 2",
+      "₹0.200",
+      "+₹0.042",
+      "₹3.66",
+      "M/C 1–12: 130 / — spindles\nM/C 13–16: 112 / — spindles"
+     ],
+     [
+      "Chinese AJ",
+      "₹0.185",
+      "+₹0.057",
+      "₹4.97",
+      "Warp 15.9 / — kg/day\nWeft 12.7 / — kg/day"
+     ],
+     [
+      "Waterjet",
+      "₹0.165",
+      "+₹0.077",
+      "₹6.71",
+      "Warp 15.9 / — kg/day\nWeft 12.7 / — kg/day"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Beam length"
+   ],
+   [
+    "table",
+    [
+     [
+      "Unit",
+      "Loom group",
+      "Beam length"
+     ]
+    ],
+    [
+     [
+      "Unit 2",
+      "Toyota · 190 cm",
+      "Not set"
+     ],
+     [
+      "Unit 2",
+      "Toyota · 280 cm",
+      "Not set"
+     ]
+    ]
+   ],
+   [
+    "text",
+    [
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
+     "taken off. Figures use the latest yarn rates."
+    ]
+   ]
+  ],
+  "xlsx": {
+   "Summary": [
+    [
+     "Field",
+     "Value"
+    ],
+    [
+     "Quality",
+     "Poly Crepe 60 (RFD)"
+    ],
+    [
+     "Weave",
+     "Plain"
+    ],
+    [
+     "End use",
+     "Kurtis, sarees"
+    ],
+    [
+     "Finish",
+     "RFD"
+    ],
+    [
+     "TFO class",
+     "Weft TPM"
+    ],
+    [
+     "Reed",
+     100
+    ],
+    [
+     "Pick (PPI)",
+     80
+    ],
+    [
+     "Loom RPM single panna",
+     800
+    ],
+    [
+     "Loom RPM double panna",
+     ""
+    ],
+    [
+     "Total ends",
+     6000
+    ],
+    [
+     "Reed space (in)",
+     60
+    ],
+    [
+     "Greige width (in)",
+     57
+    ],
+    [
+     "Warp",
+     "75D Polyester FDY"
+    ],
+    [
+     "Weft",
+     "75D TPM 2000 S/Z"
+    ],
+    [
+     "Warp shortage %",
+     2
+    ],
+    [
+     "Weft shortage %",
+     2
+    ],
+    [
+     "Warp g/m",
+     51
+    ],
+    [
+     "Weft g/m",
+     40.8
+    ],
+    [
+     "Total g/m",
+     91.8
+    ],
+    [
+     "kg per 100 m",
+     9.18
+    ],
+    [
+     "GSM",
+     63.4
+    ],
+    [
+     "RM cost ₹/m",
+     12.87
+    ],
+    [
+     "Selling price ₹/m",
+     45
+    ],
+    [
+     "Sale date",
+     "2026-10-02"
+    ],
+    [
+     "VATAV %",
+     3
+    ],
+    [
+     "RFD shortage %",
+     8
+    ],
+    [
+     "Processing ₹/m",
+     7.5
+    ],
+    [
+     "Transportation ₹/m",
+     ""
+    ],
+    [
+     "Brokering %",
+     1
+    ],
+    [
+     "RFD cost ₹/m",
+     22.59
+    ],
+    [
+     "Realisation ₹/m without VATAV",
+     22.41
+    ],
+    [
+     "Realisation ₹/pick without VATAV",
+     0.2577
+    ],
+    [
+     "VATAV ₹/m",
+     1.35
+    ],
+    [
+     "Realisation ₹/m with VATAV",
+     21.06
+    ],
+    [
+     "Realisation ₹/pick with VATAV",
+     0.2421
+    ],
+    [
+     "Units",
+     "Unit 2, Chinese AJ, Waterjet"
+    ]
+   ],
+   "Warp and weft": [
+    [
+     "Side",
+     "Yarn",
+     "Denier",
+     "Ends",
+     "Pick share %",
+     "Pattern",
+     "Rate ₹/kg",
+     "g/m",
+     "kg per 100 m",
+     "₹/m"
+    ],
+    [
+     "Warp",
+     "75D Polyester FDY",
+     75,
+     6000,
+     "",
+     "",
+     118,
+     51,
+     5.1,
+     6.02
+    ],
+    [
+     "Weft",
+     "75D TPM 2000 S/Z",
+     75,
+     "",
+     100,
+     "2S:2Z",
+     168,
+     40.8,
+     4.08,
+     6.85
+    ]
+   ],
+   "Units": [
+    [
+     "Unit",
+     "Cost ₹/pick",
+     "Profit ₹/pick (with VATAV)",
+     "Profit ₹/m",
+     "Loom RPM single panna",
+     "Loom RPM double panna",
+     "TFO type",
+     "Spindles per loom (single panna)",
+     "Spindles per loom (double panna)",
+     "Warp kg/day per loom (single panna)",
+     "Weft kg/day per loom (single panna)",
+     "Warp kg/day per loom (double panna)",
+     "Weft kg/day per loom (double panna)"
+    ],
+    [
+     "Unit 2",
+     0.2,
+     0.0421,
+     3.66,
+     800,
+     "",
+     "M/C 1–12",
+     130,
+     "Set double panna RPM on the fabric",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Unit 2",
+     0.2,
+     0.0421,
+     3.66,
+     800,
+     "",
+     "M/C 13–16",
+     112,
+     "Set double panna RPM on the fabric",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Chinese AJ",
+     0.185,
+     0.0571,
+     4.97,
+     800,
+     "",
+     "",
+     "",
+     "",
+     15.9,
+     12.7,
+     "",
+     ""
+    ],
+    [
+     "Waterjet",
+     0.165,
+     0.0771,
+     6.71,
+     800,
+     "",
+     "",
+     "",
+     "",
+     15.9,
+     12.7,
+     "",
+     ""
+    ]
+   ],
+   "Beam length": [
+    [
+     "Unit",
+     "Loom group",
+     "Beam length (m)"
+    ],
+    [
+     "Unit 2",
+     "Toyota · 190 cm",
+     ""
+    ],
+    [
+     "Unit 2",
+     "Toyota · 280 cm",
+     ""
+    ]
+   ]
+  },
+  "text": "*Poly Crepe 60 (RFD)*\nReed × Pick: 100 × 80\nWarp: 75D Polyester FDY, 6,000 ends\nWeft: 75D TPM 2000 S/Z (2S:2Z)\nWidth 57″ · GSM 63.4\nWeave: Plain\nPrice ₹45.00 / m"
+ },
+ {
+  "id": "f_pv",
+  "pdf": [
+   [
+    "text",
+    "Fabric spec sheet · <today>"
+   ],
+   [
+    "text",
+    "PV Plain 60"
+   ],
+   [
+    "text",
+    "Plain · Kurtis · Greige · Non-TPM"
+   ],
+   [
+    "text",
+    "REALISATION WITH VATAV"
+   ],
+   [
+    "text",
+    "₹0.263 / pick"
+   ],
+   [
+    "text",
+    [
+     "₹17.89 / m · without VATAV ₹0.263 / pick"
+    ]
+   ],
+   [
+    "text",
+    "RM COST"
+   ],
+   [
+    "text",
+    "₹21.11 / m"
+   ],
+   [
+    "text",
+    [
+     "shortage included"
+    ]
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "86.0"
+   ],
+   [
+    "text",
+    [
+     "126.7 g/m · 12.67 kg/100 m"
+    ]
+   ],
+   [
+    "text",
+    "SELLING PRICE"
+   ],
+   [
+    "text",
+    "₹39.00 / m"
+   ],
+   [
+    "text",
+    [
+     "No VATAV · 76 × 68 · 30s × 75D"
+    ]
+   ],
+   [
+    "text",
+    "Construction"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Reed",
+      76,
+      "Pick (PPI)",
+      68
+     ],
+     [
+      "Total ends",
+      "4,560",
+      "Reed space",
+      "60″"
+     ],
+     [
+      "Greige width",
+      "58″",
+      "Weave",
+      "Plain"
+     ],
+     [
+      "Warp shortage",
+      "2.5%",
+      "Weft shortage",
+      "2%"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Warp and weft"
+   ],
+   [
+    "table",
+    [
+     [
+      "Side",
+      "Yarn",
+      "Ends / share",
+      "Rate ₹/kg",
+      "g/m",
+      "kg/100 m",
+      "₹/m"
+     ]
+    ],
+    [
+     [
+      "Warp",
+      "30s PV",
+      "4,560",
+      "185.00",
+      "92.01",
+      "9.201",
+      "17.02"
+     ],
+     [
+      "Weft",
+      "75D Polyester FDY",
+      "100%",
+      "118.00",
+      "34.68",
+      "3.468",
+      "4.09"
+     ],
+     [
+      {
+       "content": "Total",
+       "colSpan": 4,
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "126.69",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "12.669",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "21.11",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      }
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Greige"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Selling price",
+      "₹39.00 / m"
+     ],
+     [
+      "Sale date",
+      "—"
+     ],
+     [
+      "RM cost (shortage included)",
+      "₹21.11 / m"
+     ],
+     [
+      "Realisation without VATAV",
+      "₹17.89 / m · ₹0.263 / pick"
+     ],
+     [
+      "VATAV",
+      "None"
+     ],
+     [
+      "Realisation with VATAV",
+      "₹17.89 / m · ₹0.263 / pick"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Units"
+   ],
+   [
+    "table",
+    [
+     [
+      "Unit",
+      "Cost / pick",
+      "Profit / pick (with VATAV)",
+      "Profit / m",
+      "Per loom · single / double panna"
+     ]
+    ],
+    [
+     [
+      "Chinese AJ",
+      "₹0.185",
+      "+₹0.078",
+      "₹5.31",
+      "Warp — / — kg/day\nWeft — / — kg/day"
+     ]
+    ]
+   ],
+   [
+    "text",
+    [
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
+     "taken off. Figures use the latest yarn rates."
+    ]
+   ]
+  ],
+  "xlsx": {
+   "Summary": [
+    [
+     "Field",
+     "Value"
+    ],
+    [
+     "Quality",
+     "PV Plain 60"
+    ],
+    [
+     "Weave",
+     "Plain"
+    ],
+    [
+     "End use",
+     "Kurtis"
+    ],
+    [
+     "Finish",
+     "Greige"
+    ],
+    [
+     "TFO class",
+     "Non-TPM"
+    ],
+    [
+     "Reed",
+     76
+    ],
+    [
+     "Pick (PPI)",
+     68
+    ],
+    [
+     "Loom RPM single panna",
+     ""
+    ],
+    [
+     "Loom RPM double panna",
+     ""
+    ],
+    [
+     "Total ends",
+     4560
+    ],
+    [
+     "Reed space (in)",
+     60
+    ],
+    [
+     "Greige width (in)",
+     58
+    ],
+    [
+     "Warp",
+     "30s PV"
+    ],
+    [
+     "Weft",
+     "75D Polyester FDY"
+    ],
+    [
+     "Warp shortage %",
+     2.5
+    ],
+    [
+     "Weft shortage %",
+     2
+    ],
+    [
+     "Warp g/m",
+     92.01
+    ],
+    [
+     "Weft g/m",
+     34.68
+    ],
+    [
+     "Total g/m",
+     126.69
+    ],
+    [
+     "kg per 100 m",
+     12.669
+    ],
+    [
+     "GSM",
+     86
+    ],
+    [
+     "RM cost ₹/m",
+     21.11
+    ],
+    [
+     "Selling price ₹/m",
+     39
+    ],
+    [
+     "Sale date",
+     ""
+    ],
+    [
+     "VATAV %",
+     ""
+    ],
+    [
+     "RFD shortage %",
+     ""
+    ],
+    [
+     "Processing ₹/m",
+     ""
+    ],
+    [
+     "Transportation ₹/m",
+     ""
+    ],
+    [
+     "Brokering %",
+     ""
+    ],
+    [
+     "RFD cost ₹/m",
+     ""
+    ],
+    [
+     "Realisation ₹/m without VATAV",
+     17.89
+    ],
+    [
+     "Realisation ₹/pick without VATAV",
+     0.263
+    ],
+    [
+     "VATAV ₹/m",
+     0
+    ],
+    [
+     "Realisation ₹/m with VATAV",
+     17.89
+    ],
+    [
+     "Realisation ₹/pick with VATAV",
+     0.263
+    ],
+    [
+     "Units",
+     "Chinese AJ"
+    ]
+   ],
+   "Warp and weft": [
+    [
+     "Side",
+     "Yarn",
+     "Denier",
+     "Ends",
+     "Pick share %",
+     "Pattern",
+     "Rate ₹/kg",
+     "g/m",
+     "kg per 100 m",
+     "₹/m"
+    ],
+    [
+     "Warp",
+     "30s PV",
+     177.2,
+     4560,
+     "",
+     "",
+     185,
+     92.01,
+     9.201,
+     17.02
+    ],
+    [
+     "Weft",
+     "75D Polyester FDY",
+     75,
+     "",
+     100,
+     "",
+     118,
+     34.68,
+     3.468,
+     4.09
+    ]
+   ],
+   "Units": [
+    [
+     "Unit",
+     "Cost ₹/pick",
+     "Profit ₹/pick (with VATAV)",
+     "Profit ₹/m",
+     "Loom RPM single panna",
+     "Loom RPM double panna",
+     "Warp kg/day per loom (single panna)",
+     "Weft kg/day per loom (single panna)",
+     "Warp kg/day per loom (double panna)",
+     "Weft kg/day per loom (double panna)"
+    ],
+    [
+     "Chinese AJ",
+     0.185,
+     0.078,
+     5.31,
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ]
+  },
+  "text": "*PV Plain 60* (Greige)\nReed × Pick: 76 × 68\nWarp: 30s PV, 4,560 ends\nWeft: 75D Polyester FDY\nWidth 58″ · GSM 86.0\nWeave: Plain\nPrice ₹39.00 / m"
+ },
+ {
+  "id": "f_geo",
+  "pdf": [
+   [
+    "text",
+    "Fabric spec sheet · <today>"
+   ],
+   [
+    "text",
+    "Georgette 60 (RFD)"
+   ],
+   [
+    "text",
+    "Plain · Sarees, dupattas · RFD · TPM × TPM"
+   ],
+   [
+    "text",
+    "REALISATION WITH VATAV"
+   ],
+   [
+    "text",
+    "₹0.276 / pick"
+   ],
+   [
+    "text",
+    [
+     "₹29.49 / RFD m · without VATAV ₹0.293 / pick"
+    ]
+   ],
+   [
+    "text",
+    "RFD COST"
+   ],
+   [
+    "text",
+    "₹26.77 / m"
+   ],
+   [
+    "text",
+    [
+     "RM ₹17.30 + finishing ₹9.47"
+    ]
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "62.6"
+   ],
+   [
+    "text",
+    [
+     "89.0 g/m · 8.90 kg/100 m"
+    ]
+   ],
+   [
+    "text",
+    "SELLING PRICE"
+   ],
+   [
+    "text",
+    "₹58.00 / RFD m"
+   ],
+   [
+    "text",
+    [
+     "VATAV 3% · 120 × 96 · 60D TPM × 60D TPM"
+    ]
+   ],
+   [
+    "text",
+    "Construction"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Reed",
+      120,
+      "Pick (PPI)",
+      96
+     ],
+     [
+      "Total ends",
+      "7,200",
+      "Reed space",
+      "60″"
+     ],
+     [
+      "Greige width",
+      "56″",
+      "Weave",
+      "Plain"
+     ],
+     [
+      "Warp shortage",
+      "3%",
+      "Weft shortage",
+      "3%"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Warp and weft"
+   ],
+   [
+    "table",
+    [
+     [
+      "Side",
+      "Yarn",
+      "Ends / share",
+      "Rate ₹/kg",
+      "g/m",
+      "kg/100 m",
+      "₹/m"
+     ]
+    ],
+    [
+     [
+      "Warp",
+      "60D TPM 2400 S/Z",
+      "7,200",
+      "175.00",
+      "49.44",
+      "4.944",
+      "8.65"
+     ],
+     [
+      "Weft",
+      "60D TPM 2400 S/Z (2S:2Z)",
+      "100%",
+      "175.00",
+      "39.55",
+      "3.955",
+      "6.92"
+     ],
+     [
+      {
+       "content": "Total",
+       "colSpan": 4,
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "88.99",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "8.899",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "15.57",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      }
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Finishing · RFD"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Selling price",
+      "₹58.00 / RFD m"
+     ],
+     [
+      "Sale date",
+      "—"
+     ],
+     [
+      "RFD shortage",
+      "10%"
+     ],
+     [
+      "Processing charge",
+      "₹8.00 / m"
+     ],
+     [
+      "Transportation",
+      "—"
+     ],
+     [
+      "Brokering",
+      "1%"
+     ],
+     [
+      "RM cost per RFD m",
+      "₹17.30"
+     ],
+     [
+      "Finishing cost",
+      "₹9.47"
+     ],
+     [
+      "RFD cost",
+      "₹26.77 / m"
+     ],
+     [
+      "Realisation without VATAV",
+      "₹31.23 / m · ₹0.293 / pick"
+     ],
+     [
+      "VATAV",
+      "3% · −₹1.74 / m"
+     ],
+     [
+      "Realisation with VATAV",
+      "₹29.49 / m · ₹0.276 / pick"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Units"
+   ],
+   [
+    "table",
+    [
+     [
+      "Unit",
+      "Cost / pick",
+      "Profit / pick (with VATAV)",
+      "Profit / m",
+      "Per loom · single / double panna"
+     ]
+    ],
+    [
+     [
+      "Unit 2",
+      "₹0.200",
+      "+₹0.076",
+      "₹8.15",
+      "M/C 1–12: 330 / — spindles\nM/C 13–16: 280 / — spindles"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Beam length"
+   ],
+   [
+    "table",
+    [
+     [
+      "Unit",
+      "Loom group",
+      "Beam length"
+     ]
+    ],
+    [
+     [
+      "Unit 2",
+      "Toyota · 190 cm",
+      "4,000 m"
+     ],
+     [
+      "Unit 2",
+      "Toyota · 280 cm",
+      "Not set"
+     ]
+    ]
+   ],
+   [
+    "text",
+    [
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
+     "taken off. Figures use the latest yarn rates."
+    ]
+   ]
+  ],
+  "xlsx": {
+   "Summary": [
+    [
+     "Field",
+     "Value"
+    ],
+    [
+     "Quality",
+     "Georgette 60 (RFD)"
+    ],
+    [
+     "Weave",
+     "Plain"
+    ],
+    [
+     "End use",
+     "Sarees, dupattas"
+    ],
+    [
+     "Finish",
+     "RFD"
+    ],
+    [
+     "TFO class",
+     "TPM × TPM"
+    ],
+    [
+     "Reed",
+     120
+    ],
+    [
+     "Pick (PPI)",
+     96
+    ],
+    [
+     "Loom RPM single panna",
+     700
+    ],
+    [
+     "Loom RPM double panna",
+     ""
+    ],
+    [
+     "Total ends",
+     7200
+    ],
+    [
+     "Reed space (in)",
+     60
+    ],
+    [
+     "Greige width (in)",
+     56
+    ],
+    [
+     "Warp",
+     "60D TPM 2400 S/Z"
+    ],
+    [
+     "Weft",
+     "60D TPM 2400 S/Z"
+    ],
+    [
+     "Warp shortage %",
+     3
+    ],
+    [
+     "Weft shortage %",
+     3
+    ],
+    [
+     "Warp g/m",
+     49.44
+    ],
+    [
+     "Weft g/m",
+     39.55
+    ],
+    [
+     "Total g/m",
+     88.99
+    ],
+    [
+     "kg per 100 m",
+     8.899
+    ],
+    [
+     "GSM",
+     62.6
+    ],
+    [
+     "RM cost ₹/m",
+     15.57
+    ],
+    [
+     "Selling price ₹/m",
+     58
+    ],
+    [
+     "Sale date",
+     ""
+    ],
+    [
+     "VATAV %",
+     3
+    ],
+    [
+     "RFD shortage %",
+     10
+    ],
+    [
+     "Processing ₹/m",
+     8
+    ],
+    [
+     "Transportation ₹/m",
+     ""
+    ],
+    [
+     "Brokering %",
+     1
+    ],
+    [
+     "RFD cost ₹/m",
+     26.77
+    ],
+    [
+     "Realisation ₹/m without VATAV",
+     31.23
+    ],
+    [
+     "Realisation ₹/pick without VATAV",
+     0.2928
+    ],
+    [
+     "VATAV ₹/m",
+     1.74
+    ],
+    [
+     "Realisation ₹/m with VATAV",
+     29.49
+    ],
+    [
+     "Realisation ₹/pick with VATAV",
+     0.2764
+    ],
+    [
+     "Units",
+     "Unit 2"
+    ]
+   ],
+   "Warp and weft": [
+    [
+     "Side",
+     "Yarn",
+     "Denier",
+     "Ends",
+     "Pick share %",
+     "Pattern",
+     "Rate ₹/kg",
+     "g/m",
+     "kg per 100 m",
+     "₹/m"
+    ],
+    [
+     "Warp",
+     "60D TPM 2400 S/Z",
+     60,
+     7200,
+     "",
+     "",
+     175,
+     49.44,
+     4.944,
+     8.65
+    ],
+    [
+     "Weft",
+     "60D TPM 2400 S/Z",
+     60,
+     "",
+     100,
+     "2S:2Z",
+     175,
+     39.55,
+     3.955,
+     6.92
+    ]
+   ],
+   "Units": [
+    [
+     "Unit",
+     "Cost ₹/pick",
+     "Profit ₹/pick (with VATAV)",
+     "Profit ₹/m",
+     "Loom RPM single panna",
+     "Loom RPM double panna",
+     "TFO type",
+     "Spindles per loom (single panna)",
+     "Spindles per loom (double panna)"
+    ],
+    [
+     "Unit 2",
+     0.2,
+     0.0764,
+     8.15,
+     700,
+     "",
+     "M/C 1–12",
+     330,
+     "Set double panna RPM on the fabric"
+    ],
+    [
+     "Unit 2",
+     0.2,
+     0.0764,
+     8.15,
+     700,
+     "",
+     "M/C 13–16",
+     280,
+     "Set double panna RPM on the fabric"
+    ]
+   ],
+   "Beam length": [
+    [
+     "Unit",
+     "Loom group",
+     "Beam length (m)"
+    ],
+    [
+     "Unit 2",
+     "Toyota · 190 cm",
+     4000
+    ],
+    [
+     "Unit 2",
+     "Toyota · 280 cm",
+     ""
+    ]
+   ]
+  },
+  "text": "*Georgette 60 (RFD)*\nReed × Pick: 120 × 96\nWarp: 60D TPM 2400 S/Z, 7,200 ends\nWeft: 60D TPM 2400 S/Z (2S:2Z)\nWidth 56″ · GSM 62.6\nWeave: Plain\nPrice ₹58.00 / m"
+ },
+ {
+  "id": "f_vn",
+  "pdf": [
+   [
+    "text",
+    "Fabric spec sheet · <today>"
+   ],
+   [
+    "text",
+    "Viscose Nylon Dobby 60"
+   ],
+   [
+    "text",
+    "Dobby · Small diamond, 16-shaft repeat · Dress, ethnic wear · Greige · Non-TPM"
+   ],
+   [
+    "text",
+    "REALISATION WITH VATAV"
+   ],
+   [
+    "text",
+    "₹0.260 / pick"
+   ],
+   [
+    "text",
+    [
+     "₹18.72 / m · without VATAV ₹0.273 / pick"
+    ]
+   ],
+   [
+    "text",
+    "RM COST"
+   ],
+   [
+    "text",
+    "₹26.36 / m"
+   ],
+   [
+    "text",
+    [
+     "shortage included"
+    ]
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "76.6"
+   ],
+   [
+    "text",
+    [
+     "110.9 g/m · 11.09 kg/100 m"
+    ]
+   ],
+   [
+    "text",
+    "SELLING PRICE"
+   ],
+   [
+    "text",
+    "₹46.00 / m"
+   ],
+   [
+    "text",
+    [
+     "VATAV 2% · 88 × 72 · 40D × 30s"
+    ]
+   ],
+   [
+    "text",
+    "Construction"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Reed",
+      88,
+      "Pick (PPI)",
+      72
+     ],
+     [
+      "Total ends",
+      "5,280",
+      "Reed space",
+      "60″"
+     ],
+     [
+      "Greige width",
+      "57″",
+      "Weave",
+      "Dobby"
+     ],
+     [
+      "Warp shortage",
+      "3%",
+      "Weft shortage",
+      "2%"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Warp and weft"
+   ],
+   [
+    "table",
+    [
+     [
+      "Side",
+      "Yarn",
+      "Ends / share",
+      "Rate ₹/kg",
+      "g/m",
+      "kg/100 m",
+      "₹/m"
+     ]
+    ],
+    [
+     [
+      "Warp",
+      "40D Nylon",
+      "5,280",
+      "265.00",
+      "24.17",
+      "2.417",
+      "6.41"
+     ],
+     [
+      "Weft",
+      "30s Viscose",
+      "100%",
+      "230.00",
+      "86.74",
+      "8.674",
+      "19.95"
+     ],
+     [
+      {
+       "content": "Total",
+       "colSpan": 4,
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "110.91",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "11.091",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "26.36",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      }
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Greige"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Selling price",
+      "₹46.00 / m"
+     ],
+     [
+      "Sale date",
+      "—"
+     ],
+     [
+      "RM cost (shortage included)",
+      "₹26.36 / m"
+     ],
+     [
+      "Realisation without VATAV",
+      "₹19.64 / m · ₹0.273 / pick"
+     ],
+     [
+      "VATAV",
+      "2% · −₹0.92 / m"
+     ],
+     [
+      "Realisation with VATAV",
+      "₹18.72 / m · ₹0.260 / pick"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Units"
+   ],
+   [
+    "table",
+    [
+     [
+      "Unit",
+      "Cost / pick",
+      "Profit / pick (with VATAV)",
+      "Profit / m",
+      "Per loom · single / double panna"
+     ]
+    ],
+    [
+     [
+      "Unit 2",
+      "₹0.200",
+      "+₹0.060",
+      "₹4.32",
+      "Warp — / — kg/day\nWeft — / — kg/day"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Beam length"
+   ],
+   [
+    "table",
+    [
+     [
+      "Unit",
+      "Loom group",
+      "Beam length"
+     ]
+    ],
+    [
+     [
+      "Unit 2",
+      "Toyota · 190 cm",
+      "Not set"
+     ]
+    ]
+   ],
+   [
+    "text",
+    [
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
+     "taken off. Figures use the latest yarn rates."
+    ]
+   ]
+  ],
+  "xlsx": {
+   "Summary": [
+    [
+     "Field",
+     "Value"
+    ],
+    [
+     "Quality",
+     "Viscose Nylon Dobby 60"
+    ],
+    [
+     "Weave",
+     "Dobby"
+    ],
+    [
+     "End use",
+     "Dress, ethnic wear"
+    ],
+    [
+     "Finish",
+     "Greige"
+    ],
+    [
+     "TFO class",
+     "Non-TPM"
+    ],
+    [
+     "Reed",
+     88
+    ],
+    [
+     "Pick (PPI)",
+     72
+    ],
+    [
+     "Loom RPM single panna",
+     ""
+    ],
+    [
+     "Loom RPM double panna",
+     ""
+    ],
+    [
+     "Total ends",
+     5280
+    ],
+    [
+     "Reed space (in)",
+     60
+    ],
+    [
+     "Greige width (in)",
+     57
+    ],
+    [
+     "Warp",
+     "40D Nylon"
+    ],
+    [
+     "Weft",
+     "30s Viscose"
+    ],
+    [
+     "Warp shortage %",
+     3
+    ],
+    [
+     "Weft shortage %",
+     2
+    ],
+    [
+     "Warp g/m",
+     24.17
+    ],
+    [
+     "Weft g/m",
+     86.74
+    ],
+    [
+     "Total g/m",
+     110.91
+    ],
+    [
+     "kg per 100 m",
+     11.091
+    ],
+    [
+     "GSM",
+     76.6
+    ],
+    [
+     "RM cost ₹/m",
+     26.36
+    ],
+    [
+     "Selling price ₹/m",
+     46
+    ],
+    [
+     "Sale date",
+     ""
+    ],
+    [
+     "VATAV %",
+     2
+    ],
+    [
+     "RFD shortage %",
+     ""
+    ],
+    [
+     "Processing ₹/m",
+     ""
+    ],
+    [
+     "Transportation ₹/m",
+     ""
+    ],
+    [
+     "Brokering %",
+     ""
+    ],
+    [
+     "RFD cost ₹/m",
+     ""
+    ],
+    [
+     "Realisation ₹/m without VATAV",
+     19.64
+    ],
+    [
+     "Realisation ₹/pick without VATAV",
+     0.2728
+    ],
+    [
+     "VATAV ₹/m",
+     0.92
+    ],
+    [
+     "Realisation ₹/m with VATAV",
+     18.72
+    ],
+    [
+     "Realisation ₹/pick with VATAV",
+     0.2601
+    ],
+    [
+     "Units",
+     "Unit 2"
+    ]
+   ],
+   "Warp and weft": [
+    [
+     "Side",
+     "Yarn",
+     "Denier",
+     "Ends",
+     "Pick share %",
+     "Pattern",
+     "Rate ₹/kg",
+     "g/m",
+     "kg per 100 m",
+     "₹/m"
+    ],
+    [
+     "Warp",
+     "40D Nylon",
+     40,
+     5280,
+     "",
+     "",
+     265,
+     24.17,
+     2.417,
+     6.41
+    ],
+    [
+     "Weft",
+     "30s Viscose",
+     177.2,
+     "",
+     100,
+     "",
+     230,
+     86.74,
+     8.674,
+     19.95
+    ]
+   ],
+   "Units": [
+    [
+     "Unit",
+     "Cost ₹/pick",
+     "Profit ₹/pick (with VATAV)",
+     "Profit ₹/m",
+     "Loom RPM single panna",
+     "Loom RPM double panna",
+     "Warp kg/day per loom (single panna)",
+     "Weft kg/day per loom (single panna)",
+     "Warp kg/day per loom (double panna)",
+     "Weft kg/day per loom (double panna)"
+    ],
+    [
+     "Unit 2",
+     0.2,
+     0.0601,
+     4.32,
+     "",
+     "",
+     "",
+     "",
+     "",
+     ""
+    ]
+   ],
+   "Beam length": [
+    [
+     "Unit",
+     "Loom group",
+     "Beam length (m)"
+    ],
+    [
+     "Unit 2",
+     "Toyota · 190 cm",
+     ""
+    ]
+   ]
+  },
+  "text": "*Viscose Nylon Dobby 60* (Greige)\nReed × Pick: 88 × 72\nWarp: 40D Nylon, 5,280 ends\nWeft: 30s Viscose\nWidth 57″ · GSM 76.6\nWeave: Dobby, Small diamond, 16-shaft repeat\nPrice ₹46.00 / m"
+ },
+ {
+  "id": "f_crepe",
+  "pdf": [
+   [
+    "text",
+    "Fabric spec sheet · <today>"
+   ],
+   [
+    "text",
+    "Poly Crepe 60 (RFD)"
+   ],
+   [
+    "text",
+    "Plain · Kurtis, sarees · RFD · Weft TPM"
+   ],
+   [
+    "text",
+    "REALISATION WITH VATAV"
+   ],
+   [
+    "text",
+    "₹0.251 / pick"
+   ],
+   [
+    "text",
+    [
+     "₹21.83 / RFD m · without VATAV ₹0.267 / pick"
+    ]
+   ],
+   [
+    "text",
+    "RFD COST"
+   ],
+   [
+    "text",
+    "₹23.76 / m"
+   ],
+   [
+    "text",
+    [
+     "RM ₹15.13 + finishing ₹8.62"
+    ]
+   ],
+   [
+    "text",
+    "GSM (ESTIMATE)"
+   ],
+   [
+    "text",
+    "63.4"
+   ],
+   [
+    "text",
+    [
+     "91.8 g/m · 9.18 kg/100 m"
+    ]
+   ],
+   [
+    "text",
+    "SELLING PRICE"
+   ],
+   [
+    "text",
+    "₹47.00 / RFD m (temporary)"
+   ],
+   [
+    "text",
+    [
+     "VATAV 3% · 100 × 80 · 75D × 75D TPM"
+    ]
+   ],
+   [
+    "text",
+    "Construction"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Reed",
+      100,
+      "Pick (PPI)",
+      80
+     ],
+     [
+      "Total ends",
+      "6,000",
+      "Reed space",
+      "60″"
+     ],
+     [
+      "Greige width",
+      "57″",
+      "Weave",
+      "Plain"
+     ],
+     [
+      "Warp shortage",
+      "2%",
+      "Weft shortage",
+      "2%"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Warp and weft"
+   ],
+   [
+    "table",
+    [
+     [
+      "Side",
+      "Yarn",
+      "Ends / share",
+      "Rate ₹/kg",
+      "g/m",
+      "kg/100 m",
+      "₹/m"
+     ]
+    ],
+    [
+     [
+      "Warp",
+      "75D Polyester FDY",
+      "6,000",
+      "125.00 (temp)",
+      "51.00",
+      "5.100",
+      "6.38"
+     ],
+     [
+      "Weft",
+      "75D TPM 2000 S/Z (2S:2Z)",
+      "100%",
+      "185.00 (temp)",
+      "40.80",
+      "4.080",
+      "7.55"
+     ],
+     [
+      {
+       "content": "Total",
+       "colSpan": 4,
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "91.80",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "9.180",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      },
+      {
+       "content": "13.92",
+       "styles": {
+        "fontStyle": "bold"
+       }
+      }
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Finishing · RFD"
+   ],
+   [
+    "table",
+    null,
+    [
+     [
+      "Selling price",
+      "₹47.00 / RFD m (temporary)"
+     ],
+     [
+      "Sale date",
+      "2 Oct 2026"
+     ],
+     [
+      "RFD shortage",
+      "8%"
+     ],
+     [
+      "Processing charge",
+      "₹7.50 / m"
+     ],
+     [
+      "Transportation",
+      "—"
+     ],
+     [
+      "Brokering",
+      "1%"
+     ],
+     [
+      "RM cost per RFD m",
+      "₹15.13"
+     ],
+     [
+      "Finishing cost",
+      "₹8.62"
+     ],
+     [
+      "RFD cost",
+      "₹23.76 / m"
+     ],
+     [
+      "Realisation without VATAV",
+      "₹23.24 / m · ₹0.267 / pick"
+     ],
+     [
+      "VATAV",
+      "3% · −₹1.41 / m"
+     ],
+     [
+      "Realisation with VATAV",
+      "₹21.83 / m · ₹0.251 / pick"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Units"
+   ],
+   [
+    "table",
+    [
+     [
+      "Unit",
+      "Cost / pick",
+      "Profit / pick (with VATAV)",
+      "Profit / m",
+      "Per loom · single / double panna"
+     ]
+    ],
+    [
+     [
+      "Unit 2",
+      "₹0.200",
+      "+₹0.051",
+      "₹4.44",
+      "M/C 1–12: 147 / — spindles\nM/C 13–16: 126 / — spindles"
+     ],
+     [
+      "Chinese AJ",
+      "₹0.185",
+      "+₹0.066",
+      "₹5.75",
+      "Warp 17.8 / — kg/day\nWeft 14.3 / — kg/day"
+     ],
+     [
+      "Waterjet",
+      "₹0.165",
+      "+₹0.086",
+      "₹7.49",
+      "Warp 17.8 / — kg/day\nWeft 14.3 / — kg/day"
+     ]
+    ]
+   ],
+   [
+    "text",
+    "Beam length"
+   ],
+   [
+    "table",
+    [
+     [
+      "Unit",
+      "Loom group",
+      "Beam length"
+     ]
+    ],
+    [
+     [
+      "Unit 2",
+      "Toyota · 190 cm",
+      "Not set"
+     ],
+     [
+      "Unit 2",
+      "Toyota · 280 cm",
+      "Not set"
+     ]
+    ]
+   ],
+   [
+    "text",
+    [
+     "Realisation per pick = (selling price − RM cost with shortage − finishing cost) / picks; with VATAV, the VATAV discount is also",
+     "taken off. Figures use the latest yarn rates. Includes temporary yarn rates, not the yarn master: 75D Polyester FDY 125.00/kg,",
+     "75D TPM 2000 S/Z delta 60.00/kg. Temporary loom RPM used, not the fabric master: Poly Crepe 60 (RFD) single panna 900.",
+     "Temporary sale rate used, not the fabric master: Poly Crepe 60 (RFD) ₹47.00/m."
+    ]
+   ]
+  ],
+  "xlsx": {
+   "Summary": [
+    [
+     "Field",
+     "Value"
+    ],
+    [
+     "Quality",
+     "Poly Crepe 60 (RFD)"
+    ],
+    [
+     "Weave",
+     "Plain"
+    ],
+    [
+     "End use",
+     "Kurtis, sarees"
+    ],
+    [
+     "Finish",
+     "RFD"
+    ],
+    [
+     "TFO class",
+     "Weft TPM"
+    ],
+    [
+     "Reed",
+     100
+    ],
+    [
+     "Pick (PPI)",
+     80
+    ],
+    [
+     "Loom RPM single panna",
+     900
+    ],
+    [
+     "Loom RPM double panna",
+     ""
+    ],
+    [
+     "Total ends",
+     6000
+    ],
+    [
+     "Reed space (in)",
+     60
+    ],
+    [
+     "Greige width (in)",
+     57
+    ],
+    [
+     "Warp",
+     "75D Polyester FDY"
+    ],
+    [
+     "Weft",
+     "75D TPM 2000 S/Z"
+    ],
+    [
+     "Warp shortage %",
+     2
+    ],
+    [
+     "Weft shortage %",
+     2
+    ],
+    [
+     "Warp g/m",
+     51
+    ],
+    [
+     "Weft g/m",
+     40.8
+    ],
+    [
+     "Total g/m",
+     91.8
+    ],
+    [
+     "kg per 100 m",
+     9.18
+    ],
+    [
+     "GSM",
+     63.4
+    ],
+    [
+     "RM cost ₹/m",
+     13.92
+    ],
+    [
+     "Selling price ₹/m",
+     47
+    ],
+    [
+     "Price basis",
+     "Temporary (master 45)"
+    ],
+    [
+     "Sale date",
+     "2026-10-02"
+    ],
+    [
+     "VATAV %",
+     3
+    ],
+    [
+     "RFD shortage %",
+     8
+    ],
+    [
+     "Processing ₹/m",
+     7.5
+    ],
+    [
+     "Transportation ₹/m",
+     ""
+    ],
+    [
+     "Brokering %",
+     1
+    ],
+    [
+     "RFD cost ₹/m",
+     23.76
+    ],
+    [
+     "Realisation ₹/m without VATAV",
+     23.24
+    ],
+    [
+     "Realisation ₹/pick without VATAV",
+     0.2673
+    ],
+    [
+     "VATAV ₹/m",
+     1.41
+    ],
+    [
+     "Realisation ₹/m with VATAV",
+     21.83
+    ],
+    [
+     "Realisation ₹/pick with VATAV",
+     0.2511
+    ],
+    [
+     "Units",
+     "Unit 2, Chinese AJ, Waterjet"
+    ],
+    [
+     "Note",
+     "Includes temporary yarn rates, not the yarn master: 75D Polyester FDY 125.00/kg, 75D TPM 2000 S/Z delta 60.00/kg. Temporary loom RPM used, not the fabric master: Poly Crepe 60 (RFD) single panna 900. Temporary sale rate used, not the fabric master: Poly Crepe 60 (RFD) ₹47.00/m."
+    ]
+   ],
+   "Warp and weft": [
+    [
+     "Side",
+     "Yarn",
+     "Denier",
+     "Ends",
+     "Pick share %",
+     "Pattern",
+     "Rate ₹/kg",
+     "Rate basis",
+     "g/m",
+     "kg per 100 m",
+     "₹/m"
+    ],
+    [
+     "Warp",
+     "75D Polyester FDY",
+     75,
+     6000,
+     "",
+     "",
+     125,
+     "Temporary",
+     51,
+     5.1,
+     6.38
+    ],
+    [
+     "Weft",
+     "75D TPM 2000 S/Z",
+     75,
+     "",
+     100,
+     "2S:2Z",
+     185,
+     "Temporary",
+     40.8,
+     4.08,
+     7.55
+    ]
+   ],
+   "Units": [
+    [
+     "Unit",
+     "Cost ₹/pick",
+     "Profit ₹/pick (with VATAV)",
+     "Profit ₹/m",
+     "Loom RPM single panna",
+     "Loom RPM double panna",
+     "TFO type",
+     "Spindles per loom (single panna)",
+     "Spindles per loom (double panna)",
+     "Warp kg/day per loom (single panna)",
+     "Weft kg/day per loom (single panna)",
+     "Warp kg/day per loom (double panna)",
+     "Weft kg/day per loom (double panna)"
+    ],
+    [
+     "Unit 2",
+     0.2,
+     0.0511,
+     4.44,
+     900,
+     "",
+     "M/C 1–12",
+     147,
+     "Set double panna RPM on the fabric",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Unit 2",
+     0.2,
+     0.0511,
+     4.44,
+     900,
+     "",
+     "M/C 13–16",
+     126,
+     "Set double panna RPM on the fabric",
+     "",
+     "",
+     "",
+     ""
+    ],
+    [
+     "Chinese AJ",
+     0.185,
+     0.0661,
+     5.75,
+     900,
+     "",
+     "",
+     "",
+     "",
+     17.8,
+     14.3,
+     "",
+     ""
+    ],
+    [
+     "Waterjet",
+     0.165,
+     0.0861,
+     7.49,
+     900,
+     "",
+     "",
+     "",
+     "",
+     17.8,
+     14.3,
+     "",
+     ""
+    ]
+   ],
+   "Beam length": [
+    [
+     "Unit",
+     "Loom group",
+     "Beam length (m)"
+    ],
+    [
+     "Unit 2",
+     "Toyota · 190 cm",
+     ""
+    ],
+    [
+     "Unit 2",
+     "Toyota · 280 cm",
+     ""
+    ]
+   ]
+  },
+  "text": "*Poly Crepe 60 (RFD)*\nReed × Pick: 100 × 80\nWarp: 75D Polyester FDY, 6,000 ends\nWeft: 75D TPM 2000 S/Z (2S:2Z)\nWidth 57″ · GSM 63.4\nWeave: Plain\nPrice ₹47.00 / m"
+ }
+]
