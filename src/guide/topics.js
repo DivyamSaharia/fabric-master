@@ -367,6 +367,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.32.0', 'The Construction section on a fabric page now shows GSM. With no greige width it shows GSM on reed space, labelled so.'],
   ['1.31.0', 'New look for the Basic and Detailed PDFs. Basic now has only the key figures, construction and warp and weft. GSM shows on reed space when there is no greige width. Detailed drops Picks per sale metre and has a sixth Advanced switch, Unit-wise.'],
   ['1.30.0', 'The Detailed Excel file is easier to read: ₹ per pick shows 3 decimals, other ₹ shows 2 decimals with commas, the top two rows stay in view, and it prints one page wide.'],
   ['1.29.0', 'Fabric share has two kinds again: Basic (no ₹) and Detailed. Includes ₹ is gone. Under Detailed, Advanced switches off realisation, sale rate, yarn rates, costs or loom realisation. In Detailed, spindle profitability sits under the TFO and spindles table. The Basic Excel file now ends in _spec.xlsx.'],

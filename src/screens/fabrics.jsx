@@ -834,6 +834,11 @@ export function FabricDetail({ id }) {
         <Row label="Total ends" value={calc.totalEnds === null ? '—' : fmt.int(calc.totalEnds)} />
         <Row label="Reed space" value={calc.rs ? `${calc.rs}″` : '—'} />
         <Row label="Greige width" value={calc.width ? `${calc.width}″` : '—'} />
+        <Row
+          label={calc.gsm === null && calc.gsmReed !== null ? 'GSM (on reed space)' : 'GSM'}
+          value={calc.gsm !== null ? fmt.n(calc.gsm, 1) : calc.gsmReed !== null ? fmt.n(calc.gsmReed, 1) : '—'}
+          valueSub={calc.gsm === null && calc.gsmReed !== null ? 'estimate: no greige width set' : undefined}
+        />
         <Row label="Warp shortage" value={fabric.warp_shortage_pct !== '' && fabric.warp_shortage_pct !== undefined ? `${fabric.warp_shortage_pct}%` : '—'} />
         <Row label="Weft shortage" value={fabric.weft_shortage_pct !== '' && fabric.weft_shortage_pct !== undefined ? `${fabric.weft_shortage_pct}%` : '—'} />
         <Row label="Loom RPM (single panna)" value={calc.rpmSp ? `${fmt.int(calc.rpmSp)}${calc.rpmTempSp ? ' (temp)' : ''}` : '—'} valueSub={calc.rpmTempSp ? `master ${calc.masterRpmSp ? fmt.int(calc.masterRpmSp) : 'not set'}` : undefined} />
