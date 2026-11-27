@@ -220,6 +220,8 @@ export const TOPICS = [
       'A TPM yarn\'s count starts as its base yarn\'s. Type the twisted denier if it differs.',
       'A TPM yarn\'s page shows **Production per spindle and machine**. It gives kg per day for each unit and TFO type.',
       'A unit with a TFO division but no speed for the yarn is listed, blank.',
+      'Tap **Used in fabrics** on a yarn page to list its fabrics. Tap a fabric to open it. A base yarn also lists fabrics that use its TPM yarns, marked **Through** with the TPM yarn\'s name.',
+      'Tap a yarn under **TPM yarns made from it** to open that TPM yarn.',
     ],
     how: [
       'kg per spindle per day = RPM ÷ TPM × 1,440 minutes × efficiency × denier ÷ 9,000,000. The RPM is stored already × 2.',
@@ -367,6 +369,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.33.0', 'On a yarn page, tap Used in fabrics to see each fabric, then tap one to open it. A base yarn also lists fabrics that use its TPM yarns, with the TPM yarn named. Tap a TPM yarn to open it.'],
   ['1.32.0', 'The Construction section on a fabric page now shows GSM. With no greige width it shows GSM on reed space, labelled so.'],
   ['1.31.0', 'New look for the Basic and Detailed PDFs. Basic now has only the key figures, construction and warp and weft. GSM shows on reed space when there is no greige width. Detailed drops Picks per sale metre and has a sixth Advanced switch, Unit-wise.'],
   ['1.30.0', 'The Detailed Excel file is easier to read: ₹ per pick shows 3 decimals, other ₹ shows 2 decimals with commas, the top two rows stay in view, and it prints one page wide.'],

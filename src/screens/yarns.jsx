@@ -6,7 +6,7 @@ import { clearTempDelta, clearTempRate, deleteRates, deleteYarn, getIndex, saveY
 import { today } from '../schema.js';
 import { back, go, replace, useLeaveGuard } from '../router.js';
 import { askConfirm } from '../confirm.js';
-import { Button, Empty, Field, Icon, IconButton, NavBar, NumField, Row, SearchBox, Section, Segmented, SelectField, TextButton, useWide, History } from '../ui.jsx';
+import { Button, Empty, Field, FoldSection, Icon, IconButton, NavBar, NumField, Row, SearchBox, Section, Segmented, SelectField, TextButton, useWide, History } from '../ui.jsx';
 import { HelpButton } from './guide.jsx';
 
 function YarnTable({ yarns, idx }) {
@@ -300,10 +300,7 @@ function YarnEditForm({ id, query }) {
       {existing ? (
         <>
           <History row={existing} what="yarn" />
-          <Section footer={usage.fabrics || usage.tpmChildren ? 'A yarn in use cannot be deleted. Remove it from those fabrics or TPM yarns first.' : null}>
-            <Row label="Used in fabrics" value={String(usage.fabrics)} />
-            {!tpm ? <Row label="TPM yarns made from it" value={String(usage.tpmChildren)} /> : null}
-          </Section>
+          <UsedIn yarn={existing} idx={idx} tpm={tpm} inUse={!!(usage.fabrics || usage.tpmChildren)} />
           <div class="danger-zone">
             <Button kind="danger" disabled={!!(usage.fabrics || usage.tpmChildren)} onClick={async () => {
               if (!(await askConfirm({ title: `Delete ${existing.name}?`, text: 'Its rate history goes too, for everyone.', yes: `Delete ${existing.name}`, danger: true }))) return;
@@ -319,6 +316,84 @@ function YarnEditForm({ id, query }) {
         </>
       ) : null}
     </div>
+  );
+}
+
+const sideText = (sides) => (sides.has('warp') && sides.has('weft') ? 'Warp and weft' : sides.has('warp') ? 'Warp' : 'Weft');
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+// Fabrics that use a yarn. Direct lines first; for a base yarn also the fabrics that use one of its TPM yarns,
+// each with the TPM yarn it goes through (via). One entry per fabric and route, sorted by fabric name.
+export function yarnFabricUses(yarnId, idx) {
+  const routes = [{ id: yarnId, via: null }];
+  const children = Object.values(idx.yarnsById)
+    .filter((y) => y.base_yarn_id === yarnId && isTpm(y))
+    .sort((a, b) => String(a.name).localeCompare(String(b.name)));
+  for (const c of children) routes.push({ id: c.id, via: c });
+  const out = [];
+  for (const r of routes) {
+    const byFabric = new Map();
+    for (const l of idx.tables.FabricYarns || []) {
+      if (l.yarn_id !== r.id || !idx.fabricsById[l.fabric_id]) continue;
+      if (!byFabric.has(l.fabric_id)) byFabric.set(l.fabric_id, new Set());
+      byFabric.get(l.fabric_id).add(l.side);
+    }
+    const list = [...byFabric].map(([fid, sides]) => ({ fabric: idx.fabricsById[fid], sides, via: r.via }));
+    list.sort((a, b) => String(a.fabric.name).localeCompare(String(b.fabric.name)));
+    out.push(...list);
+  }
+  return { uses: out, children };
+}
+
+function UsedIn({ yarn, idx, tpm, inUse }) {
+  const { uses, children } = yarnFabricUses(yarn.id, idx);
+  const direct = uses.filter((u) => !u.via);
+  const through = uses.filter((u) => u.via);
+  const throughCount = new Set(through.map((u) => u.fabric.id)).size;
+  const summary = direct.length || throughCount
+    ? [direct.length ? plural(direct.length, 'fabric', 'fabrics') : 'No fabric directly', throughCount ? `${throughCount} through its TPM yarns` : null].filter(Boolean).join(' · ')
+    : 'Not used in any fabric';
+  const directCount = (id) => new Set((idx.tables.FabricYarns || []).filter((l) => l.yarn_id === id && idx.fabricsById[l.fabric_id]).map((l) => l.fabric_id)).size;
+  const fabricRow = (u) => (
+    <Row
+      label={u.fabric.name}
+      sub={u.via ? <>Through <span class="strong">{u.via.name}</span> · {sideText(u.sides)}</> : sideText(u.sides)}
+      chevron
+      onClick={() => go(`/fabric/${u.fabric.id}`)}
+    />
+  );
+  return (
+    <>
+      <FoldSection
+        fold="yarnUsedIn"
+        id="yarn-used-in"
+        header="Used in fabrics"
+        summary={summary}
+        footer={through.length ? 'Fabrics marked "Through" use a TPM yarn made from this yarn, not this yarn itself.' : null}
+      >
+        {uses.length ? (
+          <>
+            {direct.map(fabricRow)}
+            {through.length ? (
+              <>
+                {direct.length ? <div class="row"><div class="row-main"><div class="row-sub strong">Through its TPM yarns</div></div></div> : null}
+                {through.map(fabricRow)}
+              </>
+            ) : null}
+          </>
+        ) : (
+          <Row label="Not used in any fabric" />
+        )}
+      </FoldSection>
+      {!tpm ? (
+        <FoldSection fold="yarnTpmChildren" id="yarn-tpm-children" header="TPM yarns made from it" summary={children.length ? plural(children.length, 'TPM yarn', 'TPM yarns') : 'None'}>
+          {children.length ? children.map((c) => (
+            <Row label={c.name} sub={`Used in ${plural(directCount(c.id), 'fabric', 'fabrics')}`} chevron onClick={() => go(`/yarn/${c.id}`)} />
+          )) : <Row label="No TPM yarn is made from it" />}
+        </FoldSection>
+      ) : null}
+      {inUse ? <p class="section-footer">A yarn in use cannot be deleted. Remove it from those fabrics or TPM yarns first.</p> : null}
+    </>
   );
 }
 
