@@ -7,7 +7,7 @@ import { HelpButton } from './guide.jsx';
 import { exportListXlsx, openWhatsAppText } from '../export/exports.js';
 import { computeRows } from './fabrics.jsx';
 
-export const APP_VERSION = '1.33.0';
+export const APP_VERSION = '1.34.0';
 
 // What to send someone so they can open the app on their own phone or laptop.
 export function inviteText(person, url, appUrl) {

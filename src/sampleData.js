@@ -82,5 +82,10 @@ export function sampleTables() {
       { id: 'fb2', fabric_id: 'f_moss', loom_group_id: 'lg2', beam_length_m: 6000 },
     ],
     Photos: [],
+    SaleRates: [
+      { id: 'sr1', fabric_id: 'f_crepe', rate: 42, effective_date: '2026-08-14' },
+      { id: 'sr2', fabric_id: 'f_crepe', rate: 45, effective_date: '2026-10-02' },
+      { id: 'sr3', fabric_id: 'f_pv', rate: 39, effective_date: '2026-09-20' },
+    ],
   };
 }

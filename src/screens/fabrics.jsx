@@ -12,6 +12,8 @@ import { Badge, Button, Chip, Empty, Field, FoldSection, Icon, IconButton, NavBa
 import { GuideHint, HelpButton } from './guide.jsx';
 import { FABRIC_SECTIONS } from '../search.js';
 import { TempPriceSection, TempRateRow, TempRpmSection, TempTpmRow } from './tempRates.jsx';
+import { SaleRatesSection } from './saleRates.jsx';
+import { saleHistory } from '../saleRates.js';
 import { NO_MONEY, exportFabricPdf, exportFabricXlsx, exportListXlsx, openWhatsAppText, preloadExports, whatsappText } from '../export/exports.js';
 import { DETAILED_ALL, exportFabricPdfDetailed, exportFabricXlsxDetailed } from '../export/detailed.js';
 
@@ -550,7 +552,9 @@ export function FabricDetail({ id }) {
   const [slide, setSlide] = useState(0);
   // Older yarn rates picked on this page: { baseYarnId: 'yyyy-mm-dd' }. View only, never saved.
   const [picks, setPicks] = useState({});
-  useEffect(() => setPicks({}), [id]);
+  // An older sale rate picked on this page (a sale rate history row id). View only, never saved.
+  const [salePick, setSalePick] = useState(null);
+  useEffect(() => { setPicks({}); setSalePick(null); }, [id]);
   if (!fabric) {
     return (
       <div>
@@ -569,11 +573,15 @@ export function FabricDetail({ id }) {
     ...sources.flatMap((x) => x.tpm.filter((t) => t.tempDelta !== null)).map((t) => ({ yarn: t.yarn, text: `${t.yarn.name} delta ${fmt.rate(t.tempDelta)}/kg`, clear: () => clearTempDelta(t.yarn.id) })),
   ];
   const older = Object.keys(livePicks).length > 0;
-  const calc = older ? fabricCalc(fabric, idx, null, livePicks) : calcNow;
+  // Sale rate history; an older rate picked below shows the page at that price and date (not with a temporary sale rate on)
+  const saleHist = saleHistory((idx.tables.Fabrics || []).find((x) => x.id === id) || fabric, idx.saleRatesByFabric[id] || []);
+  const salePicked = !calcNow.priceTemp && salePick ? saleHist.find((h) => h.id === salePick && !h.inUse) || null : null;
+  const fv = salePicked ? { ...fabric, price: salePicked.rate, sale_date: salePicked.date } : fabric;
+  const calc = older || salePicked ? fabricCalc(fv, idx, null, older ? livePicks : undefined) : calcNow;
   // Same page without this fabric's temporary sale rate, to show what it changes.
-  const calcMaster = calc.priceTemp ? fabricCalc(fabric, { ...idx, tempPrices: {} }, null, older ? livePicks : undefined) : calc;
+  const calcMaster = calc.priceTemp ? fabricCalc(fv, { ...idx, tempPrices: {} }, null, older ? livePicks : undefined) : calc;
   // Same page without this fabric's temporary loom RPM.
-  const calcRpmMaster = calc.rpmTemp ? fabricCalc(fabric, { ...idx, tempRpms: {} }, null, older ? livePicks : undefined) : calc;
+  const calcRpmMaster = calc.rpmTemp ? fabricCalc(fv, { ...idx, tempRpms: {} }, null, older ? livePicks : undefined) : calc;
   const photos = idx.photosByFabric[id] || [];
   const units = unitsOf(id, idx);
   const spinUnit = units.find((u) => unitHasTfo(calc, u, idx)) || units[0] || null;
@@ -711,6 +719,13 @@ export function FabricDetail({ id }) {
         </div>
       ) : null}
 
+      {salePicked ? (
+        <div class="notice rates-note">
+          <span>Showing a past sale rate: {fmt.rs(salePicked.rate)}/{rfd ? 'RFD m' : 'm'} from {salePicked.date ? fmt.date(salePicked.date) : 'no date'}. Nothing is saved.</span>
+          <TextButton onClick={() => setSalePick(null)}>Use current rate</TextButton>
+        </div>
+      ) : null}
+
       {older ? (
         <div class="notice rates-note">
           <span>Showing older yarn rates: {sources.filter((x) => livePicks[x.yarn.id]).map((x) => `${x.yarn.name} ${fmt.date(livePicks[x.yarn.id])}`).join(', ')}.</span>
@@ -737,7 +752,7 @@ export function FabricDetail({ id }) {
         <div class={`tile${fillCls(3)}`}>
           <div class="t-label">Sale rate</div>
           <div class="t-value">{calc.price === null ? 'Not set' : fmt.rs(calc.price)}{calc.priceTemp ? <span class="badge amber tag-temp">Temp</span> : null}</div>
-          <div class="t-sub">{calc.price === null ? 'add a selling price' : calc.priceTemp ? `temporary · master ${calc.masterPrice === null ? 'not set' : fmt.rs(calc.masterPrice)}` : `${rfd ? 'per RFD metre' : 'per metre'}${fmt.date(fabric.sale_date) ? ` · ${fmt.date(fabric.sale_date)}` : ''}`}</div>
+          <div class="t-sub">{calc.price === null ? 'add a selling price' : calc.priceTemp ? `temporary · master ${calc.masterPrice === null ? 'not set' : fmt.rs(calc.masterPrice)}` : `${rfd ? 'per RFD metre' : 'per metre'}${fmt.date(fv.sale_date) ? ` · ${fmt.date(fv.sale_date)}` : ''}`}</div>
         </div>
         {lrShown.map((t, i) => (
           <div class={`tile loomreal${fillCls(4 + i)}`} title={t.v !== null ? `${fmt.pick(calc.realisationNetPerPick)} per pick × ${fmt.int(t.l.mPerDay)} m × ${calc.ppi} PPI · ${dayUnit.name}${dayAssumed ? ' (fabric not assigned to it)' : ''}` : undefined}>
@@ -789,6 +804,8 @@ export function FabricDetail({ id }) {
         unit={units.find((u) => num(u.cost_per_pick) !== null) || null}
         loom={dayUnit && dayTiles.length && dayTiles[0].loom ? { ...dayTiles[0].loom, width: dayTiles[0].width } : null}
       />
+
+      <SaleRatesSection fabric={fabric} hist={saleHist} pick={salePicked ? salePicked.id : null} setPick={setSalePick} tempOn={calcNow.priceTemp} rfd={rfd} />
 
       <TempRpmSection fabric={fabric} calc={calc} master={calcRpmMaster} unit={dayUnit} widths={dayTiles.map((d) => ({ width: d.width, panna: d.panna }))} />
 
@@ -862,7 +879,7 @@ export function FabricDetail({ id }) {
       {rfd ? (
         <Section header="Finishing · RFD">
           <Row label="Selling price" value={`${fmt.rs(calc.price)} / RFD m`} />
-          <Row label="Sale date" value={fmt.date(fabric.sale_date) || '—'} />
+          <Row label="Sale date" value={fmt.date(fv.sale_date) || '—'} />
           <Row label="RFD shortage" value={fabric.rfd_shortage_pct !== '' && fabric.rfd_shortage_pct !== undefined ? `${fabric.rfd_shortage_pct}%` : '—'} />
           <Row label="Processing charge" value={`${fmt.rs(num(fabric.processing_charge))} / m`} />
           <Row label="Transportation" value={num(fabric.transport_charge) === null ? '—' : `${fmt.rs(num(fabric.transport_charge))} / RFD m`} />
@@ -878,7 +895,7 @@ export function FabricDetail({ id }) {
       ) : (
         <Section header="Greige">
           <Row label="Selling price" value={`${fmt.rs(calc.price)} / m`} />
-          <Row label="Sale date" value={fmt.date(fabric.sale_date) || '—'} />
+          <Row label="Sale date" value={fmt.date(fv.sale_date) || '—'} />
           <Row label="RM cost" value={`${fmt.rs(calc.rmCost)} / m`} />
           <Row label="Realisation without VATAV" value={<span class="strong">{fmt.pick(calc.realisationPerPick)} / pick</span>} valueSub={`${fmt.rs(calc.realisationPerM)} / m`} />
           <Row label="VATAV" value={calc.vatavPct ? `${calc.vatavPct}% · −${fmt.rs(calc.vatavAmount)} / m` : 'None'} />

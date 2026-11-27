@@ -75,6 +75,8 @@ export const TOPICS = [
       '**Daily consumption** shows warp and weft kg one loom uses in a day.',
       '**TFO per side** shows how much yarn one TFO side twists in a day.',
       'Pick an older date under **Yarn rates** to see the fabric at past prices.',
+      '**Sale rate history** lists every selling price with its date. Pick an older one under **View at** to see the fabric at it; nothing is saved.',
+      'Delete a sale rate with its delete button. Delete the one in use and the next older rate comes back as the selling price.',
     ],
     how: [
       'Realisation per pick = (selling price − yarn cost with shortage − finishing cost) ÷ picks.',
@@ -105,6 +107,7 @@ export const TOPICS = [
       'The app adds the RS to the name for you. RFD fabrics also get "(RFD)" at the end.',
       'For the same quality at a new RS, open it and tap **Duplicate for new RS**.',
       'Changing the price sets the sale date to today.',
+      'Every new price is kept in the fabric\'s **Sale rate history**.',
       '[[Shortage]] starts at 10% on warp and weft unless you change it.',
       'Pick share splits picks between weft yarns, for example 1 and 1 for alternate picks. One weft yarn takes all picks. A blank share counts as 1, on the fabric page and in the Planner.',
       'VATAV is the discount off the selling price. Leave it blank if there is none.',
@@ -369,6 +372,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
+  ['1.34.0', 'Each fabric now keeps a sale rate history, like yarn rates. Find it under the temporary sale rate on a fabric page. Pick an older sale rate to see the fabric at it, or delete one: delete the rate in use and the next older one comes back.'],
   ['1.33.0', 'On a yarn page, tap Used in fabrics to see each fabric, then tap one to open it. A base yarn also lists fabrics that use its TPM yarns, with the TPM yarn named. Tap a TPM yarn to open it.'],
   ['1.32.0', 'The Construction section on a fabric page now shows GSM. With no greige width it shows GSM on reed space, labelled so.'],
   ['1.31.0', 'New look for the Basic and Detailed PDFs. Basic now has only the key figures, construction and warp and weft. GSM shows on reed space when there is no greige width. Detailed drops Picks per sale metre and has a sixth Advanced switch, Unit-wise.'],

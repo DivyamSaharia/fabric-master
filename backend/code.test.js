@@ -42,6 +42,32 @@ describe('Code.gs', () => {
     expect(gas.ss.getSheetByName('Fabrics').formatCalls).toBe(calls);
   });
 
+  it('v15: fills the sale rate history once from each fabric price and sale date', () => {
+    const t = sampleTables();
+    gas.post({ action: 'batch', key, ops: [{ op: 'upsert', table: 'Fabrics', rows: t.Fabrics }] });
+    // as on the live Sheet before the update: fabrics with prices, an empty SaleRates tab, not seeded yet
+    delete gas.props.SALE_RATES_SEEDED;
+    const v0 = gas.props.DATA_VERSION;
+    const back = gas.post({ action: 'bootstrap', key });
+    expect(gas.props.DATA_VERSION).not.toBe(v0);
+    const rows = back.tables.SaleRates;
+    expect(rows).toHaveLength(t.Fabrics.filter((f) => f.price).length);
+    expect(rows.find((r) => r.fabric_id === 'f_crepe')).toMatchObject({ id: 'sr_f_crepe', rate: 45, effective_date: '2026-10-02' });
+    expect(rows.find((r) => r.fabric_id === 'f_geo').effective_date).toBe('');
+    // runs once only: emptied history is not filled again
+    gas.post({ action: 'batch', key, ops: [{ op: 'delete', table: 'SaleRates', ids: rows.map((r) => r.id) }] });
+    expect(gas.post({ action: 'bootstrap', key }).tables.SaleRates).toEqual([]);
+  });
+
+  it('v15: sale rate changes are logged under their fabric', () => {
+    const t = sampleTables();
+    gas.post({ action: 'batch', key, ops: [{ op: 'upsert', table: 'Fabrics', rows: t.Fabrics }] });
+    gas.post({ action: 'batch', key, ops: [{ op: 'upsert', table: 'SaleRates', rows: [{ id: 'sr_x', fabric_id: 'f_crepe', rate: 48, effective_date: '2026-11-27' }] }] });
+    const log = gas.post({ action: 'log', key, limit: 5 }).entries;
+    expect(log[0].item).toMatch(/Poly Crepe/);
+    expect(log[0].details).toMatch(/new sale rate ₹48 from 2026-11-27/);
+  });
+
   it('round-trips the sample data with types intact', () => {
     const t = sampleTables();
     const ops = Object.entries(t).filter(([, rows]) => rows.length).map(([table, rows]) => ({ op: 'upsert', table, rows }));

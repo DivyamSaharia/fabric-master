@@ -5,6 +5,7 @@ import { baseFabric, buildIndex, fabricLabel, fmt, isTpm, num, stripRs, tpmDelta
 import { applyOps, demoBackend, sheetBackend } from './api.js';
 import { keepStorage, local, savedCopy } from './storage.js';
 import { emptyTables, newId, today } from './schema.js';
+import { saleDeletePlan, saleSaveOps } from './saleRates.js';
 import { compressImage } from './photos.js';
 
 const SETTINGS_KEY = 'fm.settings.v1';
@@ -599,6 +600,7 @@ export async function commit(ops) {
       // Beam lengths need backend v8; an older script in the Sheet doesn't know the FabricBeams tab.
       if (/Unknown table FabricBeams/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save beam lengths.');
       if (/Unknown table TfoBalance/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save TFO plans.');
+      if (/Unknown table SaleRates/.test(e.message || '')) throw new Error('The script in your Google Sheet is an older version. Update it to save sale rate history.');
       throw e;
     }
     const tables = applyOps(state.tables, applied || ops);
@@ -640,6 +642,8 @@ export async function saveFabric(fabric, lines, unitIds, beams) {
   const have = new Set(oldAssign.map((a) => a.unit_id));
   const addAssign = [...wanted].filter((u) => !have.has(u)).map((u) => ({ id: newId('a'), fabric_id: f.id, unit_id: u }));
   const ops = [{ op: 'upsert', table: 'Fabrics', rows: [f] }, { op: 'upsert', table: 'FabricYarns', rows: keep }];
+  // a new price or sale date goes into the sale rate history
+  ops.push(...saleSaveOps(isNew ? undefined : (idx.tables.Fabrics || []).find((x) => x.id === f.id), f, idx.saleRatesByFabric[f.id] || []));
   if (dropLines.length) ops.push({ op: 'delete', table: 'FabricYarns', ids: dropLines });
   if (addAssign.length) ops.push({ op: 'upsert', table: 'Assignments', rows: addAssign });
   if (dropAssign.length) ops.push({ op: 'delete', table: 'Assignments', ids: dropAssign });
@@ -732,6 +736,7 @@ export async function deleteFabric(fabricId) {
     { op: 'delete', table: 'FabricYarns', ids: (idx.linesByFabric[fabricId] || []).map((l) => l.id) },
     { op: 'delete', table: 'Assignments', ids: (idx.assignmentsByFabric[fabricId] || []).map((a) => a.id) },
     { op: 'delete', table: 'FabricBeams', ids: (idx.beamsByFabric[fabricId] || []).map((b) => b.id) },
+    { op: 'delete', table: 'SaleRates', ids: (idx.saleRatesByFabric[fabricId] || []).map((r) => r.id) },
     { op: 'delete', table: 'Fabrics', ids: [fabricId] },
   ].filter((o) => o.ids.length);
   for (const p of idx.photosByFabric[fabricId] || []) await backend.deletePhoto(p);
@@ -759,6 +764,18 @@ export function yarnUsage(yarnId) {
   const fabrics = new Set((idx.tables.FabricYarns || []).filter((l) => l.yarn_id === yarnId).map((l) => l.fabric_id));
   const tpmChildren = (idx.tables.Yarns || []).filter((y) => y.base_yarn_id === yarnId);
   return { fabrics: fabrics.size, tpmChildren: tpmChildren.length };
+}
+
+// Deletes sale rate history rows. Deleting the rate in use brings back the next older one (price and sale date).
+export async function deleteSaleRates(fabricId, ids) {
+  const idx = getIndex();
+  const fabric = (idx.tables.Fabrics || []).find((x) => x.id === fabricId);
+  if (!fabric) return;
+  const plan = saleDeletePlan(fabric, idx.saleRatesByFabric[fabricId] || [], ids);
+  if (!plan.ops.length) return;
+  await commit(plan.ops);
+  const n = plan.ops[0].ids.length;
+  toast(n === 1 ? 'Sale rate deleted' : `${n} sale rates deleted`);
 }
 
 export async function deleteRates(ids) {

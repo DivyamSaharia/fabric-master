@@ -9,6 +9,7 @@ import { local } from './storage.js';
 export const FABRIC_SECTIONS = [
   ['sec-summary', 'Summary'], ['sec-rates', 'Rates'], ['sec-construction', 'Construction'], ['sec-costing', 'Costing'],
   ['sec-units', 'Units'], ['sec-production', 'Production'], ['sec-rpm', 'Try a loom RPM'], ['sec-beam', 'Beam length'],
+  ['sec-sale-rates', 'Sale rate history'],
 ];
 
 export const TAB_PLACES = [

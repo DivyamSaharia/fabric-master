@@ -66,6 +66,7 @@ export function buildIndex(tables, tempRates, tempPrices, extra = {}) {
     photosByFabric,
     assignmentsByFabric: group(t.Assignments, 'fabric_id'),
     beamsByFabric: group(t.FabricBeams || [], 'fabric_id'),
+    saleRatesByFabric: group(t.SaleRates || [], 'fabric_id'),
     assignmentsByUnit: group(t.Assignments, 'unit_id'),
     loomGroupsByUnit: group(t.LoomGroups, 'unit_id'),
     tfoTypesByUnit: group(t.TfoTypes, 'unit_id'),

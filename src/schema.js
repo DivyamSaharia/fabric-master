@@ -15,6 +15,8 @@ export const TABLES = {
   // TFO planner (backend v12): saved plans, and their inputs as lines (only differences from master).
   TfoBalancePlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'summary', 'created_at', 'created_by', 'updated_at', 'updated_by'],
   TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by'],
+  // Sale rate history per fabric (backend v15). Fabrics.price / sale_date stay the rate in use.
+  SaleRates: ['id', 'fabric_id', 'rate', 'effective_date', 'updated_at', 'updated_by'],
 };
 
 export const TABLE_NAMES = Object.keys(TABLES);

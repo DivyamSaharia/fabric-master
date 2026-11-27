@@ -8,6 +8,9 @@
  * The key from setup belongs to the owner. The owner gives each other person their own key
  * from the app's Settings, so every edit carries a name and one person can be removed alone.
  * Every add, change and delete made through the app is written to the "Change log" tab.
+ * Backend v15: sale rate history per fabric (SaleRates tab: fabric_id, rate, effective_date). On the first load after the
+ *   update the tab is filled once from each fabric's price and sale date (script property SALE_RATES_SEEDED).
+ *   Fabrics.price and sale_date stay the rate in use; the app writes a history row with every price change.
  * Backend v14: faster sync. A data version (script property DATA_VERSION) moves on every save and on every edit made by
  *   hand in a data tab (simple onEdit trigger). The app asks for it with the light "version" action and loads the tables
  *   only when it has moved. Loads read all tabs in one Sheets API call (advanced service "Sheets", falls back to one read
@@ -36,7 +39,8 @@ var TABLES = {
   FabricBeams: ['id', 'fabric_id', 'loom_group_id', 'beam_length_m', 'updated_at', 'updated_by'],
   Photos: ['id', 'fabric_id', 'file_id', 'thumb_file_id', 'caption', 'is_cover', 'created_at', 'updated_at', 'updated_by'],
   TfoBalancePlans: ['id', 'unit_id', 'plan_date', 'name', 'notes', 'summary', 'created_at', 'created_by', 'updated_at', 'updated_by'],
-  TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by']
+  TfoBalanceLines: ['id', 'plan_id', 'kind', 'ref', 'value', 'sort', 'updated_at', 'updated_by'],
+  SaleRates: ['id', 'fabric_id', 'rate', 'effective_date', 'updated_at', 'updated_by']
 };
 
 // Columns stored as numbers or TRUE/FALSE. Everything else is kept as plain text,
@@ -116,7 +120,7 @@ function ensureSheets_() {
   if (first && first.getName() === 'Sheet1' && first.getLastRow() === 0 && ss.getSheets().length > 1) ss.deleteSheet(first);
 }
 
-var SCHEMA_VERSION = '12';
+var SCHEMA_VERSION = '13';
 
 // Cheap check on every load; the full tab and format setup runs only when something is missing.
 function ensureReady_() {
@@ -127,6 +131,31 @@ function ensureReady_() {
     ensureSheets_();
     props.setProperty('SCHEMA_VERSION', SCHEMA_VERSION);
   }
+  if (!props.getProperty('SALE_RATES_SEEDED')) withLock_(seedSaleRates_);
+}
+
+// Once only: each fabric's current price and sale date become its first sale rate history row.
+// Never runs again, so deleting every history row later does not bring them back.
+function seedSaleRates_() {
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('SALE_RATES_SEEDED')) return;
+  var sh = sheet_('SaleRates');
+  var head = headers_(sh);
+  if (sh.getLastRow() < 2) {
+    var now = new Date().toISOString();
+    var rows = readTable_('Fabrics', false).filter(function (f) {
+      return f.id && f.price !== '' && f.price !== null && !isNaN(Number(f.price)) && Number(f.price) > 0;
+    }).map(function (f) {
+      var obj = { id: 'sr_' + f.id, fabric_id: f.id, rate: Number(f.price), effective_date: f.sale_date || '', updated_at: now, updated_by: 'From fabric price' };
+      return head.map(function (h) { return toCell_(h, obj[h]); });
+    });
+    if (rows.length) {
+      if (rows.length + 1 > sh.getMaxRows()) sh.insertRowsAfter(sh.getMaxRows(), rows.length + 1 - sh.getMaxRows());
+      sh.getRange(2, 1, rows.length, head.length).setValues(rows);
+      setVersion_(newVersion_());
+    }
+  }
+  props.setProperty('SALE_RATES_SEEDED', new Date().toISOString());
 }
 
 function folder_(prop, name) {
@@ -416,7 +445,7 @@ function rowObj_(head, values) {
   return obj;
 }
 
-var ID_PREFIX = { Yarns: 'y', YarnRates: 'r', Units: 'u', LoomGroups: 'lg', TfoTypes: 'tt', TfoSpeeds: 'sp', Fabrics: 'f', FabricYarns: 'l', Assignments: 'a', Photos: 'p', TfoBalancePlans: 'bp', TfoBalanceLines: 'bl' };
+var ID_PREFIX = { Yarns: 'y', YarnRates: 'r', SaleRates: 'sr', Units: 'u', LoomGroups: 'lg', TfoTypes: 'tt', TfoSpeeds: 'sp', Fabrics: 'f', FabricYarns: 'l', Assignments: 'a', Photos: 'p', TfoBalancePlans: 'bp', TfoBalanceLines: 'bl' };
 
 // Reads a tab. Rows pasted in by hand without an id get one, so bulk import is just a paste.
 function readTable_(name, fillIds) {
@@ -763,6 +792,7 @@ var ROOT_OF = {
   FabricBeams: ['Fabrics', 'fabric_id'],
   Photos: ['Fabrics', 'fabric_id'],
   YarnRates: ['Yarns', 'yarn_id'],
+  SaleRates: ['Fabrics', 'fabric_id'],
   LoomGroups: ['Units', 'unit_id'],
   TfoTypes: ['Units', 'unit_id'],
   TfoSpeeds: ['Units', 'unit_id'],
@@ -917,6 +947,12 @@ function describe_(ev) {
       if (a === 'deleted') return rate + ' deleted';
       return fieldDiffs_(ev, 'rate from ' + show_('effective_date', r.effective_date));
     }
+    case 'SaleRates': {
+      var sr = 'sale rate ₹' + show_('rate', r.rate) + ' from ' + (r.effective_date ? show_('effective_date', r.effective_date) : 'no date');
+      if (a === 'added') return 'new ' + sr;
+      if (a === 'deleted') return sr + ' deleted';
+      return fieldDiffs_(ev, 'sale rate from ' + (r.effective_date ? show_('effective_date', r.effective_date) : 'no date'));
+    }
     case 'TfoSpeeds': {
       var sp = (nameOf_('Yarns', r.yarn_id) || 'yarn') + ' on ' + (nameOf_('TfoTypes', r.tfo_type_id) || 'TFO');
       if (a === 'added') return 'speed added for ' + sp + (r.rpm !== '' ? ', RPM ' + r.rpm : '');
@@ -1018,7 +1054,7 @@ function finish_() {
       return;
     }
     if (self && self.action === 'added') {
-      var with_ = g.kids.filter(function (k) { return k.table === 'Assignments' || k.table === 'YarnRates'; }).map(describe_);
+      var with_ = g.kids.filter(function (k) { return k.table === 'Assignments' || k.table === 'YarnRates' || k.table === 'SaleRates'; }).map(describe_);
       lines.push([when, who, 'added', kind, label_(g.root.table, self.row), uniq_(with_).join('; '), g.root.id]);
       return;
     }
