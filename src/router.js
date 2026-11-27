@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'preact/hooks';
 import { askConfirm } from './confirm.js';
+import { dropSheetEntry } from './sheetHistory.js';
 
 let depth = 0;
 
@@ -107,17 +108,22 @@ export function go(path) {
 export function replace(path) {
   if (!mayLeave(() => replace(path))) return;
   const url = `${location.pathname}${location.search}#${path.startsWith('/') ? path : `/${path}`}`;
-  history.replaceState(null, '', url);
-  window.dispatchEvent(new HashChangeEvent('hashchange'));
-  window.scrollTo(0, 0);
+  // a pop-up's history entry on top is taken off first, so the page's own entry is the one replaced (sheetHistory.js)
+  dropSheetEntry(() => {
+    history.replaceState(null, '', url);
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+    window.scrollTo(0, 0);
+  });
 }
 
 export function back(fallback) {
   if (!mayLeave(() => back(fallback))) return;
   if (depth > 0) {
     depth -= 1;
-    ours = true;
-    history.back();
+    dropSheetEntry(() => {
+      ours = true;
+      history.back();
+    });
   } else {
     replace(fallback);
   }

@@ -12,6 +12,7 @@ let seq = 0;
 let ready = false;
 let lastTop = null; // the sheet id on the history entry we are on (null on an ordinary entry)
 let lastHash = '';
+let dropping = null; // the router's move waiting for the sheet entry on top to be taken off
 let topOther = null; // set by ui.jsx: () => close() of a history={false} sheet when one is on top, else null
 
 const hasWindow = () => typeof window !== 'undefined' && typeof history !== 'undefined';
@@ -40,6 +41,19 @@ function onPop() {
   lastTop = s;
   const moved = location.hash !== lastHash;
   lastHash = location.hash;
+  if (dropping) {
+    // the router asked for the sheet entry on top to be taken off before it moves (dropSheetEntry)
+    const f = dropping;
+    dropping = null;
+    if (!moved && s !== null && !open.some((x) => x.id === s)) {
+      // another spent entry under it: take that off as well
+      dropping = f;
+      history.back();
+      return;
+    }
+    f();
+    return;
+  }
   // A sheet's entry shares its page's address, so stepping back off one never changes the address. If the address
   // changed, this is ordinary navigation (a new page, or back onto a spent entry): the router handles it.
   if (moved) return;
@@ -93,6 +107,26 @@ export function setTopOther(fn) {
   topOther = fn;
 }
 
+// The router calls this before replace() and back(): a sheet entry on top (spent, or of a sheet that is closing) is
+// taken off first, then run() does the move. With no sheet entry on top run() is called at once, as before 1.35.0.
+// Without this, replace() would rewrite the sheet's entry and leave the page's own entry under it, so a later back
+// would land on the page that was just replaced (a deleted fabric, a blank "new" form).
+export function dropSheetEntry(run) {
+  if (!hasWindow() || top() === null) {
+    run();
+    return;
+  }
+  start();
+  if (dropping) {
+    // a move is already waiting: the newer one wins
+    dropping = run;
+    return;
+  }
+  dropping = run;
+  // sheets still open lose their entry here; they close with the page or by their own buttons
+  history.back();
+}
+
 // A sheet opened: returns its handle. getClose() gives the sheet's current onClose (or nothing while it can't close).
 export function sheetOpened(getClose) {
   if (!hasWindow()) return null;
@@ -114,4 +148,4 @@ export function sheetClosed(me) {
 }
 
 // tests
-export const _sheetHistory = { open, top, reset: () => { open.length = 0; lastTop = top(); lastHash = location.hash; } };
+export const _sheetHistory = { open, top, reset: () => { open.length = 0; dropping = null; lastTop = top(); lastHash = location.hash; } };

@@ -398,7 +398,10 @@ export function Sheet({ open, onClose, title, children, footer, history: useHist
       if (el) { el.style.transition = ''; el.style.transform = ''; }
       if (backRef.current) { backRef.current.style.transition = ''; backRef.current.style.opacity = ''; }
     };
+    let timer = null;
     const onStart = (e) => {
+      // a new touch while the last pull is still settling: finish that one now
+      if (timer) { clearTimeout(timer); timer = null; clear(); }
       drag = null;
       if (!closeRef.current || e.touches.length !== 1 || openSheets[openSheets.length - 1] !== me) return;
       const tg = e.target;
@@ -413,6 +416,7 @@ export function Sheet({ open, onClose, title, children, footer, history: useHist
     };
     const onMove = (e) => {
       if (!drag) return;
+      if (e.touches.length !== 1) { onCancel(); return; } // a second finger: not a pull
       const dy = e.touches[0].clientY - drag.y;
       const dx = e.touches[0].clientX - drag.x;
       if (!drag.on) {
@@ -427,7 +431,6 @@ export function Sheet({ open, onClose, title, children, footer, history: useHist
       el.style.transform = `translateY(${drag.dy}px)`;
       if (backRef.current) backRef.current.style.opacity = String(Math.max(0.25, 1 - drag.dy / 600));
     };
-    let timer = null;
     const onEnd = () => {
       const d = drag;
       drag = null;
@@ -439,15 +442,15 @@ export function Sheet({ open, onClose, title, children, footer, history: useHist
       timer = setTimeout(() => {
         if (out && closeRef.current) closeRef.current();
         // still here (it asked before closing, or it sprang back): put it back in place
-        timer = setTimeout(clear, out ? 60 : 0);
+        timer = setTimeout(() => { timer = null; clear(); }, out ? 60 : 0);
       }, 180);
     };
-    const onCancel = () => {
+    function onCancel() {
       if (drag && drag.on) settle(false);
       drag = null;
       clearTimeout(timer);
-      timer = setTimeout(clear, 200);
-    };
+      timer = setTimeout(() => { timer = null; clear(); }, 200);
+    }
     if (el) {
       el.addEventListener('touchstart', onStart, { passive: true });
       el.addEventListener('touchmove', onMove, { passive: false });
