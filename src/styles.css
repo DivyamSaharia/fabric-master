@@ -813,3 +813,6 @@ input::placeholder, textarea::placeholder { color: var(--hint); opacity: 1; }
 .past-rate { padding-bottom: 28px; }
 .past-table tr.total td { font-weight: 600; border-top: 1px solid var(--text-2); }
 .past-table td .row-sub { font-weight: 400; }
+/* a sheet's own scroll never drags the page behind it or pulls the browser's refresh */
+.sheet-body { overscroll-behavior: contain; }
+.past-rate { padding-bottom: 8px; }

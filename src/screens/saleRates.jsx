@@ -3,7 +3,7 @@ import { fmt, unitProfit } from '../calc.js';
 import { pastRateView } from '../saleRates.js';
 import { deleteSaleRates, getIndex, toast } from '../store.js';
 import { askConfirm } from '../confirm.js';
-import { Icon, IconButton, Section, Sheet } from '../ui.jsx';
+import { Button, Icon, IconButton, Section, Sheet } from '../ui.jsx';
 
 const when = (h) => (h.date ? fmt.date(h.date) : 'no date');
 
@@ -33,7 +33,7 @@ export function PastRateSheet({ fabric, h, inUse, rfd, onClose }) {
   ];
   const thenHead = h.date ? fmt.date(h.date) : 'This rate';
   return (
-    <Sheet open onClose={onClose} title={`${fmt.rs(h.rate)} · ${when(h)}`}>
+    <Sheet open onClose={onClose} title={`${fmt.rs(h.rate)} · ${when(h)}`} footer={<Button kind="secondary" onClick={onClose}>Done</Button>}>
       <div class="past-rate">
         <p class="past-foot past-top">Sale rate per {rfd ? 'RFD metre' : 'metre'}{h.saved ? ` · saved ${h.saved}` : ''}{h.inUse ? ' · the rate in use' : ' · a past rate'}. Realisation at this rate, with the yarn rates of {v.dated ? 'its date' : 'today (it has no sale date)'}.</p>
         <div class="tiles">

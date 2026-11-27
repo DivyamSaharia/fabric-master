@@ -247,7 +247,9 @@ describe('fabric page: Sale rate history', () => {
     fireEvent.click(within(sec).getByLabelText(`See realisation at ${fmt.rs(45)} from 2 Oct 2026, in use`));
     const dlg2 = await waitFor(() => screen.getByRole('dialog'));
     expect(dlg2.textContent).toContain('At the yarn rates of its date, and at today’s yarn rates');
-    fireEvent.click(within(dlg2).getAllByLabelText('Close')[0]);
+    // the Done button at the bottom closes it as well
+    fireEvent.click(within(dlg2).getByText('Done'));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     // delete the rate in use: ₹42 becomes the price
     fireEvent.click(within(sec).getByLabelText('Delete sale rate from 2 Oct 2026'));
     const title = await answer(true);
