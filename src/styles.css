@@ -796,3 +796,18 @@ input::placeholder, textarea::placeholder { color: var(--hint); opacity: 1; }
 .link-row { width: 100%; border: 0; background: none; text-align: left; justify-content: space-between; cursor: pointer; }
 .link-row .fold-mark { color: var(--accent); }
 .money-switch .row-main { padding-right: 8px; }
+
+/* Sale rate history: a row that opens the past-rate sheet, with its delete button beside it (1.35.0) */
+.row.row-split { padding-right: 4px; }
+.row-tap { flex: 1 1 auto; min-width: 0; text-align: left; background: none; border: 0; padding: 0; margin: 0; font: inherit; color: inherit; cursor: pointer; }
+.row-tap:active { opacity: 0.6; }
+.past-rate .tiles { margin-bottom: 12px; }
+.past-h { font-size: 13px; font-weight: 600; color: var(--text-2); margin: 16px 16px 6px; text-transform: none; }
+.past-table { width: calc(100% - 32px); margin: 0 16px; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.past-table th { font-weight: 600; color: var(--text-2); text-align: right; padding: 6px 4px; font-size: 12px; vertical-align: bottom; }
+.past-table td { padding: 8px 4px; text-align: right; border-top: 1px solid var(--sep, rgba(127, 127, 127, 0.25)); vertical-align: top; }
+.past-table td:first-child, .past-table th:first-child { text-align: left; padding-left: 0; }
+.past-table tr.moved td:last-child { font-weight: 600; color: var(--amber, #b26a00); }
+.past-foot { font-size: 12px; color: var(--text-2); margin: 14px 16px 4px; line-height: 1.4; }
+.past-top { margin-top: 0; margin-bottom: 12px; }
+.past-rate { padding-bottom: 28px; }

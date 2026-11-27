@@ -552,9 +552,7 @@ export function FabricDetail({ id }) {
   const [slide, setSlide] = useState(0);
   // Older yarn rates picked on this page: { baseYarnId: 'yyyy-mm-dd' }. View only, never saved.
   const [picks, setPicks] = useState({});
-  // An older sale rate picked on this page (a sale rate history row id). View only, never saved.
-  const [salePick, setSalePick] = useState(null);
-  useEffect(() => { setPicks({}); setSalePick(null); }, [id]);
+  useEffect(() => { setPicks({}); }, [id]);
   if (!fabric) {
     return (
       <div>
@@ -573,11 +571,10 @@ export function FabricDetail({ id }) {
     ...sources.flatMap((x) => x.tpm.filter((t) => t.tempDelta !== null)).map((t) => ({ yarn: t.yarn, text: `${t.yarn.name} delta ${fmt.rate(t.tempDelta)}/kg`, clear: () => clearTempDelta(t.yarn.id) })),
   ];
   const older = Object.keys(livePicks).length > 0;
-  // Sale rate history; an older rate picked below shows the page at that price and date (not with a temporary sale rate on)
+  // Sale rate history; tapping a rate there opens its realisation at the yarn rates of its date (saleRates.jsx)
   const saleHist = saleHistory((idx.tables.Fabrics || []).find((x) => x.id === id) || fabric, idx.saleRatesByFabric[id] || []);
-  const salePicked = !calcNow.priceTemp && salePick ? saleHist.find((h) => h.id === salePick && !h.inUse) || null : null;
-  const fv = salePicked ? { ...fabric, price: salePicked.rate, sale_date: salePicked.date } : fabric;
-  const calc = older || salePicked ? fabricCalc(fv, idx, null, older ? livePicks : undefined) : calcNow;
+  const fv = fabric;
+  const calc = older ? fabricCalc(fv, idx, null, livePicks) : calcNow;
   // Same page without this fabric's temporary sale rate, to show what it changes.
   const calcMaster = calc.priceTemp ? fabricCalc(fv, { ...idx, tempPrices: {} }, null, older ? livePicks : undefined) : calc;
   // Same page without this fabric's temporary loom RPM.
@@ -719,13 +716,6 @@ export function FabricDetail({ id }) {
         </div>
       ) : null}
 
-      {salePicked ? (
-        <div class="notice rates-note">
-          <span>Showing a past sale rate: {fmt.rs(salePicked.rate)}/{rfd ? 'RFD m' : 'm'} from {salePicked.date ? fmt.date(salePicked.date) : 'no date'}. Nothing is saved.</span>
-          <TextButton onClick={() => setSalePick(null)}>Use current rate</TextButton>
-        </div>
-      ) : null}
-
       {older ? (
         <div class="notice rates-note">
           <span>Showing older yarn rates: {sources.filter((x) => livePicks[x.yarn.id]).map((x) => `${x.yarn.name} ${fmt.date(livePicks[x.yarn.id])}`).join(', ')}.</span>
@@ -805,7 +795,7 @@ export function FabricDetail({ id }) {
         loom={dayUnit && dayTiles.length && dayTiles[0].loom ? { ...dayTiles[0].loom, width: dayTiles[0].width } : null}
       />
 
-      <SaleRatesSection fabric={fabric} hist={saleHist} pick={salePicked ? salePicked.id : null} setPick={setSalePick} tempOn={calcNow.priceTemp} rfd={rfd} />
+      <SaleRatesSection fabric={fabric} hist={saleHist} rfd={rfd} />
 
       <TempRpmSection fabric={fabric} calc={calc} master={calcRpmMaster} unit={dayUnit} widths={dayTiles.map((d) => ({ width: d.width, panna: d.panna }))} />
 
