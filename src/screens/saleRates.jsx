@@ -65,7 +65,28 @@ export function PastRateSheet({ fabric, h, inUse, rfd, onClose }) {
           <tbody>{lines.map((r) => <tr><td>{r[0]}</td><td>{r[1]}</td><td>{r[2]}</td><td>{r[3]}</td></tr>)}</tbody>
         </table>
         <p class="past-foot">Difference = the first column minus the second. A minus means the figure is lower in the first column.{unit ? ` Profit uses ${unit.name}’s cost per pick.` : ''}</p>
-        <h3 class="past-h">Yarn rates, ₹ per kg</h3>
+        <h3 class="past-h">Yarn-wise: rate per kg and cost per {rfd ? 'greige ' : ''}metre</h3>
+        <table class="past-table" data-past-qualities>
+          <thead><tr><th /><th>{v.dated ? thenHead : 'Used'}</th><th>Today</th><th>Difference</th></tr></thead>
+          <tbody>
+            {v.qualities.map((q) => (
+              <tr class={q.changed ? 'moved' : ''}>
+                <td>{q.name}<div class="row-sub">{q.side}{q.gpm !== null ? ` · ${fmt.n(q.gpm, 1)} g per m` : ''}</div></td>
+                <td>{fmt.rate(q.thenRate)}<div class="row-sub">{fmt.rs(q.thenCost)}/m</div></td>
+                <td>{fmt.rate(q.nowRate)}<div class="row-sub">{fmt.rs(q.nowCost)}/m</div></td>
+                <td>{q.changed ? signed(q.thenRate - q.nowRate, fmt.rate) : q.thenRate === null ? '—' : 'same'}{q.changed && q.thenCost !== null && q.nowCost !== null ? <div class="row-sub">{signed(q.thenCost - q.nowCost, fmt.rs)}/m</div> : null}</td>
+              </tr>
+            ))}
+            <tr class="total">
+              <td>Raw material per {rfd ? 'greige ' : ''}metre</td>
+              <td>{fmt.rs(t.rmCost)}</td>
+              <td>{fmt.rs(n.rmCost)}</td>
+              <td>{signed(t.rmCost === null || n.rmCost === null ? null : t.rmCost - n.rmCost, fmt.rs)}</td>
+            </tr>
+          </tbody>
+        </table>
+        <p class="past-foot">Top figure: the yarn’s rate per kg (a TPM yarn’s rate is its base yarn’s rate plus its delta). Below it: that yarn’s cost in one {rfd ? 'greige ' : ''}metre, shortage included.{rfd ? ' The raw material cost per RFD m above also carries the RFD shortage.' : ''}</p>
+        <h3 class="past-h">Base yarn rates, ₹ per kg</h3>
         <table class="past-table">
           <thead><tr><th /><th>{v.dated ? thenHead : 'Used'}</th><th>Today</th><th>Difference</th></tr></thead>
           <tbody>

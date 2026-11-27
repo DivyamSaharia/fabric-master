@@ -70,6 +70,8 @@ export function saleSaveOps(old, f, rows) {
 // next to the rate in use at today's yarn rates. h = a saleHistory entry. Master figures only (temporary rates
 // on this device are left out). Everything else (construction, shortage, VATAV %, finishing, TPM deltas, unit
 // cost per pick) is as it stands today: only sale rates and yarn rates carry dates.
+// qualities: [{ side, yarn, name, gpm, thenRate, nowRate, thenCost, nowCost, changed }] per warp/weft line; their
+// costs add up to then.rmCost / now.rmCost (raw material per greige metre).
 // Returns { then, now, yarns: [{ yarn, tpm, thenRate, thenDate, nowRate, nowDate, changed, early, none }], changed, dated }.
 // early: the yarn has no rate on or before the date, so its earliest rate is used. none: the yarn has no rate at all.
 export function pastRateView(fabric, h, idx) {
@@ -95,7 +97,15 @@ export function pastRateView(fabric, h, idx) {
     };
   });
   const then = fabricCalc({ ...fabric, price: h.rate, sale_date: date }, clean, date || null, picks);
-  return { then, now, yarns, changed: yarns.filter((y) => y.changed).length, dated: !!date };
+  // Quality-wise: every warp and weft yarn of the fabric with its own rate (a TPM yarn's = base + delta) and its
+  // cost per greige metre (shortage included), then and today. Both calcs walk the same lines in the same order.
+  const side = (name, a, b) => a.map((x, i) => ({
+    side: name, yarn: x.yarn, name: x.yarn ? x.yarn.name : 'Yarn not found', gpm: x.gpm,
+    thenRate: x.rate, nowRate: b[i].rate, thenCost: x.costPerM, nowCost: b[i].costPerM,
+    changed: x.rate !== null && b[i].rate !== null && x.rate !== b[i].rate,
+  }));
+  const qualities = [...side('Warp', then.warp, now.warp), ...side('Weft', then.weft, now.weft)];
+  return { then, now, yarns, qualities, changed: yarns.filter((y) => y.changed).length, dated: !!date };
 }
 
 // What deleting some history rows does: { ops, next } where next is the rate that takes over

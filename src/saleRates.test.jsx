@@ -185,6 +185,18 @@ describe('past rate view: realisation at the yarn rates of the date', () => {
     const ref = fabricCalc({ ...f, price: 42, sale_date: '2026-08-14' }, idx, '2026-08-14');
     expect(v.then.realisationNetPerPick).toBeCloseTo(ref.realisationNetPerPick, 9);
     expect(v.then.rmCost).toBeLessThan(v.now.rmCost);
+    // quality-wise: each yarn's own rate and cost per metre; a TPM yarn's rate = base + delta; costs add up to raw material
+    const warpQ = v.qualities.find((q) => q.side === 'Warp');
+    expect(warpQ).toMatchObject({ thenRate: 100, nowRate: 118, changed: true });
+    expect(warpQ.thenCost).toBeCloseTo((warpQ.gpm / 1000) * 100, 9);
+    expect(warpQ.nowCost).toBeCloseTo((warpQ.gpm / 1000) * 118, 9);
+    const weftQ = v.qualities.find((q) => q.side === 'Weft');
+    const baseThen = v.yarns.find((y) => y.yarn.id === base.id).thenRate;
+    expect(weftQ.yarn.id).toBe('y_tpm75');
+    expect(weftQ.thenRate - baseThen).toBeCloseTo(weftQ.nowRate - v.yarns.find((y) => y.yarn.id === base.id).nowRate, 9);
+    expect(weftQ.thenRate).toBeGreaterThan(baseThen);
+    expect(v.qualities.reduce((a, q) => a + q.thenCost, 0)).toBeCloseTo(v.then.rmCost, 9);
+    expect(v.qualities.reduce((a, q) => a + q.nowCost, 0)).toBeCloseTo(v.now.rmCost, 9);
     // a date between two rates takes the earlier one: on 20 Aug the 1 Aug warp rate still applies, on 1 Sep the new one
     expect(pastRateView(f, { rate: 45, date: '2026-08-20' }, idx).yarns.find((y) => y.yarn.id === 'y_fdy75').thenRate).toBe(100);
     expect(pastRateView(f, { rate: 45, date: '2026-09-01' }, idx).yarns.find((y) => y.yarn.id === 'y_fdy75').thenRate).toBe(109);
@@ -219,6 +231,12 @@ describe('fabric page: Sale rate history', () => {
     expect(dlg.querySelector('[data-past-note]').textContent).toContain('Yarn rates have changed since 14 Aug 2026 (1 of');
     expect(dlg.textContent).toContain(fmt.rate(100));
     expect(dlg.textContent).toContain(`Profit per pick at`);
+    // yarn-wise table: one row per warp/weft yarn plus the total, with rate per kg and cost per metre
+    const qt = dlg.querySelector('[data-past-qualities]');
+    expect(qt.querySelectorAll('tbody tr').length).toBe(lines('f_crepe').length + 1);
+    expect(qt.textContent).toContain(idx.yarnsById.y_tpm75.name);
+    expect(qt.textContent).toContain(`${fmt.rs(at42.warp[0].costPerM)}/m`);
+    expect(qt.textContent).toContain(fmt.rs(at42.rmCost));
     const u = idx.unitsById.u_2;
     if (unitProfit(at42, u).profitPerPick !== null) expect(dlg.textContent).toContain(fmt.pick(unitProfit(at42, u).profitPerPick));
     expect(stored('f_crepe').price).toBe(45);
