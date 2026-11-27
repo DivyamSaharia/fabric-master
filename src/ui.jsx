@@ -3,6 +3,7 @@ import { backendMode, getIndex, getPhoto, refresh, useStore } from './store.js';
 import { back, go, tab } from './router.js';
 import { answerConfirm, confirmState, onConfirm } from './confirm.js';
 import { local } from './storage.js';
+import { setTopOther, sheetClosed, sheetOpened } from './sheetHistory.js';
 
 // Laptop layout from this width up; phones and narrow windows keep the iPhone layout.
 export const WIDE_QUERY = '(min-width: 1024px)';
@@ -352,20 +353,116 @@ export function Chip({ on, onClick, children }) {
 
 // Open sheets, newest last: Escape closes only the one on top (a confirm sheet can open over another sheet).
 const openSheets = [];
-export function Sheet({ open, onClose, title, children, footer }) {
+// A sheet with history={false} (the unsaved-changes question) on top of the stack: back answers it instead of closing what is under it.
+setTopOther(() => {
+  const t = openSheets[openSheets.length - 1];
+  return t && !t.hist && t.close() ? () => { const c = t.close(); if (c) c(); } : null;
+});
+
+// Pull-down distance (px) or speed (px per ms, past 40 px) that closes a sheet.
+const PULL_CLOSE = 110;
+const PULL_FAST = 0.5;
+
+// Every sheet closes the same five ways: ✕, a tap outside, Esc, the phone's back gesture (sheetHistory.js) and
+// a pull down from its header, or from its content when that is scrolled to the top.
+export function Sheet({ open, onClose, title, children, footer, history: useHistory = true }) {
   const closeRef = useRef(onClose);
   closeRef.current = onClose;
+  const sheetRef = useRef(null);
+  const backRef = useRef(null);
   useEffect(() => {
     if (!open) return undefined;
-    const me = {};
+    const me = { hist: useHistory, close: () => closeRef.current };
     openSheets.push(me);
+    const entry = useHistory ? sheetOpened(() => closeRef.current) : null;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e) => {
       if (e.key === 'Escape' && openSheets[openSheets.length - 1] === me && closeRef.current) closeRef.current();
     };
     window.addEventListener('keydown', onKey);
+
+    // pull down to close
+    const el = sheetRef.current;
+    let drag = null; // { y, x, t, zone, on, dy }
+    const settle = (out) => {
+      if (!el) return;
+      el.style.transition = 'transform 0.18s ease-out';
+      el.style.transform = out ? 'translateY(100%)' : '';
+      if (backRef.current) {
+        backRef.current.style.transition = 'opacity 0.18s';
+        backRef.current.style.opacity = out ? '0' : '';
+      }
+    };
+    const clear = () => {
+      if (el) { el.style.transition = ''; el.style.transform = ''; }
+      if (backRef.current) { backRef.current.style.transition = ''; backRef.current.style.opacity = ''; }
+    };
+    const onStart = (e) => {
+      drag = null;
+      if (!closeRef.current || e.touches.length !== 1 || openSheets[openSheets.length - 1] !== me) return;
+      const tg = e.target;
+      if (tg.closest && tg.closest('input, textarea, select, [contenteditable]')) return;
+      const body = el.querySelector('.sheet-body');
+      const inBody = body && body.contains(tg);
+      // from the header always; from the content only when it is at its top (also any scrolling box inside it)
+      if (inBody) {
+        for (let n = tg; n && n !== el; n = n.parentElement) if (n.scrollTop > 0) return;
+      }
+      drag = { y: e.touches[0].clientY, x: e.touches[0].clientX, t: Date.now(), zone: inBody ? 'body' : 'head', on: false, dy: 0 };
+    };
+    const onMove = (e) => {
+      if (!drag) return;
+      const dy = e.touches[0].clientY - drag.y;
+      const dx = e.touches[0].clientX - drag.x;
+      if (!drag.on) {
+        if (dy < -6 || Math.abs(dx) > 12 + Math.abs(dy)) { drag = null; return; } // scrolling the content, or a sideways move
+        if (dy < 8) return;
+        drag.on = true;
+        el.style.transition = 'none';
+        if (backRef.current) backRef.current.style.transition = 'none';
+      }
+      if (e.cancelable) e.preventDefault();
+      drag.dy = Math.max(0, dy);
+      el.style.transform = `translateY(${drag.dy}px)`;
+      if (backRef.current) backRef.current.style.opacity = String(Math.max(0.25, 1 - drag.dy / 600));
+    };
+    let timer = null;
+    const onEnd = () => {
+      const d = drag;
+      drag = null;
+      if (!d || !d.on) return;
+      const speed = d.dy / Math.max(1, Date.now() - d.t);
+      const out = (d.dy > PULL_CLOSE || (d.dy > 40 && speed > PULL_FAST)) && !!closeRef.current;
+      settle(out);
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (out && closeRef.current) closeRef.current();
+        // still here (it asked before closing, or it sprang back): put it back in place
+        timer = setTimeout(clear, out ? 60 : 0);
+      }, 180);
+    };
+    const onCancel = () => {
+      if (drag && drag.on) settle(false);
+      drag = null;
+      clearTimeout(timer);
+      timer = setTimeout(clear, 200);
+    };
+    if (el) {
+      el.addEventListener('touchstart', onStart, { passive: true });
+      el.addEventListener('touchmove', onMove, { passive: false });
+      el.addEventListener('touchend', onEnd);
+      el.addEventListener('touchcancel', onCancel);
+    }
     return () => {
+      clearTimeout(timer);
+      if (el) {
+        el.removeEventListener('touchstart', onStart);
+        el.removeEventListener('touchmove', onMove);
+        el.removeEventListener('touchend', onEnd);
+        el.removeEventListener('touchcancel', onCancel);
+      }
+      sheetClosed(entry);
       const i = openSheets.indexOf(me);
       if (i >= 0) openSheets.splice(i, 1);
       document.body.style.overflow = openSheets.length ? 'hidden' : prev;
@@ -375,8 +472,8 @@ export function Sheet({ open, onClose, title, children, footer }) {
   if (!open) return null;
   return (
     <div class="sheet-layer">
-      <button type="button" class="sheet-backdrop" aria-label="Close" onClick={onClose} />
-      <div class="sheet" role="dialog" aria-modal="true" aria-label={title}>
+      <button type="button" class="sheet-backdrop" aria-label="Close" onClick={onClose} ref={backRef} />
+      <div class="sheet" role="dialog" aria-modal="true" aria-label={title} ref={sheetRef}>
         <div class="grabber" aria-hidden="true" />
         <div class="sheet-head">
           <h2>{title}</h2>
@@ -403,7 +500,7 @@ export function ConfirmHost() {
   const [c, setC] = useState(confirmState());
   useEffect(() => onConfirm(() => setC(confirmState())), []);
   return (
-    <Sheet open={!!c} onClose={() => answerConfirm(false)} title={c ? c.title : ''}>
+    <Sheet open={!!c} onClose={() => answerConfirm(false)} title={c ? c.title : ''} history={!(c && c.noHistory)}>
       {c && c.text ? <p class="confirm-text">{c.text}</p> : null}
       <div class="confirm-btns">
         <Button kind={c && c.danger ? 'danger-fill' : 'primary'} onClick={() => answerConfirm(true)}>{c ? c.yes : ''}</Button>

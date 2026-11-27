@@ -816,3 +816,6 @@ input::placeholder, textarea::placeholder { color: var(--hint); opacity: 1; }
 /* a sheet's own scroll never drags the page behind it or pulls the browser's refresh */
 .sheet-body { overscroll-behavior: contain; }
 .past-rate { padding-bottom: 8px; }
+/* pull down to close: the header is the handle, so the page under it must not scroll or select */
+.sheet .grabber, .sheet-head { touch-action: none; }
+.sheet-head h2 { user-select: none; -webkit-user-select: none; }

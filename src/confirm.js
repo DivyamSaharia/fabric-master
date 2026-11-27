@@ -1,5 +1,6 @@
 // One in-app confirm sheet for the whole app (audit B10), in place of the browser's own pop-up.
 // askConfirm({ title, text, yes, no, danger }) resolves true when the person taps the yes button.
+// noHistory: the sheet adds no history entry (only the router's unsaved-changes question; see sheetHistory.js).
 // ConfirmHost (ui.jsx) draws it; it lives here so the router can ask too without importing screens.
 let current = null;
 const subs = new Set();

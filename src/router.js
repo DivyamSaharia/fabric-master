@@ -17,7 +17,8 @@ function mayLeave(retry) {
     return true;
   }
   const g = guard;
-  askConfirm({ title: g.message, text: 'What you changed on this form is not saved yet.', yes: 'Discard changes', no: 'Keep editing', danger: true }).then((yes) => {
+  // noHistory: this sheet opens while a back gesture is being undone (history.forward below), so it adds no history entry
+  askConfirm({ title: g.message, text: 'What you changed on this form is not saved yet.', yes: 'Discard changes', no: 'Keep editing', danger: true, noHistory: true }).then((yes) => {
     if (!yes) return;
     g.allow();
     if (guard === g) guard = null;

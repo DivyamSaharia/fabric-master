@@ -372,7 +372,7 @@ export const TOPICS = [
 
 // One plain line per version. Add a line with every release.
 export const WHATS_NEW = [
-  ['1.35.0', 'Sale rate history: every price change is now its own row, also two on the same day. Tap a rate to see its realisation at the yarn rates of its date, next to the rate in use today, with the yarns whose rates have changed since. This replaces the View at picker.'],
+  ['1.35.0', 'Sale rate history: every price change is now its own row, also two on the same day. Tap a rate to see its realisation at the yarn rates of its date, next to the rate in use today, with the yarns whose rates have changed since. This replaces the View at picker. Every pop-up now also closes with the phone’s back gesture or a pull down from its top.'],
   ['1.34.0', 'Each fabric now keeps a sale rate history, like yarn rates. Find it under the temporary sale rate on a fabric page. Pick an older sale rate to see the fabric at it, or delete one: delete the rate in use and the next older one comes back.'],
   ['1.33.0', 'On a yarn page, tap Used in fabrics to see each fabric, then tap one to open it. A base yarn also lists fabrics that use its TPM yarns, with the TPM yarn named. Tap a TPM yarn to open it.'],
   ['1.32.0', 'The Construction section on a fabric page now shows GSM. With no greige width it shows GSM on reed space, labelled so.'],
